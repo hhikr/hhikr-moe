@@ -1,13 +1,105 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Tags on Blowfish</title>
-    <link>/tags/</link>
-    <description>Recent content in Tags on Blowfish</description>
+    <title>Tags on Hitchhiker</title>
+    <link>https://hhikr.moe/tags/</link>
+    <description>Recent content in Tags on Hitchhiker</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en</language>
-    <copyright>© 2025 </copyright>
-    <atom:link href="/tags/index.xml" rel="self" type="application/rss+xml" />
+    <language>zh-cn</language>
+    <managingEditor>114514@hhikr.com (hhikr)</managingEditor>
+    <webMaster>114514@hhikr.com (hhikr)</webMaster>
+    <copyright>© 2025 hhikr</copyright>
+    <lastBuildDate>Tue, 29 Apr 2025 19:21:47 +0800</lastBuildDate><atom:link href="https://hhikr.moe/tags/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Free</title>
+      <link>https://hhikr.moe/tags/free/</link>
+      <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/free/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>Server</title>
+      <link>https://hhikr.moe/tags/server/</link>
+      <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/server/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>Vps</title>
+      <link>https://hhikr.moe/tags/vps/</link>
+      <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/vps/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>薅羊毛</title>
+      <link>https://hhikr.moe/tags/%E8%96%85%E7%BE%8A%E6%AF%9B/</link>
+      <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/%E8%96%85%E7%BE%8A%E6%AF%9B/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>教程</title>
+      <link>https://hhikr.moe/tags/%E6%95%99%E7%A8%8B/</link>
+      <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/%E6%95%99%E7%A8%8B/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>云主机</title>
+      <link>https://hhikr.moe/tags/%E4%BA%91%E4%B8%BB%E6%9C%BA/</link>
+      <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/%E4%BA%91%E4%B8%BB%E6%9C%BA/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>折腾</title>
+      <link>https://hhikr.moe/tags/%E6%8A%98%E8%85%BE/</link>
+      <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/%E6%8A%98%E8%85%BE/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>建站</title>
+      <link>https://hhikr.moe/tags/%E5%BB%BA%E7%AB%99/</link>
+      <pubDate>Mon, 28 Apr 2025 17:55:02 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/%E5%BB%BA%E7%AB%99/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>香橙派</title>
+      <link>https://hhikr.moe/tags/%E9%A6%99%E6%A9%99%E6%B4%BE/</link>
+      <pubDate>Mon, 28 Apr 2025 17:55:02 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/tags/%E9%A6%99%E6%A9%99%E6%B4%BE/</guid>
+      <description></description>
+      
+    </item>
     
   </channel>
 </rss>

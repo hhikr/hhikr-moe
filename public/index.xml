@@ -1,13 +1,45 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Blowfish</title>
-    <link>/</link>
-    <description>Recent content on Blowfish</description>
+    <title>Hitchhiker</title>
+    <link>https://hhikr.moe/</link>
+    <description>Recent content on Hitchhiker</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en</language>
-    <copyright>© 2025 </copyright>
-    <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    <language>zh-cn</language>
+    <managingEditor>114514@hhikr.com (hhikr)</managingEditor>
+    <webMaster>114514@hhikr.com (hhikr)</webMaster>
+    <copyright>© 2025 hhikr</copyright>
+    <lastBuildDate>Tue, 29 Apr 2025 19:21:47 +0800</lastBuildDate><atom:link href="https://hhikr.moe/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>我是学生，送我——使用Microsoft Azure配置云主机</title>
+      <link>https://hhikr.moe/posts/configuring-vps/</link>
+      <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/posts/configuring-vps/</guid>
+      <description>记录了自己决定搞一个免费的云主机玩玩的全过程，以及一些科普和吐槽。</description>
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="https://hhikr.moe/posts/configuring-vps/featured.png" />
+    </item>
+    
+    <item>
+      <title>记录我的第一次建站</title>
+      <link>https://hhikr.moe/posts/building-website/</link>
+      <pubDate>Mon, 28 Apr 2025 17:55:02 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/posts/building-website/</guid>
+      <description>第一次建站的一些经验。</description>
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="https://hhikr.moe/posts/building-website/featured.png" />
+    </item>
+    
+    <item>
+      <title>时间胶囊</title>
+      <link>https://hhikr.moe/posts/time-machine/</link>
+      <pubDate>Mon, 28 Apr 2025 15:16:50 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>https://hhikr.moe/posts/time-machine/</guid>
+      <description>引导之始。</description>
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="https://hhikr.moe/posts/time-machine/featured.png" />
+    </item>
     
   </channel>
 </rss>

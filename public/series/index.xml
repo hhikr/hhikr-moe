@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Series on Blowfish</title>
-    <link>/series/</link>
-    <description>Recent content in Series on Blowfish</description>
+    <title>Series on Hitchhiker</title>
+    <link>https://hhikr.moe/series/</link>
+    <description>Recent content in Series on Hitchhiker</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en</language>
-    <copyright>© 2025 </copyright>
-    <atom:link href="/series/index.xml" rel="self" type="application/rss+xml" />
+    <language>zh-cn</language>
+    <managingEditor>114514@hhikr.com (hhikr)</managingEditor>
+    <webMaster>114514@hhikr.com (hhikr)</webMaster>
+    <copyright>© 2025 hhikr</copyright>
+    <atom:link href="https://hhikr.moe/series/index.xml" rel="self" type="application/rss+xml" />
     
   </channel>
 </rss>
