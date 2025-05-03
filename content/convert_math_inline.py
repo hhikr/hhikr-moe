@@ -21,13 +21,6 @@ def convert_inline_math(content):
 def process_file(filepath):
     dir_name, base_name = os.path.split(filepath)
     name, ext = os.path.splitext(base_name)
-    backup_path = os.path.join(dir_name, f"{name}_bak{ext}")
-
-    if os.path.exists(backup_path):
-        print(f"已跳过（已有备份）：{filepath}")
-        return
-
-    shutil.copy2(filepath, backup_path)
 
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
@@ -57,4 +50,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     convert_in_directory(target_dir)
-    print("内联数学公式转换完成，原文件已备份为 *_bak.md")
+    print("内联数学公式转换完成")

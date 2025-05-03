@@ -58,6 +58,10 @@ name = "🏷️标签"
 pageRef = "tags"
 weight = 30
 
+[[subnavigation]]
+name = "📚合订本"
+pageRef = "series"
+weight = 30
 
 #-- Footer Menu --
 #The footer menu is displayed at the bottom of the page, just before

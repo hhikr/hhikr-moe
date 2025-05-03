@@ -11,6 +11,7 @@ series_order = 2
 +++
 
 {{< katex >}}
+
 ## PART I: Math Preliminaries
 
 ### String and apphabet
