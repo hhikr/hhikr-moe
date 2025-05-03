@@ -2,101 +2,141 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Tags on Hitchhiker</title>
-    <link>https://hhikr.moe/tags/</link>
+    <link>http://localhost:1313/tags/</link>
     <description>Recent content in Tags on Hitchhiker</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
     <managingEditor>114514@hhikr.com (hhikr)</managingEditor>
     <webMaster>114514@hhikr.com (hhikr)</webMaster>
     <copyright>© 2025 hhikr</copyright>
-    <lastBuildDate>Tue, 29 Apr 2025 19:21:47 +0800</lastBuildDate><atom:link href="https://hhikr.moe/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 03 May 2025 11:28:42 +0800</lastBuildDate><atom:link href="http://localhost:1313/tags/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>笔记</title>
+      <link>http://localhost:1313/tags/%E7%AC%94%E8%AE%B0/</link>
+      <pubDate>Sat, 03 May 2025 11:28:42 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>http://localhost:1313/tags/%E7%AC%94%E8%AE%B0/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>编译原理</title>
+      <link>http://localhost:1313/tags/%E7%BC%96%E8%AF%91%E5%8E%9F%E7%90%86/</link>
+      <pubDate>Sat, 03 May 2025 11:28:42 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>http://localhost:1313/tags/%E7%BC%96%E8%AF%91%E5%8E%9F%E7%90%86/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>有限状态机</title>
+      <link>http://localhost:1313/tags/%E6%9C%89%E9%99%90%E7%8A%B6%E6%80%81%E6%9C%BA/</link>
+      <pubDate>Sat, 03 May 2025 11:03:21 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>http://localhost:1313/tags/%E6%9C%89%E9%99%90%E7%8A%B6%E6%80%81%E6%9C%BA/</guid>
+      <description></description>
+      
+    </item>
+    
+    <item>
+      <title>概述</title>
+      <link>http://localhost:1313/tags/%E6%A6%82%E8%BF%B0/</link>
+      <pubDate>Sat, 03 May 2025 10:42:33 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>http://localhost:1313/tags/%E6%A6%82%E8%BF%B0/</guid>
+      <description></description>
+      
+    </item>
     
     <item>
       <title>Free</title>
-      <link>https://hhikr.moe/tags/free/</link>
+      <link>http://localhost:1313/tags/free/</link>
       <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/free/</guid>
+      <guid>http://localhost:1313/tags/free/</guid>
       <description></description>
       
     </item>
     
     <item>
       <title>Server</title>
-      <link>https://hhikr.moe/tags/server/</link>
+      <link>http://localhost:1313/tags/server/</link>
       <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/server/</guid>
+      <guid>http://localhost:1313/tags/server/</guid>
       <description></description>
       
     </item>
     
     <item>
       <title>Vps</title>
-      <link>https://hhikr.moe/tags/vps/</link>
+      <link>http://localhost:1313/tags/vps/</link>
       <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/vps/</guid>
+      <guid>http://localhost:1313/tags/vps/</guid>
       <description></description>
       
     </item>
     
     <item>
       <title>薅羊毛</title>
-      <link>https://hhikr.moe/tags/%E8%96%85%E7%BE%8A%E6%AF%9B/</link>
+      <link>http://localhost:1313/tags/%E8%96%85%E7%BE%8A%E6%AF%9B/</link>
       <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/%E8%96%85%E7%BE%8A%E6%AF%9B/</guid>
+      <guid>http://localhost:1313/tags/%E8%96%85%E7%BE%8A%E6%AF%9B/</guid>
       <description></description>
       
     </item>
     
     <item>
       <title>教程</title>
-      <link>https://hhikr.moe/tags/%E6%95%99%E7%A8%8B/</link>
+      <link>http://localhost:1313/tags/%E6%95%99%E7%A8%8B/</link>
       <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/%E6%95%99%E7%A8%8B/</guid>
+      <guid>http://localhost:1313/tags/%E6%95%99%E7%A8%8B/</guid>
       <description></description>
       
     </item>
     
     <item>
       <title>云主机</title>
-      <link>https://hhikr.moe/tags/%E4%BA%91%E4%B8%BB%E6%9C%BA/</link>
+      <link>http://localhost:1313/tags/%E4%BA%91%E4%B8%BB%E6%9C%BA/</link>
       <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/%E4%BA%91%E4%B8%BB%E6%9C%BA/</guid>
+      <guid>http://localhost:1313/tags/%E4%BA%91%E4%B8%BB%E6%9C%BA/</guid>
       <description></description>
       
     </item>
     
     <item>
       <title>折腾</title>
-      <link>https://hhikr.moe/tags/%E6%8A%98%E8%85%BE/</link>
+      <link>http://localhost:1313/tags/%E6%8A%98%E8%85%BE/</link>
       <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/%E6%8A%98%E8%85%BE/</guid>
+      <guid>http://localhost:1313/tags/%E6%8A%98%E8%85%BE/</guid>
       <description></description>
       
     </item>
     
     <item>
       <title>建站</title>
-      <link>https://hhikr.moe/tags/%E5%BB%BA%E7%AB%99/</link>
+      <link>http://localhost:1313/tags/%E5%BB%BA%E7%AB%99/</link>
       <pubDate>Mon, 28 Apr 2025 17:55:02 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/%E5%BB%BA%E7%AB%99/</guid>
+      <guid>http://localhost:1313/tags/%E5%BB%BA%E7%AB%99/</guid>
       <description></description>
       
     </item>
     
     <item>
       <title>香橙派</title>
-      <link>https://hhikr.moe/tags/%E9%A6%99%E6%A9%99%E6%B4%BE/</link>
+      <link>http://localhost:1313/tags/%E9%A6%99%E6%A9%99%E6%B4%BE/</link>
       <pubDate>Mon, 28 Apr 2025 17:55:02 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/tags/%E9%A6%99%E6%A9%99%E6%B4%BE/</guid>
+      <guid>http://localhost:1313/tags/%E9%A6%99%E6%A9%99%E6%B4%BE/</guid>
       <description></description>
       
     </item>

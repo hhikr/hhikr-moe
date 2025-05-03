@@ -2,7 +2,6 @@
 date = '2025-04-28T17:55:02+08:00'
 draft = false
 title = '记录我的第一次建站'
-showSummary = true
 summary = "第一次建站的一些经验。"
 tags = ["折腾", "教程", "建站", "香橙派"]
 categories = ["TechPlay"]

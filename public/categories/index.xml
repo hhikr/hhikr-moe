@@ -2,21 +2,31 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Categories on Hitchhiker</title>
-    <link>https://hhikr.moe/categories/</link>
+    <link>http://localhost:1313/categories/</link>
     <description>Recent content in Categories on Hitchhiker</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
     <managingEditor>114514@hhikr.com (hhikr)</managingEditor>
     <webMaster>114514@hhikr.com (hhikr)</webMaster>
     <copyright>© 2025 hhikr</copyright>
-    <lastBuildDate>Tue, 29 Apr 2025 19:21:47 +0800</lastBuildDate><atom:link href="https://hhikr.moe/categories/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 03 May 2025 11:28:42 +0800</lastBuildDate><atom:link href="http://localhost:1313/categories/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>StudyBase</title>
+      <link>http://localhost:1313/categories/studybase/</link>
+      <pubDate>Sat, 03 May 2025 11:28:42 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>http://localhost:1313/categories/studybase/</guid>
+      <description></description>
+      
+    </item>
     
     <item>
       <title>TechPlay</title>
-      <link>https://hhikr.moe/categories/techplay/</link>
+      <link>http://localhost:1313/categories/techplay/</link>
       <pubDate>Tue, 29 Apr 2025 19:21:47 +0800</pubDate>
       <author>114514@hhikr.com (hhikr)</author>
-      <guid>https://hhikr.moe/categories/techplay/</guid>
+      <guid>http://localhost:1313/categories/techplay/</guid>
       <description></description>
       
     </item>

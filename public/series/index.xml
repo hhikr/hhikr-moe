@@ -2,14 +2,24 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Series on Hitchhiker</title>
-    <link>https://hhikr.moe/series/</link>
+    <link>http://localhost:1313/series/</link>
     <description>Recent content in Series on Hitchhiker</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
     <managingEditor>114514@hhikr.com (hhikr)</managingEditor>
     <webMaster>114514@hhikr.com (hhikr)</webMaster>
     <copyright>© 2025 hhikr</copyright>
-    <atom:link href="https://hhikr.moe/series/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 03 May 2025 11:28:42 +0800</lastBuildDate><atom:link href="http://localhost:1313/series/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>编译原理笔记</title>
+      <link>http://localhost:1313/series/%E7%BC%96%E8%AF%91%E5%8E%9F%E7%90%86%E7%AC%94%E8%AE%B0/</link>
+      <pubDate>Sat, 03 May 2025 11:28:42 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>http://localhost:1313/series/%E7%BC%96%E8%AF%91%E5%8E%9F%E7%90%86%E7%AC%94%E8%AE%B0/</guid>
+      <description></description>
+      
+    </item>
     
   </channel>
 </rss>

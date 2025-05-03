@@ -6,16 +6,6 @@ showSummary = true
 summary = "记录了自己决定搞一个免费的云主机玩玩的全过程，以及一些科普和吐槽。"
 tags = ["折腾", "教程", "vps", "云主机", "server", "free", "薅羊毛"]
 categories = ["TechPlay"]
-showTableOfContents = true
-showAuthorBottom = true
-showBreadcrumbs = true
-showDate = true
-showDateUpdated = true
-showHeadingAnchors = true
-showTaxonomies = true
-showComments = true
-showViews = true
-showLikes = true
 +++
 
 写下这些文字的时候，本站正处于⭐**寄掉**⭐的状态——服务器使用校园网，
