@@ -6,7 +6,7 @@ summary = "编译原理笔记：了解编译器设计的大致流程，和构建
 tags = ["笔记", "编译原理", "概述"]
 categories = ["StudyBase"]
 seriesOpened = true
-series = ["编译原理笔记"]
+series = ["笔记-编译原理"]
 series_order = 1
 +++
 

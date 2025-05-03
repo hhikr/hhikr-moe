@@ -9,7 +9,17 @@
     <managingEditor>114514@hhikr.com (hhikr)</managingEditor>
     <webMaster>114514@hhikr.com (hhikr)</webMaster>
     <copyright>© 2025 hhikr</copyright>
-    <lastBuildDate>Sat, 03 May 2025 15:40:24 +0800</lastBuildDate><atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 03 May 2025 16:55:10 +0800</lastBuildDate><atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>操作系统笔记-未命名</title>
+      <link>http://localhost:1313/posts/os-1/</link>
+      <pubDate>Sat, 03 May 2025 16:55:10 +0800</pubDate>
+      <author>114514@hhikr.com (hhikr)</author>
+      <guid>http://localhost:1313/posts/os-1/</guid>
+      <description>操作系统笔记</description>
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:1313/posts/os-1/featured.jpg" />
+    </item>
     
     <item>
       <title>第3章：SQL——关系数据库标准语言</title>
@@ -18,7 +28,7 @@
       <author>114514@hhikr.com (hhikr)</author>
       <guid>http://localhost:1313/posts/database-3/</guid>
       <description>数据库笔记</description>
-      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:1313/posts/database-3/featured.png" />
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:1313/posts/database-3/featured.jpg" />
     </item>
     
     <item>
@@ -28,7 +38,7 @@
       <author>114514@hhikr.com (hhikr)</author>
       <guid>http://localhost:1313/posts/database-2/</guid>
       <description>数据库笔记</description>
-      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:1313/posts/database-2/featured.png" />
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:1313/posts/database-2/featured.jpg" />
     </item>
     
     <item>
@@ -38,7 +48,7 @@
       <author>114514@hhikr.com (hhikr)</author>
       <guid>http://localhost:1313/posts/database-1/</guid>
       <description>数据库笔记</description>
-      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:1313/posts/database-1/featured.png" />
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:1313/posts/database-1/featured.jpg" />
     </item>
     
     <item>
@@ -88,7 +98,7 @@
       <author>114514@hhikr.com (hhikr)</author>
       <guid>http://localhost:1313/posts/compiler-ch-1-and-2/</guid>
       <description>编译原理笔记：了解编译器设计的大致流程，和构建编译器的相关工具</description>
-      
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" url="http://localhost:1313/posts/compiler-ch-1-and-2/featured.png" />
     </item>
     
     <item>
