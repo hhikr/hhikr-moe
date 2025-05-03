@@ -10,6 +10,7 @@ series = ["编译原理笔记"]
 series_order = 1
 +++
 
+{{< katex >}}
 # Part I Compilers
 
 ## 一、基本了解：Compiler, Interpreter 和 Linker
