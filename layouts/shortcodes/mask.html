@@ -1,0 +1,31 @@
+<style>
+    .mask-container {
+        background-color: black;
+        color: black;
+        display: inline-block;
+        padding: 2px 4px;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: color 0.4s ease;
+    }
+
+    .mask-container.revealed {
+        color: inherit;
+    }
+
+    /* 白天模式下的文字颜色 */
+    :root .mask-container {
+        color: black;
+    }
+
+    :root .mask-container.revealed {
+        color: white;
+    }
+</style>
+
+<span class="mask-container" onclick="
+  this.classList.toggle('revealed');
+  this.title = this.classList.contains('revealed') ? '你知道的太多了😈' : '';">
+  {{ .Inner }}
+</span>
+

@@ -12,7 +12,7 @@
 
 [[main]]
 name = "📖文章"
-pageRef = "posts"
+pageRef = "posts/time-machine"
 weight = 10
 
 #[[main]]
@@ -47,6 +47,12 @@ weight = 20
 #pre = "github"
 #pageRef = "categories/awesome"
 #weight = 20
+
+
+[[subnavigation]]
+name = "🔆引导之始"
+pageRef = "posts/time-machine/"
+weight = 20
 
 [[subnavigation]]
 name = "🗂️分类"

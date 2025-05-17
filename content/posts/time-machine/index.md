@@ -4,19 +4,9 @@ draft = false
 title = '时间胶囊'
 showSummary = true
 summary = "引导之始。"
-showTableOfContents = true
-showAuthorBottom = true
-showBreadcrumbs = true
-showDate = true
-showDateUpdated = true
-showHeadingAnchors = true
-showTaxonomies = true
-showComments = true
-showViews = true
-showLikes = true
 +++
 
-hey! (招手.gif)[^1]
+hey! (招手.gif)[^1][^2][^3][^4]
 
 早就想做个人网站了，但是一直摆着……不过还是做出来了，感谢朋友[半天建站完成](http://neonfox.voin.ink)的push喵。
 
@@ -27,4 +17,7 @@ hey! (招手.gif)[^1]
 
 
 
-[^1]: 第一次修改，ver 0.20250428
+[^1]: ver 0.20250428 第一次修改，初始化网站
+[^2]: ver 0.20250501 第二次修改，美化了网站显示并配置了azure云主机作为网站的主要服务器
+[^3]: ver 0.20250507 第三次修改， {{< mask >}}添加了mask文字的效果{{< /mask >}}
+[^4]: ver 1.20250507 第四次修改，使用 leancloud+waline+vercel 部署了评论区，该方案可以达到无广告+无账号也能评论的效果。

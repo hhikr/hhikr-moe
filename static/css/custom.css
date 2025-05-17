@@ -1,0 +1,13 @@
+.mask-container {
+    background-color: black;
+    color: black;
+    display: inline-block;
+    padding: 2px 4px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: color 0.4s ease;
+}
+
+.mask-container.revealed {
+    color: inherit;
+}
