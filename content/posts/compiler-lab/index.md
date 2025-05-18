@@ -1,6 +1,6 @@
 +++
 date = '2025-05-12T16:53:00+08:00'
-draft = false
+draft = true
 title = '编译原理Lab笔记'
 summary = "编译原理笔记"
 tags = ["笔记", "编译原理"]

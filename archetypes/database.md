@@ -1,6 +1,6 @@
 +++
 date = '{{ .Date }}'
-draft = false
+draft = true
 title = '数据库笔记-未命名'
 summary = "数据库笔记"
 tags = ["笔记", "数据管理基础"]
