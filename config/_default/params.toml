@@ -26,7 +26,7 @@ defaultFeaturedImage = "img/background.jpg" # used as default for featured image
 
 highlightCurrentMenuArea = true
 smartTOC = true
-#smartTOCHideUnfocusedChildren = true
+smartTOCHideUnfocusedChildren = true
 
 giteaDefaultServer = "https://git.fsfe.org"
 forgejoDefaultServer = "https://v8.next.forgejo.org"

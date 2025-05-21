@@ -12,7 +12,7 @@
 
 [[main]]
 name = "📖文章"
-pageRef = "posts/time-machine"
+pageRef = "posts"
 weight = 10
 
 #[[main]]
