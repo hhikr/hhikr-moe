@@ -1,11 +1,11 @@
 +++
 date = '2025-05-21T10:06:52+08:00'
-draft = true
+draft = false
 title = '第三章 存储管理'
 summary = "本文介绍了 os 对应用使用主存的管理，包括存储管理的主要概念、虚存的概念、连续分区管理、段页式的存储管理等。很多内容在 COA 已经提及。"
 tags = ["笔记", "OS", "操作系统"]
 categories = ["StudyBase"]
-seriesOpened = true
+seriesOpened = false
 series = ["笔记-操作系统"]
 series_order = 3
 +++
