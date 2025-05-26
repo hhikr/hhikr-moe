@@ -1,7 +1,7 @@
 +++
 date = '2025-05-03T16:55:10+08:00'
 draft = false
-title = '第一章：计算机操作系统概述'
+title = '第一章 计算机操作系统概述'
 summary = "操作系统笔记"
 tags = ["笔记", "OS", "操作系统"]
 categories = ["StudyBase"]
