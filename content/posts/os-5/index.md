@@ -7,7 +7,7 @@ tags = ["笔记", "OS", "操作系统"]
 categories = ["StudyBase"]
 seriesOpened = true
 series = ["笔记-操作系统"]
-series_order = -1
+series_order = 5
 +++
 
 {{< katex >}} 
