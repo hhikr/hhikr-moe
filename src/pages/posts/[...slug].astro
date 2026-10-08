@@ -1,0 +1,407 @@
+---
+import '@/styles/prose.css';
+import { render } from 'astro:content';
+import { Image } from 'astro:assets';
+import Base from '@/layouts/Base.astro';
+import Toc from '@/components/Toc.astro';
+import SeriesNav from '@/components/SeriesNav.astro';
+import Comments from '@/components/Comments.astro';
+import Icon from '@/components/Icon.astro';
+import { COMMENTS } from '@/site.config';
+import {
+  categoryOf,
+  categoryUrl,
+  fmtDate,
+  getPosts,
+  postUrl,
+  relatedPosts,
+  tagUrl,
+  type Post,
+} from '@/lib/posts';
+import { readingStats } from '@/lib/stats';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: { post, newer: posts[i - 1], older: posts[i + 1], all: posts },
+  }));
+}
+
+interface Props {
+  post: Post;
+  newer?: Post;
+  older?: Post;
+  all: Post[];
+}
+
+const { post, newer, older, all } = Astro.props;
+const { Content, headings } = await render(post);
+const { words, minutes } = await readingStats(post);
+const { title, summary, date, updated, tags, series, cover, draft } = post.data;
+const cat = categoryOf(post);
+const seriesPosts = series ? all.filter((p) => p.data.series === series) : [];
+const related = relatedPosts(post, all);
+---
+
+<Base
+  title={title}
+  description={summary}
+  image={cover}
+  type="article"
+  published={date}
+  modified={updated}
+  tags={tags}
+  noindex={draft}
+>
+  <article class="post wrap" data-article data-pagefind-body>
+    <header class="post-head">
+      <p class="crumbs label">
+        <a href="/posts/">Posts</a>
+        {
+          cat && (
+            <>
+              <span>/</span>
+              <a href={categoryUrl(cat.slug)}>
+                {cat.name} · {cat.en}
+              </a>
+            </>
+          )
+        }
+        {draft && <span class="badge-draft">草稿 · DRAFT</span>}
+      </p>
+      <h1 class="title cjk" data-pagefind-meta="title">{title}</h1>
+      {summary && <p class="summary">{summary}</p>}
+      <dl class="facts">
+        <div>
+          <dt class="label">发布</dt>
+          <dd><time datetime={date.toISOString()} data-pagefind-meta="date">{fmtDate(date)}</time></dd>
+        </div>
+        {
+          updated && (
+            <div>
+              <dt class="label">更新</dt>
+              <dd><time datetime={updated.toISOString()}>{fmtDate(updated)}</time></dd>
+            </div>
+          )
+        }
+        <div>
+          <dt class="label">篇幅</dt>
+          <dd>{words.toLocaleString('zh-CN')} 字 · {minutes} 分钟</dd>
+        </div>
+        {
+          COMMENTS.walineServer && (
+            <div>
+              <dt class="label">阅读</dt>
+              <dd>
+                <span class="waline-pageview-count" data-path={Astro.url.pathname} data-server={COMMENTS.walineServer}>–</span> 次
+              </dd>
+            </div>
+          )
+        }
+        {cat && <span hidden data-pagefind-meta="category">{cat.name}</span>}
+      </dl>
+      {
+        tags.length > 0 && (
+          <ul class="tags" aria-label="标签">
+            {tags.map((t) => (
+              <li>
+                <a class="chip" href={tagUrl(t)} data-pagefind-filter="tag">
+                  # {t}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      {
+        cover && (
+          <figure class="cover">
+            <Image src={cover} alt="" widths={[640, 1000, 1400]} sizes="(max-width: 1200px) 94vw, 76rem" loading="eager" />
+          </figure>
+        )
+      }
+    </header>
+
+    <div class="layout">
+      <div class="body">
+        {series && <SeriesNav series={series} posts={seriesPosts} current={post} />}
+        <div class="prose">
+          <Content />
+        </div>
+        <footer class="post-foot" data-pagefind-ignore>
+          <p class="end display" aria-hidden="true">✦ ✦ ✦</p>
+          <nav class="pager" aria-label="上一篇 / 下一篇">
+            {
+              older ? (
+                <a href={postUrl(older)} class="prev">
+                  <span class="label">← 更早</span>
+                  <span class="cjk">{older.data.title}</span>
+                </a>
+              ) : (
+                <span />
+              )
+            }
+            {
+              newer && (
+                <a href={postUrl(newer)} class="next">
+                  <span class="label">更新 →</span>
+                  <span class="cjk">{newer.data.title}</span>
+                </a>
+              )
+            }
+          </nav>
+          {
+            related.length > 0 && (
+              <section class="related">
+                <header class="section-head">
+                  <span class="label">§</span>
+                  <h2>相关文章</h2>
+                  <span class="en">See also</span>
+                </header>
+                <ul>
+                  {related.map((p) => (
+                    <li>
+                      <a href={postUrl(p)}>
+                        <span class="label">{fmtDate(p.data.date)}</span>
+                        <span class="cjk">{p.data.title}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )
+          }
+          {post.data.comments && <Comments />}
+        </footer>
+      </div>
+      <aside class="aside" data-pagefind-ignore>
+        <div class="sticky">
+          <Toc headings={headings} />
+          <div class="aside-actions">
+            <button type="button" class="chip" data-to-top><Icon name="up" size={13} /> 顶部</button>
+            {COMMENTS.walineServer && post.data.comments && <a class="chip" href="#comments"><Icon name="comment" size={13} /> 留言</a>}
+          </div>
+        </div>
+      </aside>
+    </div>
+  </article>
+</Base>
+
+<script>
+  // Page views come from the same Waline server; only counted in production builds.
+  import { pageviewCount } from '@waline/client/pageview';
+  const el = document.querySelector<HTMLElement>('.waline-pageview-count');
+  if (el?.dataset.server && import.meta.env.PROD) {
+    pageviewCount({ serverURL: el.dataset.server, path: el.dataset.path, update: true });
+  }
+</script>
+
+<style>
+  .post-head {
+    padding-top: clamp(2.5rem, 7vw, 5.5rem);
+    padding-bottom: 2.5rem;
+    border-bottom: 1.5px solid var(--rule-strong);
+  }
+
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 1.5rem;
+  }
+
+  .crumbs a:hover {
+    color: var(--sky);
+  }
+
+  .title {
+    max-width: 18em;
+    margin: 0;
+    text-wrap: pretty;
+    font-size: clamp(2.2rem, 5.6vw, 4.2rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+  }
+
+  .summary {
+    max-width: 40rem;
+    margin: 1.25rem 0 0;
+    font-size: 1.12rem;
+    color: var(--ink-2);
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2.5rem;
+    margin: 2rem 0 0;
+  }
+
+  .facts div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .facts dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+  }
+
+  .cover {
+    margin: 2.25rem 0 0;
+  }
+
+  .cover img {
+    display: block;
+    width: 100%;
+    max-height: 26rem;
+    object-fit: cover;
+    border-radius: var(--radius);
+    border: 1px solid var(--rule);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, var(--measure)) minmax(12rem, 16rem);
+    justify-content: space-between;
+    gap: 4rem;
+    padding-top: 1rem;
+  }
+
+  .body {
+    min-width: 0;
+  }
+
+  .aside {
+    padding-top: 2.5rem;
+  }
+
+  .sticky {
+    position: sticky;
+    top: 5.5rem;
+  }
+
+  .aside-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 1.5rem;
+  }
+
+  .aside-actions .chip {
+    cursor: pointer;
+  }
+
+  .post-foot {
+    margin-top: 4rem;
+  }
+
+  .end {
+    text-align: center;
+    color: var(--ink-3);
+    letter-spacing: 0.6em;
+    margin: 0 0 3rem;
+  }
+
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1.5px solid var(--rule-strong);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .pager a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1.25rem 0;
+    transition: color 0.2s;
+  }
+
+  .pager a .cjk {
+    font-size: 1.15rem;
+    line-height: 1.4;
+  }
+
+  .pager a:hover .cjk {
+    color: var(--sky-ink);
+  }
+
+  .pager .next {
+    grid-column: 2;
+    text-align: right;
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--rule);
+  }
+
+  .pager .prev {
+    padding-right: 1.5rem;
+  }
+
+  .related {
+    margin-top: 3.5rem;
+  }
+
+  .related ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .related a {
+    display: flex;
+    gap: 1.25rem;
+    align-items: baseline;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .related a .cjk {
+    font-size: 1.08rem;
+  }
+
+  .related a:hover .cjk {
+    color: var(--sky-ink);
+  }
+
+  @media (max-width: 1080px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      max-width: var(--measure);
+      margin-inline: auto;
+    }
+    .aside {
+      display: none;
+    }
+    .post-head {
+      max-width: var(--measure);
+      margin-inline: auto;
+      padding-inline: 0;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .pager {
+      grid-template-columns: 1fr;
+    }
+    .pager .next {
+      grid-column: 1;
+      text-align: left;
+      padding-left: 0;
+      border-left: 0;
+      border-top: 1px solid var(--rule);
+    }
+  }
+</style>

@@ -1,0 +1,152 @@
+---
+// GitHub-style writing calendar: one cell per day, weeks as columns.
+import { isoDay, postUrl, type Post } from '@/lib/posts';
+
+interface Props {
+  posts: Post[];
+}
+
+const DAY = 86_400_000;
+const { posts } = Astro.props;
+const byDay = new Map<string, Post[]>();
+for (const p of posts) {
+  const k = isoDay(p.data.date);
+  byDay.set(k, [...(byDay.get(k) ?? []), p]);
+}
+
+// From the Monday on/before the first post to the end of this week.
+const first = Math.min(...posts.map((p) => p.data.date.valueOf()));
+const start = new Date(first);
+start.setUTCHours(0, 0, 0, 0);
+start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
+const end = Date.now();
+const weeks: { day: string; count: number; titles: string[]; href?: string }[][] = [];
+for (let t = start.valueOf(); t <= end; t += 7 * DAY) {
+  const week = [];
+  for (let d = 0; d < 7; d++) {
+    const day = isoDay(new Date(t + d * DAY + 12 * 3600_000));
+    const list = byDay.get(day) ?? [];
+    week.push({ day, count: list.length, titles: list.map((p) => p.data.title), href: list[0] && postUrl(list[0]) });
+  }
+  weeks.push(week);
+}
+
+const months: { col: number; label: string }[] = [];
+weeks.forEach((w, i) => {
+  const [y, m, d] = w[0].day.split('-');
+  if (Number(d) <= 7) months.push({ col: i, label: m === '01' ? y : String(Number(m)) + '月' });
+});
+const level = (n: number) => (n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : 3);
+---
+
+<figure class="heatmap" aria-label="写作日历">
+  <div class="scroller">
+    <div class="grid" style={`--weeks:${weeks.length}`}>
+      <div class="months" aria-hidden="true">
+        {months.map((m) => <span style={`grid-column:${m.col + 1}`}>{m.label}</span>)}
+      </div>
+      <div class="cells">
+        {
+          weeks.map((w) =>
+            w.map((c) =>
+              c.count ? (
+                <a href={c.href} class={`c l${level(c.count)}`} title={`${c.day} · ${c.titles.join(' / ')}`} />
+              ) : (
+                <span class="c" title={c.day} />
+              ),
+            ),
+          )
+        }
+      </div>
+    </div>
+  </div>
+  <figcaption class="label">
+    <span>写作日历 · {posts.length} 篇，{byDay.size} 天</span>
+    <span class="legend" aria-hidden="true">少 <i class="c"></i><i class="c l1"></i><i class="c l2"></i><i class="c l3"></i> 多</span>
+  </figcaption>
+</figure>
+
+<script>
+  // Start scrolled to the most recent weeks when the calendar overflows.
+  document.querySelectorAll<HTMLElement>('.heatmap .scroller').forEach((s) => (s.scrollLeft = s.scrollWidth));
+</script>
+
+<style>
+  .heatmap {
+    margin: 0;
+  }
+
+  .scroller {
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .grid {
+    display: inline-grid;
+    gap: 0.4rem;
+    --cell: 11px;
+    --gap: 3px;
+  }
+
+  .months {
+    display: grid;
+    grid-template-columns: repeat(var(--weeks), var(--cell));
+    column-gap: var(--gap);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  .cells {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, var(--cell));
+    grid-auto-columns: var(--cell);
+    gap: var(--gap);
+  }
+
+  .c {
+    display: inline-block;
+    width: var(--cell, 11px);
+    height: var(--cell, 11px);
+    border-radius: 2px;
+    background: var(--paper-3);
+  }
+
+  .l1 {
+    background: color-mix(in srgb, var(--sky) 45%, var(--paper-3));
+  }
+
+  .l2 {
+    background: color-mix(in srgb, var(--sky) 75%, var(--paper-3));
+  }
+
+  .l3 {
+    background: var(--sky);
+  }
+
+  a.c:hover {
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
+  }
+
+  figcaption {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    text-transform: none;
+  }
+
+  .legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .legend .c {
+    width: 10px;
+    height: 10px;
+  }
+</style>

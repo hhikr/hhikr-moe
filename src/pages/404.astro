@@ -1,0 +1,60 @@
+---
+import Base from '@/layouts/Base.astro';
+---
+
+<Base title="404" description="这一页不在星图上。" noindex>
+  <div class="wrap lost">
+    <p class="label">Error 404 · Page not found</p>
+    <h1 class="display">42<span>?</span></h1>
+    <p class="cjk msg">这一页不在星图上。</p>
+    <p class="hint">也许它被搬走了，也许从来没存在过。答案大概不是 42。</p>
+    <div class="actions">
+      <a class="chip" href="/">回到首页</a>
+      <a class="chip" href="/posts/">浏览全部文章</a>
+      <button class="chip" type="button" data-search-open>搜索一下 ⌕</button>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .lost {
+    padding-block: clamp(4rem, 12vw, 9rem);
+    text-align: center;
+  }
+
+  h1 {
+    margin: 0.5rem 0 0;
+    font-size: clamp(8rem, 30vw, 20rem);
+    line-height: 0.9;
+    font-style: italic;
+    letter-spacing: -0.05em;
+  }
+
+  h1 span {
+    color: var(--sky);
+  }
+
+  .msg {
+    margin: 1.5rem 0 0.5rem;
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--ink-3);
+  }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 2rem;
+  }
+
+  .actions .chip {
+    padding: 0.35em 1em;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+</style>

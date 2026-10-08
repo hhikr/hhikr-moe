@@ -1,5 +1,13 @@
-public/
-resources/
-.DS_Store
+# build output
+dist/
+.astro/
+
+# dependencies
 node_modules/
+
+# logs
+*.log
+
+# editors / OS
+.DS_Store
 .idea/

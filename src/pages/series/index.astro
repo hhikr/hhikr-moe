@@ -1,0 +1,30 @@
+---
+import Base from '@/layouts/Base.astro';
+import SeriesCard from '@/components/SeriesCard.astro';
+import { getPosts, groupBy } from '@/lib/posts';
+
+const series = [...groupBy(await getPosts(), (p) => p.data.series)].sort((a, b) => b[1].length - a[1].length);
+---
+
+<Base title="合订本" description="成系列的课程笔记与长篇记录。">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="label kicker">Bound volumes · {series.length}</p>
+      <h1>合订本<span class="en">Notes bound into volumes</span></h1>
+      <p>成体系的课程笔记。实心格是已完成的章节，虚线格是还在写的草稿。</p>
+    </header>
+    <div class="grid">
+      {series.map(([name, posts], i) => <SeriesCard name={name} posts={posts} index={i} />)}
+    </div>
+  </div>
+</Base>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+    gap: 1.25rem;
+    padding-top: 2rem;
+    border-top: 1.5px solid var(--rule-strong);
+  }
+</style>

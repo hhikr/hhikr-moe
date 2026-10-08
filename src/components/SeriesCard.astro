@@ -1,0 +1,97 @@
+---
+import { fmtDate, seriesName, seriesUrl, sortSeries, type Post } from '@/lib/posts';
+
+interface Props {
+  name: string;
+  posts: Post[];
+  index?: number;
+}
+
+const { name, posts, index = 0 } = Astro.props;
+const ordered = sortSeries(posts);
+const done = ordered.filter((p) => !p.data.draft).length;
+const latest = posts.reduce((a, b) => (a.data.date > b.data.date ? a : b));
+---
+
+<a href={seriesUrl(name)} class="card rise" style={`--i:${index}`}>
+  <span class="label">Vol. {String(index + 1).padStart(2, '0')}</span>
+  <span class="name cjk">{seriesName(name)}</span>
+  <span class="segs" aria-label={`${done} / ${ordered.length} 篇已完成`}>
+    {ordered.map((p) => <span class:list={['seg', { draft: p.data.draft }]} title={p.data.title} />)}
+  </span>
+  <span class="foot">
+    <span>{ordered.length} 篇{done < ordered.length && ` · ${ordered.length - done} 篇草稿`}</span>
+    <span>更新于 {fmtDate(latest.data.date)}</span>
+  </span>
+</a>
+
+<style>
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1.4rem 1.4rem 1.2rem;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    border-radius: var(--radius);
+    transition: transform 0.35s var(--ease), box-shadow 0.35s, border-color 0.35s;
+  }
+
+  .card::after {
+    /* book spine */
+    content: '';
+    position: absolute;
+    inset: -1px auto -1px -1px;
+    width: 5px;
+    background: var(--ink);
+    border-radius: var(--radius) 0 0 var(--radius);
+    transition: background 0.3s;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--ink);
+    box-shadow: 6px 6px 0 var(--sky-soft);
+  }
+
+  .card:hover::after {
+    background: var(--sky);
+  }
+
+  .name {
+    font-size: 1.6rem;
+    line-height: 1.2;
+  }
+
+  .segs {
+    display: flex;
+    gap: 3px;
+    margin-top: 0.4rem;
+  }
+
+  .seg {
+    flex: 1;
+    height: 6px;
+    background: var(--ink);
+    border-radius: 1px;
+  }
+
+  .seg.draft {
+    background: transparent;
+    border: 1px dashed var(--ink-3);
+  }
+
+  .card:hover .seg:not(.draft) {
+    background: var(--sky);
+  }
+
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+  }
+</style>

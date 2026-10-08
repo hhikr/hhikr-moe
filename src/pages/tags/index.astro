@@ -1,0 +1,65 @@
+---
+import Base from '@/layouts/Base.astro';
+import { getPosts, groupBy, tagUrl } from '@/lib/posts';
+
+const tags = [...groupBy(await getPosts(), (p) => p.data.tags)].sort(
+  (a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'zh-CN'),
+);
+const max = Math.max(...tags.map(([, ps]) => ps.length));
+// Map counts onto a few type sizes so the cloud reads like a typeset index.
+const size = (n: number) => 1 + Math.round((Math.sqrt(n) / Math.sqrt(max)) * 4);
+---
+
+<Base title="标签" description="所有标签与对应的文章数量。">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="label kicker">Index · {tags.length} tags</p>
+      <h1>标签<span class="en">A loose index of everything</span></h1>
+    </header>
+    <ul class="cloud">
+      {
+        tags.map(([tag, ps], i) => (
+          <li class={`s${size(ps.length)} rise`} style={`--i:${Math.min(i, 12)}`}>
+            <a href={tagUrl(tag)}>
+              <span class="cjk">{tag}</span>
+              <sup class="label">{ps.length}</sup>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .cloud {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.6rem 2.2rem;
+    list-style: none;
+    margin: 0;
+    padding: 2.5rem 0 0;
+    border-top: 1.5px solid var(--rule-strong);
+  }
+
+  .cloud a {
+    color: var(--ink);
+    transition: color 0.2s;
+  }
+
+  .cloud a:hover {
+    color: var(--sky);
+  }
+
+  .cloud sup {
+    margin-left: 0.25em;
+    color: var(--sky);
+  }
+
+  .s1 { font-size: 1.1rem; color: var(--ink-2); }
+  .s2 { font-size: 1.5rem; }
+  .s3 { font-size: 2.1rem; }
+  .s4 { font-size: 2.9rem; }
+  .s5 { font-size: 3.8rem; line-height: 1.1; }
+</style>

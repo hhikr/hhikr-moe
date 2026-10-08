@@ -1,0 +1,113 @@
+---
+import { COMMENTS } from '@/site.config';
+---
+
+{
+  COMMENTS.walineServer && (
+    <section class="comments" id="comments" data-comments data-server={COMMENTS.walineServer} aria-label="评论">
+      <header class="section-head">
+        <span class="label">§</span>
+        <h2>留言</h2>
+        <span class="en">Comments</span>
+      </header>
+      <div id="waline" class="waline-host">
+        <p class="label loading">评论加载中…</p>
+      </div>
+    </section>
+  )
+}
+
+<script>
+  // Load Waline only when the reader scrolls near the comments.
+  const host = document.querySelector<HTMLElement>('[data-comments]');
+  if (host) {
+    const serverURL = host.dataset.server!;
+    const mount = async () => {
+      const [{ init }] = await Promise.all([import('@waline/client/full'), import('@waline/client/waline.css')]);
+      host.querySelector('.loading')?.remove();
+      init({
+        el: '#waline',
+        serverURL,
+        lang: 'zh-CN',
+        dark: false,
+        locale: { placeholder: 'give us a verse, drop some knowledge...' },
+        wordLimit: 500,
+        search: false,
+        pageview: false,
+        comment: false,
+        reaction: false,
+        emoji: [
+          '//unpkg.com/@waline/emojis@1.2.0/bmoji',
+          '//unpkg.com/@waline/emojis@1.2.0/qq',
+          '//unpkg.com/@waline/emojis@1.1.0/bilibili',
+        ],
+      });
+    };
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          mount().catch(() => {
+            host.querySelector('.loading')!.textContent = '评论加载失败，请稍后刷新重试。';
+          });
+        }
+      },
+      { rootMargin: '600px' },
+    );
+    io.observe(host);
+  }
+</script>
+
+<style>
+  .comments {
+    margin-top: 4rem;
+  }
+
+  .waline-host {
+    min-height: 8rem;
+  }
+
+  /* Waline v2 reads these from the nearest ancestor */
+  .waline-host {
+    --waline-font-size: 0.95rem;
+    --waline-theme-color: var(--sky);
+    --waline-active-color: var(--sky-ink);
+    --waline-color: var(--ink);
+    --waline-bgcolor: var(--card);
+    --waline-bgcolor-light: var(--paper-2);
+    --waline-bgcolor-hover: var(--paper-3);
+    --waline-border-color: var(--rule);
+    --waline-disable-bgcolor: var(--paper-2);
+    --waline-disable-color: var(--ink-3);
+    --waline-code-bgcolor: var(--code-bg);
+    --waline-bq-color: var(--paper-2);
+    --waline-info-bgcolor: var(--paper-2);
+    --waline-info-color: var(--ink-3);
+    --waline-badge-color: var(--sky);
+    --waline-light-grey: var(--ink-3);
+    --waline-dark-grey: var(--ink-2);
+    --waline-white: var(--paper);
+    --waline-border: 1px solid var(--rule);
+    --waline-avatar-radius: 4px;
+    --waline-box-shadow: none;
+    font-family: var(--font-sans);
+  }
+
+  .waline-host :global([data-waline]) {
+    font-family: var(--font-sans);
+  }
+
+  .waline-host :global(.wl-panel) {
+    margin: 0;
+    border-radius: var(--radius);
+    background: var(--card);
+  }
+
+  .waline-host :global(.wl-editor) {
+    max-height: 16rem;
+  }
+
+  .waline-host :global(.wl-btn.primary) {
+    color: var(--paper);
+  }
+</style>

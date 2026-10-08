@@ -1,0 +1,23 @@
+---
+import TermList from '@/layouts/TermList.astro';
+import { categoryOf, getPosts, groupBy, type Post } from '@/lib/posts';
+
+export async function getStaticPaths() {
+  const groups = groupBy(await getPosts(), (p) => p.data.category);
+  return [...groups].map(([, posts]) => {
+    const cat = categoryOf(posts[0])!;
+    return { params: { cat: cat.slug }, props: { cat, posts } };
+  });
+}
+
+const { cat, posts } = Astro.props as { cat: NonNullable<ReturnType<typeof categoryOf>>; posts: Post[] };
+---
+
+<TermList
+  kicker={`Section · ${posts.length} entries`}
+  title={cat.name}
+  en={cat.en}
+  description={cat.description}
+  posts={posts}
+  back={{ href: '/categories/', label: '全部分类' }}
+/>

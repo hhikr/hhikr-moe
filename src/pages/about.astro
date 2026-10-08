@@ -1,0 +1,260 @@
+---
+import { Image } from 'astro:assets';
+import Base from '@/layouts/Base.astro';
+import Icon from '@/components/Icon.astro';
+import { AUTHOR, SOCIALS } from '@/site.config';
+import { CHANGELOG } from '@/data/changelog';
+import { getPosts, postUrl } from '@/lib/posts';
+import avatar from '@/assets/avatar.png';
+
+const posts = await getPosts();
+const capsule = posts.find((p) => p.id === 'time-machine');
+const building = posts.find((p) => p.id === 'building-website');
+
+const stack = [
+  ['Astro', '静态站点生成'],
+  ['Pagefind', '全文搜索（含中文分词）'],
+  ['Waline', '评论与阅读计数'],
+  ['KaTeX', '数学公式'],
+  ['Shiki', '代码高亮'],
+  ['霞鹜文楷', '中文标题字体'],
+  ['Instrument Serif', '西文展示字体'],
+  ['JetBrains Mono', '等宽字体'],
+];
+---
+
+<Base title="关于" description={`关于 ${AUTHOR.name} 与这个网站。`}>
+  <div class="wrap">
+    <header class="page-head">
+      <p class="label kicker">About · 关于</p>
+      <h1>你好，我是 {AUTHOR.name}<span class="en">{AUTHOR.headline}</span></h1>
+    </header>
+
+    <div class="intro">
+      <figure class="portrait">
+        <Image src={avatar} alt={`${AUTHOR.name} 的头像`} width={480} />
+        <figcaption class="label">Portrait — pencil on paper</figcaption>
+      </figure>
+      <div class="text">
+        <p class="lead cjk">{AUTHOR.bio}。</p>
+        <p>
+          软件工程专业的学生。早就想做个人网站了，拖了很久终于做了出来。这里什么都可能放：专业、语言和音乐的学习笔记，观影杂谈，
+          或者是捣鼓一些自己感兴趣的东西——尝试不同的 Linux 发行版和桌面环境、折腾网站的新功能之类。
+        </p>
+        {
+          capsule && (
+            <p>
+              网站的来路记在<a href={postUrl(capsule)}>「时间胶囊」</a>里
+              {building && (
+                <>
+                  ，最初的建站过程见<a href={postUrl(building)}>「记录我的第一次建站」</a>
+                </>
+              )}
+              。
+            </p>
+          )
+        }
+        <ul class="socials">
+          {
+            SOCIALS.map((s) => (
+              <li>
+                <a href={s.href} target="_blank" rel="noopener noreferrer me">
+                  <Icon name={s.icon} size={16} />
+                  {s.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+
+    <section class="block">
+      <header class="section-head">
+        <span class="label">§ 01</span>
+        <h2>网站沿革</h2>
+        <span class="en">Changelog</span>
+      </header>
+      <ol class="timeline">
+        {
+          CHANGELOG.map((c) => (
+            <li>
+              <span class="ver label">v{c.version}</span>
+              <time class="label" datetime={c.date}>{c.date.replaceAll('-', '.')}</time>
+              <span class="what">
+                <span class="cjk">{c.title}</span>
+                <span class="note">{c.note}</span>
+              </span>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <section class="block">
+      <header class="section-head">
+        <span class="label">§ 02</span>
+        <h2>本站使用</h2>
+        <span class="en">Colophon</span>
+      </header>
+      <dl class="stack">
+        {
+          stack.map(([k, v]) => (
+            <div>
+              <dt class="display">{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .intro {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    gap: clamp(2rem, 5vw, 5rem);
+    align-items: start;
+    padding-top: 2.5rem;
+    border-top: 1.5px solid var(--rule-strong);
+  }
+
+  .portrait {
+    margin: 0;
+    padding: 0.75rem 0.75rem 0.5rem;
+    background: #fbf8ef;
+    box-shadow: var(--shadow);
+    transform: rotate(-2deg);
+  }
+
+  .portrait img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .portrait figcaption {
+    margin-top: 0.5rem;
+    color: #7a7466;
+  }
+
+  .text p {
+    margin: 0 0 1.1rem;
+    font-size: 1.06rem;
+    color: var(--ink-2);
+  }
+
+  .text .lead {
+    font-size: clamp(1.6rem, 3vw, 2.3rem);
+    line-height: 1.35;
+    color: var(--ink);
+  }
+
+  .text a {
+    color: var(--sky-ink);
+    border-bottom: 1px solid currentColor;
+  }
+
+  .socials {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+  }
+
+  .socials a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .socials a:hover {
+    border-color: var(--sky);
+    color: var(--sky);
+  }
+
+  .block {
+    margin-top: clamp(3.5rem, 7vw, 5.5rem);
+  }
+
+  .timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .timeline li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 8.5rem 6.5rem minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: baseline;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .timeline .ver {
+    color: var(--sky);
+  }
+
+  .what {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .what .cjk {
+    font-size: 1.2rem;
+  }
+
+  .note {
+    color: var(--ink-2);
+    font-size: 0.94rem;
+  }
+
+  .stack {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    margin: 0;
+    border-top: 1px solid var(--rule);
+    border-left: 1px solid var(--rule);
+  }
+
+  .stack div {
+    padding: 1.1rem 1.25rem;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .stack dt {
+    font-size: 1.45rem;
+    line-height: 1.2;
+  }
+
+  .stack dd {
+    margin: 0.2rem 0 0;
+    font-size: 0.86rem;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 760px) {
+    .intro {
+      grid-template-columns: 1fr;
+    }
+    .portrait {
+      max-width: 16rem;
+    }
+    .timeline li {
+      grid-template-columns: 1fr;
+      gap: 0.15rem;
+    }
+  }
+</style>
