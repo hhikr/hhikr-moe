@@ -1,0 +1,148 @@
+---
+import Endmin from '@/layouts/Endmin.astro';
+import { BACKUP_LIMITS, backupStatus } from '@/server/backup.ts';
+import { formatBytes } from '@/server/system.ts';
+
+export const prerender = false;
+
+const status = backupStatus();
+const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+const day = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' });
+const at = (iso?: string) => (iso ? when.format(new Date(iso)) : '—');
+const took = (from: string, to?: string) => (to ? `${Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 1000))} 秒` : '');
+const red = status.warnings.filter((w) => w.level === 'red');
+const yellow = status.warnings.filter((w) => w.level === 'yellow');
+const repoBytes = status.lastOk?.repoBytes;
+---
+
+<Endmin title="备份" en="Backup" lead="每天凌晨 4 点（新加坡时间）自动备份到 GitHub 上的私有仓库，也可以随时手动备份。">
+  <div class="em-filters">
+    {status.running ? <span class="em-state published" data-running>正在备份…</span> : <span class:list={['em-state', !status.configured ? 'draft' : red.length ? 'hidden' : 'published']}>{!status.configured ? '未配置' : red.length ? '需要处理' : '正常'}</span>}
+    <button class="em-btn go run" data-api="/api/endmin/backup/run" data-method="POST" disabled={!status.configured || status.running}>立即备份</button>
+  </div>
+
+  {
+    status.warnings.length > 0 && (
+      <ul class="alerts">
+        {[...red, ...yellow].map((w) => (
+          <li class={w.level}>{w.message}</li>
+        ))}
+      </ul>
+    )
+  }
+
+  <div class="em-cols">
+    <section class="em-panel">
+      <h2>最近的备份</h2>
+      {
+        status.runs.length === 0 ? (
+          <p class="em-empty">还没有备份过。</p>
+        ) : (
+          <ul class="em-rows">
+            {status.runs.map((run) => (
+              <li>
+                <div>
+                  <div class="t">
+                    {at(run.startedAt)}
+                    {!run.finishedAt ? (
+                      <span class="em-state draft">{status.running && run.id === status.runs[0].id ? '进行中' : '中断'}</span>
+                    ) : run.ok ? (
+                      <span class="em-state published">成功</span>
+                    ) : (
+                      <span class="em-state hidden">失败</span>
+                    )}
+                  </div>
+                  <div class="em-meta">
+                    {run.finishedAt && <span>{took(run.startedAt, run.finishedAt)}</span>}
+                    {run.finishedAt && run.ok && <span>{run.committed ? '有新内容' : '没有变化'}</span>}
+                    {run.uploaded > 0 && <span>上传 {run.uploaded} 个附件</span>}
+                    {run.repoBytes !== undefined && <span>仓库 {formatBytes(run.repoBytes)}</span>}
+                    {run.warnings.length > 0 && <span>{run.warnings.length} 条警告</span>}
+                  </div>
+                  {run.error && <p class="em-quote">{run.error}</p>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+
+    <section class="em-panel">
+      <h2>状态</h2>
+      <dl class="em-facts">
+        <div>
+          <dt>仓库</dt>
+          <dd>{status.repo ? <a href={`https://github.com/${status.repo}`} rel="noreferrer">{status.repo}</a> : '尚未配置'}</dd>
+        </div>
+        <div>
+          <dt>上次成功</dt>
+          <dd class:list={{ warn: !status.lastOk }}>{status.lastOk ? at(status.lastOk.startedAt) : '还没有'}</dd>
+        </div>
+        <div>
+          <dt>仓库大小</dt>
+          <dd class:list={{ warn: !!repoBytes && repoBytes > BACKUP_LIMITS.repoWarn }}>{repoBytes === undefined ? '—' : `${formatBytes(repoBytes)} / 建议不超过 ${formatBytes(BACKUP_LIMITS.repoWarn)}`}</dd>
+        </div>
+        <div>
+          <dt>附件</dt>
+          <dd class:list={{ warn: status.pending > 0 }}>已上传 {status.attachments} 个{status.pending > 0 && ` · ${status.pending} 个待上传`}</dd>
+        </div>
+        <div>
+          <dt>令牌有效期</dt>
+          <dd>{status.tokenExpires ? `到 ${day.format(status.tokenExpires)}` : status.lastOk ? '不过期' : '—'}</dd>
+        </div>
+      </dl>
+      <p class="note">
+        数据库和文章以文本形式进入 git，图片也是；超过 {formatBytes(BACKUP_LIMITS.gitFile)} 的文件和所有可下载的文件作为 Release 附件上传，单个上限 {formatBytes(BACKUP_LIMITS.asset)}。登录状态不备份，恢复后所有人需要重新登录。
+      </p>
+    </section>
+  </div>
+</Endmin>
+
+<script>
+  // While a backup is running, look again every few seconds.
+  if (document.querySelector('[data-running]')) setTimeout(() => location.reload(), 4000);
+</script>
+
+<style>
+  .run {
+    margin-left: auto;
+  }
+
+  .alerts {
+    list-style: none;
+    margin: 0 0 0.5rem;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .alerts li {
+    padding: 0.65rem 0.9rem;
+    border: 1px solid var(--rule);
+    border-left-width: 3px;
+    border-radius: var(--radius);
+    overflow-wrap: anywhere;
+  }
+
+  .alerts .red {
+    border-color: var(--signal);
+    color: var(--signal);
+  }
+
+  .alerts .yellow {
+    border-left-color: var(--ink-3);
+    color: var(--ink-2);
+  }
+
+  .note {
+    margin: 1rem 0 0;
+    color: var(--ink-3);
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+
+  .em-facts a:hover {
+    color: var(--sky-ink);
+  }
+</style>

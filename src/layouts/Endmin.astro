@@ -3,6 +3,7 @@
 // surface beside it. The middleware has already made sure the visitor is the
 // endministrator before any page using this layout renders.
 import Base from './Base.astro';
+import { backupStatus } from '@/server/backup.ts';
 import { commentCounts } from '@/server/comments.ts';
 
 interface Props {
@@ -15,6 +16,7 @@ const { title, en, lead } = Astro.props;
 const user = Astro.locals.user!;
 const path = Astro.url.pathname;
 const pending = commentCounts().hidden;
+const backupProblems = backupStatus().warnings.filter((w) => w.level === 'red').length;
 
 const sections = [
   { href: '/endmin/', label: '概览', en: 'Overview' },
@@ -23,9 +25,10 @@ const sections = [
   { href: '/endmin/comments/', label: '评论', en: 'Comments', badge: pending },
   { href: '/endmin/users/', label: '用户', en: 'Users' },
   { href: '/endmin/stats/', label: '统计', en: 'Stats' },
+  { href: '/endmin/backup/', label: '备份', en: 'Backup', badge: backupProblems },
 ];
 // Parts of the plan that have no screen yet. Shown so the rail does not reshuffle later.
-const upcoming = ['文件', '备份'];
+const upcoming = ['文件'];
 const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
 ---
 

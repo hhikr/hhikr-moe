@@ -58,6 +58,7 @@ Markdown 扩展语法（与 Obsidian 兼容）：
 - 写作日历、按分类筛选的归档页，合订本进度
 - 文章页：目录高亮、阅读进度条、代码复制、图片放大、系列导航、相关文章
 - 自建评论（BBCode，发送时才需要登录）和头像
+- 每天自动备份到 GitHub 私有仓库，大文件走 Release 附件，见 [部署与维护](tools/deploy/README.md) 8a 节
 - 自建访问统计：不保存 IP 地址，文章页显示阅读数，管理面板里有趋势、页面、来源和设备的统计
 - RSS（`/rss.xml`，旧地址 `/index.xml` 仍可用）、sitemap、Open Graph
 - 中文标题使用霞鹜文楷，所有字体本地托管，不依赖 Google Fonts
