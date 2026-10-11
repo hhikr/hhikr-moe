@@ -334,4 +334,4 @@ runuser -u hhikr-web -- sh -c "umask 027; set -a; . /etc/hhikr-web/env; set +a; 
 | 评论或登录不可用 | `systemctl status hhikr-web`、`journalctl -u hhikr-web -n 80`；评论和账号都在本机的 Node 服务里 |
 | 访问统计不增加 | 爬虫、脚本和站长本人的访问本来就不计；其余情况看浏览器对 `/api/hit` 的请求是否返回 200 或 204 |
 
-Java 在访问者本机执行，VPS 不公开代码执行接口。项目旧 `scripts/deploy.sh` 属于另一套 rsync 流程，不是此次上线方式，执行前必须核对其目标目录和参数。网站和代理各有独立的 systemd 服务。
+Java 在访问者本机执行，VPS 不公开代码执行接口。网站和代理各有独立的 systemd 服务。

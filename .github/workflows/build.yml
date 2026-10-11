@@ -1,12 +1,22 @@
-name: build
+name: check
 
+# Checks only: the site is deployed from the owner's machine (tools/deploy/README.md),
+# so nothing built here is kept or published.
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,9 +24,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: site
-          path: dist
-          retention-days: 7
+      - name: Server tests
+        run: npm run test:server
+      - name: Hot 100 tests
+        run: npm run test:hot100
+      # Type-checks every page, builds the site and the search index.
+      - name: Build
+        run: npm run build

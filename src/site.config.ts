@@ -7,8 +7,6 @@ export const SITE = {
   description: 'hhikr 的个人网站：学习笔记、折腾记录与杂谈。',
   lang: 'zh-CN',
   since: 2025,
-  /** Show posts marked `draft: true` (with a 草稿 badge) in production builds. */
-  showDrafts: true,
 } as const;
 
 export const AUTHOR = {
