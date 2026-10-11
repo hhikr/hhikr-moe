@@ -1,7 +1,7 @@
 name: check
 
-# Checks only: the site is deployed from the owner's machine (tools/deploy/README.md),
-# so nothing built here is kept or published.
+# Checks only: the site is deployed from the owner's machine, so nothing built
+# here is kept or published.
 on:
   push:
   pull_request:

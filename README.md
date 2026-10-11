@@ -15,7 +15,7 @@ npm run test:server  # 服务端逻辑的测试（账号、评论、文章、备
 npm run import:posts # 把 src/content/posts 导入本机数据库（.data/），供开发使用
 ```
 
-网站已部署到 ByteVirt VPS，通过 NameSilo 管理 `hhikr.moe` 解析，使用 Caddy 提供 HTTPS。完整的构建、上传、服务器配置、DNS、证书、验收和回滚流程见 [部署与维护](tools/deploy/README.md)。独立加密代理的配置、验证范围和连接方法见 [VPS 代理](tools/deploy/proxy.md)。
+网站已部署到 ByteVirt VPS，通过 NameSilo 管理 `hhikr.moe` 解析，使用 Caddy 提供 HTTPS。构建、上传、服务器配置、证书、验收和回滚的流程，以及服务器上的配置文件和脚本，放在 `tools/deploy/`。这个目录写有服务器的地址和端口，所以不进入仓库，只保存在站长的电脑上。
 
 ## Hot 100 学习区
 
@@ -61,7 +61,7 @@ Markdown 扩展语法（与 Obsidian 兼容）：
 - 管理面板：文章编辑器带修订记录和版本对比；用户管理可以查找、改名、重置密码、强制下线、封禁和删除
 - 内容安全策略：页面只运行本站自己的脚本（`src/lib/csp.ts`）
 - 作品（`/works/`）：发布 mod 等可下载的文件，每个作品有介绍、图库、链接、相关文章和按版本整理的文件，下载支持断点续传
-- 每天自动备份到 GitHub 私有仓库，大文件走 Release 附件，见 [部署与维护](tools/deploy/README.md) 8a 节
+- 每天自动备份到 GitHub 私有仓库，大文件走 Release 附件，可以从备份恢复
 - 自建访问统计：不保存 IP 地址，文章页显示阅读数，管理面板里有趋势、页面、来源和设备的统计
 - RSS（`/rss.xml`，旧地址 `/index.xml` 仍可用）、sitemap、Open Graph
 - 中文标题使用霞鹜文楷，所有字体本地托管，不依赖 Google Fonts

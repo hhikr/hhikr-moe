@@ -29,6 +29,9 @@ public/hot100-java.zip
 # deployment packages, local credentials and DNS snapshots
 .deployment/
 
+# server set-up scripts and notes: they name the server's address and ports
+tools/deploy/
+
 # local database and uploads
 .data/
 
