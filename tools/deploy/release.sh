@@ -48,6 +48,13 @@ if healthy; then
     if ! runuser -u hhikr-web -- sh -c "umask 027; set -a; . /etc/hhikr-web/env; set +a; cd '$dir' && node scripts/rebuild-search.mjs"; then
         echo "warning: search index was not rebuilt" >&2
     fi
+    # Each release carries its own node_modules (about 370 MB). Keep the three newest.
+    ls -1d "$app"/releases/*/ | sort | head -n -3 | while read -r old; do
+        case "$(readlink -f "$old")" in
+            "$(readlink -f "$app/current")") ;;
+            *) rm -rf "$old" && echo "removed old release $(basename "$old")" ;;
+        esac
+    done
     exit 0
 fi
 

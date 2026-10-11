@@ -1,0 +1,73 @@
+---
+import Endmin from '@/layouts/Endmin.astro';
+import { fmtDate } from '@/lib/posts';
+import { db } from '@/server/db.ts';
+import { listUsers } from '@/server/users.ts';
+
+export const prerender = false;
+
+const users = listUsers();
+const counts = new Map<number, number>(
+  db()
+    .prepare("SELECT user_id, count(*) AS n FROM comments WHERE status <> 'deleted' GROUP BY user_id")
+    .all()
+    .map((r: any) => [Number(r.user_id), Number(r.n)]),
+);
+const banned = users.filter((u) => u.status === 'banned').length;
+---
+
+<Endmin title="用户" en="Users" lead="封禁后对方立即被退出登录，已有的评论保留。删除账号会连同其评论一并删除。">
+  <div class="em-filters" data-filters role="toolbar" aria-label="按状态筛选">
+    <button type="button" class="chip" data-filter="all" aria-pressed="true">全部 {users.length}</button>
+    <button type="button" class="chip" data-filter="active" aria-pressed="false">正常 {users.length - banned}</button>
+    <button type="button" class="chip" data-filter="banned" aria-pressed="false">已封禁 {banned}</button>
+  </div>
+
+  <ul class="em-rows">
+    {
+      users.map((u) => (
+        <li data-group={u.status}>
+          <div class="em-user">
+            {u.avatarSha256 ? <img src={`/avatars/${u.avatarSha256}.webp`} alt="" width="32" height="32" /> : <span class="ph" />}
+            <div>
+              <div>
+                {u.nickname}
+                {u.role !== 'endmin' && <span class="tag">#{u.discriminator}</span>}
+                {u.role === 'endmin' && <span class="em-state published">Endministrator</span>}
+                {u.status === 'banned' && <span class="em-state banned">已封禁</span>}
+              </div>
+              <div class="em-meta">
+                <span>{u.googleSub ? 'Google 登录' : '密码登录'}</span>
+                <span>{fmtDate(u.createdAt)} 注册</span>
+                <span>{counts.get(u.id) ?? 0} 条评论</span>
+              </div>
+            </div>
+          </div>
+          {
+            u.role !== 'endmin' && (
+              <div class="em-acts">
+                {u.avatarSha256 && (
+                  <button class="em-btn" data-api={`/api/endmin/users/${u.id}`} data-body='{"removeAvatar":true}'>
+                    移除头像
+                  </button>
+                )}
+                {u.status === 'active' ? (
+                  <button class="em-btn danger" data-api={`/api/endmin/users/${u.id}`} data-body='{"status":"banned"}' data-confirm={`封禁 ${u.nickname}#${u.discriminator}？`}>
+                    封禁
+                  </button>
+                ) : (
+                  <button class="em-btn go" data-api={`/api/endmin/users/${u.id}`} data-body='{"status":"active"}'>
+                    解封
+                  </button>
+                )}
+                <button class="em-btn danger" data-api={`/api/endmin/users/${u.id}`} data-method="DELETE" data-confirm={`删除 ${u.nickname}#${u.discriminator} 和它的全部评论？此操作无法撤销。`}>
+                  删除
+                </button>
+              </div>
+            )
+          }
+        </li>
+      ))
+    }
+  </ul>
+</Endmin>

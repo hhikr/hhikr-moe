@@ -1,113 +1,517 @@
 ---
-import { COMMENTS } from '@/site.config';
+// Comments under a post. The markup is the same for every visitor; who is
+// signed in is worked out in the browser (src/scripts/comments.ts). Guests see
+// the same composer and are asked to sign in only when they press 发送.
+import { googleConfig } from '@/server/config.ts';
+
+interface Props {
+  slug: string;
+}
+const { slug } = Astro.props;
+const returnTo = encodeURIComponent(`/posts/${slug}/#comments`);
+const tools: [string, string, string][] = [
+  ['b', 'B', '粗体'],
+  ['i', 'I', '斜体'],
+  ['u', 'U', '下划线'],
+  ['s', 'S', '删除线'],
+  ['mask', '遮罩', '遮罩文字，点击后显示'],
+  ['url', '链接', '链接'],
+  ['img', '图片', '图片：填写图床上的图片地址（https）'],
+  ['quote', '引用', '引用'],
+  ['code', '代码', '代码'],
+];
 ---
 
-{
-  COMMENTS.walineServer && (
-    <section class="comments" id="comments" data-comments data-server={COMMENTS.walineServer} aria-label="评论">
-      <header class="section-head">
-        <span class="label">§</span>
-        <h2>留言</h2>
-        <span class="en">Comments</span>
-      </header>
-      <div id="waline" class="waline-host">
-        <p class="label loading">评论加载中…</p>
+<section class="comments" id="comments" data-comments data-slug={slug} aria-label="评论">
+  <header class="section-head">
+    <span class="label">§</span>
+    <h2>评论</h2>
+    <span class="en">Comments</span>
+    <span class="more label" data-count></span>
+  </header>
+
+  <ol class="c-list" data-list></ol>
+
+  <div class="c-profile" data-profile hidden></div>
+
+  <form class="c-composer" data-composer novalidate>
+    <div class="c-replying" data-replying hidden>
+      <span></span>
+      <button type="button" class="c-link">取消</button>
+    </div>
+    <div class="c-tools" data-tools role="toolbar" aria-label="格式">
+      {
+        tools.map(([tag, label, title]) => (
+          <button type="button" data-tag={tag} title={title} class={`t-${tag}`}>
+            {label}
+          </button>
+        ))
+      }
+    </div>
+    <textarea name="source" rows="5" maxlength="5000" placeholder="写下你的评论。支持 BBCode，例如 [b]粗体[/b]、[img]图片地址[/img]。" aria-label="评论内容"></textarea>
+    <!-- Hidden from people; bots that fill it in are turned away. -->
+    <input class="c-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+    <div class="c-preview" data-preview hidden></div>
+    <div class="c-bar">
+      <p class="c-status" data-status role="status"></p>
+      <button type="button" class="chip" data-preview-toggle>预览</button>
+      <button type="submit" class="chip c-send">发送</button>
+    </div>
+  </form>
+
+  <dialog class="c-auth" data-auth aria-label="登录后发表评论">
+    <button type="button" class="c-close" data-auth-close aria-label="关闭">×</button>
+    <h3 class="cjk">登录后发表评论</h3>
+    <p class="c-hint">写好的内容会保留，登录后自动发出。</p>
+    {
+      googleConfig() && (
+        <a class="c-google" data-google href={`/api/auth/google/start?return=${returnTo}`}>
+          使用 Google 登录
+        </a>
+      )
+    }
+    <form novalidate>
+      <label>
+        <span class="label">名字</span>
+        <input name="name" autocomplete="username" maxlength="40" />
+        <small>注册时填昵称；登录时填完整的名字，例如 narrator#1145。</small>
+      </label>
+      <label>
+        <span class="label">密码</span>
+        <input name="password" type="password" autocomplete="current-password" maxlength="200" />
+        <small>至少 10 个字符。没有绑定邮箱，忘记后无法找回。</small>
+      </label>
+      <input class="c-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+      <p class="c-status" data-auth-message role="status"></p>
+      <div class="c-bar">
+        <button type="submit" class="chip c-send">登录</button>
+        <button type="button" class="chip" data-register>注册新账号</button>
+        <a class="c-fine" href="/privacy/" target="_blank">隐私说明</a>
       </div>
-    </section>
-  )
-}
+    </form>
+    <div data-welcome hidden>
+      <p>注册好了。你的完整名字是</p>
+      <p class="c-handle" data-handle></p>
+      <p>昵称可以和别人重名，后面的四位数字用来区分。<strong>以后登录需要输入这个完整的名字</strong>，请记下来。</p>
+      <button type="button" class="chip c-send">知道了，发送评论</button>
+    </div>
+  </dialog>
+</section>
 
 <script>
-  // Load Waline only when the reader scrolls near the comments.
-  const host = document.querySelector<HTMLElement>('[data-comments]');
-  if (host) {
-    const serverURL = host.dataset.server!;
-    const mount = async () => {
-      const [{ init }] = await Promise.all([import('@waline/client/full'), import('@waline/client/waline.css')]);
-      host.querySelector('.loading')?.remove();
-      init({
-        el: '#waline',
-        serverURL,
-        lang: 'zh-CN',
-        dark: false,
-        locale: { placeholder: 'give us a verse, drop some knowledge...' },
-        wordLimit: 500,
-        search: false,
-        pageview: false,
-        comment: false,
-        reaction: false,
-        emoji: [
-          '//unpkg.com/@waline/emojis@1.2.0/bmoji',
-          '//unpkg.com/@waline/emojis@1.2.0/qq',
-          '//unpkg.com/@waline/emojis@1.1.0/bilibili',
-        ],
-      });
-    };
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          io.disconnect();
-          mount().catch(() => {
-            host.querySelector('.loading')!.textContent = '评论加载失败，请稍后刷新重试。';
-          });
-        }
-      },
-      { rootMargin: '600px' },
-    );
-    io.observe(host);
-  }
+  import '@/scripts/comments';
 </script>
 
-<style>
+<style is:global>
   .comments {
     margin-top: 4rem;
   }
 
-  .waline-host {
-    min-height: 8rem;
+  .comments .section-head .more {
+    margin-left: auto;
   }
 
-  /* Waline v2 reads these from the nearest ancestor */
-  .waline-host {
-    --waline-font-size: 0.95rem;
-    --waline-theme-color: var(--sky);
-    --waline-active-color: var(--sky-ink);
-    --waline-color: var(--ink);
-    --waline-bgcolor: var(--card);
-    --waline-bgcolor-light: var(--paper-2);
-    --waline-bgcolor-hover: var(--paper-3);
-    --waline-border-color: var(--rule);
-    --waline-disable-bgcolor: var(--paper-2);
-    --waline-disable-color: var(--ink-3);
-    --waline-code-bgcolor: var(--code-bg);
-    --waline-bq-color: var(--paper-2);
-    --waline-info-bgcolor: var(--paper-2);
-    --waline-info-color: var(--ink-3);
-    --waline-badge-color: var(--sky);
-    --waline-light-grey: var(--ink-3);
-    --waline-dark-grey: var(--ink-2);
-    --waline-white: var(--paper);
-    --waline-border: 1px solid var(--rule);
-    --waline-avatar-radius: 4px;
-    --waline-box-shadow: none;
-    font-family: var(--font-sans);
-  }
-
-  .waline-host :global([data-waline]) {
-    font-family: var(--font-sans);
-  }
-
-  .waline-host :global(.wl-panel) {
+  .c-list,
+  .c-replies {
+    list-style: none;
     margin: 0;
+    padding: 0;
+  }
+
+  .c-item {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: 0.9rem;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .c-replies {
+    margin-top: 1rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--rule);
+  }
+
+  .c-replies .c-item {
+    padding: 0.9rem 0 0;
+    border-bottom: 0;
+  }
+
+  .c-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--paper-2);
+  }
+
+  .c-initial {
+    display: grid;
+    place-items: center;
+    background: hsl(var(--hue, 210) 35% 46%);
+    color: #fff;
+    font-family: var(--font-cjk);
+    font-size: 1.1rem;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .c-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+  }
+
+  .c-name {
+    font-weight: 600;
+  }
+
+  .c-tag {
+    margin-left: 0.1em;
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    font-weight: 400;
+    color: var(--ink-3);
+  }
+
+  .c-badge {
+    margin-left: 0.5em;
+    padding: 0 0.45em;
+    border: 1px solid var(--sky);
+    border-radius: 2px;
+    color: var(--sky-ink);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    vertical-align: 0.15em;
+  }
+
+  .c-head time,
+  .c-pending {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--ink-3);
+  }
+
+  .c-pending {
+    color: var(--signal);
+  }
+
+  .c-body {
+    margin-top: 0.35rem;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+  }
+
+  .c-body a,
+  .c-preview a {
+    color: var(--sky-ink);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .c-body img,
+  .c-preview img {
+    display: block;
+    max-width: min(100%, 28rem);
+    max-height: 24rem;
+    margin: 0.5rem 0;
+    border-radius: var(--radius);
+    cursor: zoom-in;
+  }
+
+  .c-body blockquote,
+  .c-preview blockquote {
+    margin: 0.5rem 0;
+    padding: 0.1rem 0 0.1rem 0.9rem;
+    border-left: 3px solid var(--rule);
+    color: var(--ink-2);
+  }
+
+  .c-body pre,
+  .c-preview pre {
+    margin: 0.5rem 0;
+    padding: 0.75rem 0.9rem;
+    border-radius: var(--radius);
+    background: var(--code-bg);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+
+  .c-gone,
+  .c-broken {
+    color: var(--ink-3);
+    font-size: 0.9rem;
+  }
+
+  .c-gone {
+    margin: 0;
+  }
+
+  .c-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.4rem;
+  }
+
+  .c-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    cursor: pointer;
+  }
+
+  .c-link:hover {
+    color: var(--sky-ink);
+  }
+
+  .c-profile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .c-profile[hidden],
+  .c-composer[hidden],
+  .c-replying[hidden],
+  .c-preview[hidden],
+  .c-auth form[hidden],
+  .c-google[hidden] {
+    display: none;
+  }
+
+  .c-me {
+    color: var(--ink-2);
+    font-size: 0.92rem;
+  }
+
+  .c-menu {
+    display: flex;
+    gap: 1rem;
+    margin-left: auto;
+  }
+
+  .c-composer {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+  }
+
+  .c-replying {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.4rem 0.75rem;
+    border-left: 3px solid var(--sky);
+    background: var(--paper-2);
+    font-size: 0.88rem;
+  }
+
+  .c-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .c-tools button {
+    min-width: 2rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--rule);
     border-radius: var(--radius);
     background: var(--card);
+    color: var(--ink-2);
+    font-size: 0.8rem;
+    cursor: pointer;
   }
 
-  .waline-host :global(.wl-editor) {
-    max-height: 16rem;
+  .c-tools button:hover {
+    border-color: var(--ink);
+    color: var(--ink);
   }
 
-  .waline-host :global(.wl-btn.primary) {
+  .c-tools .t-b {
+    font-weight: 700;
+  }
+  .c-tools .t-i {
+    font-style: italic;
+  }
+  .c-tools .t-u {
+    text-decoration: underline;
+  }
+  .c-tools .t-s {
+    text-decoration: line-through;
+  }
+
+  .c-composer textarea,
+  .c-auth input:not(.c-trap) {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    line-height: 1.7;
+  }
+
+  .c-composer textarea {
+    resize: vertical;
+    min-height: 7rem;
+  }
+
+  .c-composer textarea:focus-visible,
+  .c-auth input:focus-visible {
+    border-color: var(--sky);
+    outline: none;
+  }
+
+  .c-trap {
+    position: absolute;
+    left: -100vw;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .c-preview {
+    padding: 0.75rem 0.9rem;
+    border: 1px dashed var(--rule);
+    border-radius: var(--radius);
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+  }
+
+  .c-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .c-status {
+    flex: 1 1 12rem;
+    min-height: 1.4em;
+    margin: 0;
+    color: var(--signal);
+    font-size: 0.86rem;
+  }
+
+  .c-bar .chip {
+    padding: 0.4em 1.2em;
+    cursor: pointer;
+  }
+
+  .c-send {
+    border-color: var(--ink);
+    background: var(--ink);
     color: var(--paper);
+  }
+
+  .c-send:hover {
+    border-color: var(--sky-ink);
+    background: var(--sky-ink);
+    color: var(--paper);
+  }
+
+  .c-send:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+
+  .c-auth {
+    width: min(28rem, calc(100vw - 2rem));
+    padding: 1.75rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 6px;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow:
+      8px 8px 0 var(--sky-soft),
+      var(--shadow);
+  }
+
+  .c-auth::backdrop {
+    background: color-mix(in srgb, var(--paper) 40%, rgb(10 12 18 / 0.45));
+    backdrop-filter: blur(3px);
+  }
+
+  .c-auth h3 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .c-hint {
+    margin: 0.35rem 0 1.25rem;
+    color: var(--ink-3);
+    font-size: 0.88rem;
+  }
+
+  .c-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.9rem;
+    border: 0;
+    background: none;
+    color: var(--ink-3);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .c-google {
+    display: block;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--rule-strong);
+    border-radius: var(--radius);
+    background: var(--card);
+    text-align: center;
+    transition:
+      background 0.2s,
+      color 0.2s;
+  }
+
+  .c-google:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .c-auth form {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .c-auth label {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .c-auth small,
+  .c-fine {
+    color: var(--ink-3);
+    font-size: 0.8rem;
+  }
+
+  .c-fine {
+    margin-left: auto;
+    text-decoration: underline;
+  }
+
+  .c-handle {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    color: var(--sky-ink);
   }
 </style>

@@ -134,3 +134,33 @@ export function promoteToEndmin(userId: number): User {
   db().prepare("UPDATE users SET role = 'endmin', nickname = 'hhikr', discriminator = '0000' WHERE id = ?").run(userId);
   return userById(userId)!;
 }
+
+export function listUsers(): User[] {
+  return db().prepare('SELECT * FROM users ORDER BY id DESC').all().map(toUser);
+}
+
+/** Change a nickname. The tag is kept unless someone with the new nickname already has it. */
+export function renameUser(user: User, nickname: string): User {
+  const name = nickname.trim();
+  const clash = db().prepare('SELECT 1 FROM users WHERE nickname = ? AND discriminator = ? AND id <> ?').get(name, user.discriminator, user.id);
+  db()
+    .prepare('UPDATE users SET nickname = ?, discriminator = ? WHERE id = ?')
+    .run(name, clash ? freeDiscriminator(name) : user.discriminator, user.id);
+  return userById(user.id)!;
+}
+
+export function setAvatar(userId: number, sha256: string | null): void {
+  db().prepare('UPDATE users SET avatar_sha256 = ? WHERE id = ?').run(sha256, userId);
+}
+
+/** Ban or reinstate an ordinary account. The endministrator cannot be banned. */
+export function setUserStatus(userId: number, status: User['status']): boolean {
+  const changed = db().prepare("UPDATE users SET status = ? WHERE id = ? AND role <> 'endmin'").run(status, userId);
+  if (status === 'banned') db().prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+  return Number(changed.changes) === 1;
+}
+
+/** Delete an ordinary account together with its sessions and comments. */
+export function deleteUser(userId: number): boolean {
+  return Number(db().prepare("DELETE FROM users WHERE id = ? AND role <> 'endmin'").run(userId).changes) === 1;
+}

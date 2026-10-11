@@ -40,8 +40,3 @@ export const CATEGORIES: Record<string, { name: string; slug: string; en: string
   TechPlay: { name: '折腾', slug: 'techplay', en: 'Tinkering', description: '动手折腾：建站、服务器、Linux 与各种小玩意。' },
   Echoes: { name: '杂谈', slug: 'echoes', en: 'Echoes', description: '观影、音乐与随想。' },
 };
-
-export const COMMENTS = {
-  /** Waline server. Set to '' to disable comments everywhere. */
-  walineServer: 'https://waline-comments.hhikr.moe/',
-};

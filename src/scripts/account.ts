@@ -5,12 +5,16 @@ export interface ApiError {
   message: string;
 }
 
-export async function api<T = any>(path: string, body?: unknown): Promise<{ ok: true; data: T } | { ok: false; error: ApiError }> {
+export async function api<T = any>(
+  path: string,
+  body?: unknown,
+  method?: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+): Promise<{ ok: true; data: T } | { ok: false; error: ApiError }> {
   try {
     const res = await fetch(path, {
-      method: body === undefined ? 'GET' : 'POST',
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      method: method ?? (body === undefined ? 'GET' : 'POST'),
+      headers: body === undefined || body instanceof Blob ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : body instanceof Blob ? body : JSON.stringify(body),
       credentials: 'same-origin',
     });
     const data = await res.json().catch(() => ({}));

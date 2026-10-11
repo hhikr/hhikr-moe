@@ -203,7 +203,8 @@ ssh -i $env:USERPROFILE\.ssh\hhikr_vps -p 17648 root@89.34.227.228 "sed -i 's/\r
 | --- | --- |
 | `site.db`（及 `-wal`、`-shm`） | SQLite 数据库。启动时自动执行未执行过的结构迁移，迁移前会留一份 `site.db.before-<迁移名>` |
 | `media/` | 文章图片和封面，按内容哈希存放，Caddy 直接从这里提供 `/media/*` |
-| `pagefind/` | 搜索索引，Caddy 直接从这里提供 `/pagefind/*` |
+| `avatars/` | 用户头像，由服务端重新编码成 256×256 的 WebP，Caddy 直接从这里提供 `/avatars/*` |
+| `pagefind/` | 搜索索引，Caddy 直接从这里提供 `/pagefind/*`。发布时重建；在管理面板里发布、撤回或隐藏文章后约 15 秒由服务自己重建 |
 
 目录属于 `hhikr-web`，权限 750；`caddy` 账号已加入 `hhikr-web` 组以便读取。10 月 11 日首次安装的数据来自本机 `npm run import:posts` 的结果（23 篇文章，其中 16 篇已发布、7 篇草稿）。**此后服务器上的数据库是唯一的正本，不要再用本机的 `.data/` 覆盖它。**
 
@@ -261,7 +262,7 @@ systemctl reload caddy
 
 回滚代码版本时注意数据库结构：新版本执行过的结构迁移不会随代码回退。回退到迁移之前的版本时，要同时用迁移前留下的 `site.db.before-<迁移名>` 替换数据库，并接受此后的数据改动丢失。
 
-每个发布目录约 370 MB（主要是 `node_modules`），磁盘共 40 GB，旧发布需要定期清理，保留最近两三个即可。
+每个发布目录约 370 MB（主要是 `node_modules`）。`release.sh` 在发布成功后自动删除较旧的目录，只保留最新的三个。
 
 分别保留源码与 lockfile、服务器发布目录和 Caddyfile、DNS 快照，以及私密凭据和代理配置。证书状态含私钥，不应复制到公开目录。服务器重建时按第 3—5 节恢复网站，再单独恢复代理。
 

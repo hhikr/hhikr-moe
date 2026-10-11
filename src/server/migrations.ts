@@ -115,4 +115,22 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: '003_comments',
+    sql: `
+      CREATE TABLE comments (
+        id INTEGER PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        -- Replies hang off a top-level comment; there is one level only.
+        parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+        source TEXT NOT NULL,
+        html TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('visible','hidden','deleted')) DEFAULT 'visible',
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX comments_post ON comments(post_id, created_at);
+      CREATE INDEX comments_user ON comments(user_id);
+    `,
+  },
 ];

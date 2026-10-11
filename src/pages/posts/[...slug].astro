@@ -5,7 +5,6 @@ import Toc from '@/components/Toc.astro';
 import SeriesNav from '@/components/SeriesNav.astro';
 import Comments from '@/components/Comments.astro';
 import Icon from '@/components/Icon.astro';
-import { COMMENTS } from '@/site.config';
 import {
   categoryOf,
   categoryUrl,
@@ -88,16 +87,6 @@ Astro.response.headers.set('Cache-Control', hidden ? 'private, no-store' : 'no-c
           <dt class="label">篇幅</dt>
           <dd>{words.toLocaleString('zh-CN')} 字 · {minutes} 分钟</dd>
         </div>
-        {
-          COMMENTS.walineServer && (
-            <div>
-              <dt class="label">阅读</dt>
-              <dd>
-                <span class="waline-pageview-count" data-path={Astro.url.pathname} data-server={COMMENTS.walineServer}>–</span> 次
-              </dd>
-            </div>
-          )
-        }
         {cat && <span hidden data-pagefind-meta="category">{cat.name}</span>}
       </dl>
       {
@@ -171,7 +160,7 @@ Astro.response.headers.set('Cache-Control', hidden ? 'private, no-store' : 'no-c
               </section>
             )
           }
-          {post.data.comments && <Comments />}
+          {post.data.comments && <Comments slug={post.id} />}
         </footer>
       </div>
       <aside class="aside" data-pagefind-ignore>
@@ -179,22 +168,13 @@ Astro.response.headers.set('Cache-Control', hidden ? 'private, no-store' : 'no-c
           <Toc headings={headings} />
           <div class="aside-actions">
             <button type="button" class="chip" data-to-top><Icon name="up" size={13} /> 顶部</button>
-            {COMMENTS.walineServer && post.data.comments && <a class="chip" href="#comments"><Icon name="comment" size={13} /> 留言</a>}
+            {post.data.comments && <a class="chip" href="#comments"><Icon name="comment" size={13} /> 留言</a>}
           </div>
         </div>
       </aside>
     </div>
   </article>
 </Base>
-
-<script>
-  // Page views come from the same Waline server; only counted in production builds.
-  import { pageviewCount } from '@waline/client/pageview';
-  const el = document.querySelector<HTMLElement>('.waline-pageview-count');
-  if (el?.dataset.server && import.meta.env.PROD) {
-    pageviewCount({ serverURL: el.dataset.server, path: el.dataset.path, update: true });
-  }
-</script>
 
 <style>
   .post-head {

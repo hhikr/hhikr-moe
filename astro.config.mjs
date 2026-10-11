@@ -11,6 +11,10 @@ export default defineConfig({
   trailingSlash: 'ignore',
   // Pages stay prerendered unless they opt out with `export const prerender = false`.
   adapter: node({ mode: 'standalone' }),
+  // src/middleware.ts checks the Origin of every request that is not a GET.
+  // Astro's own check covers only form-like requests and, behind the proxy,
+  // compares against the wrong origin, so it would reject legitimate ones.
+  security: { checkOrigin: false },
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   markdown: {
     processor: unified({ smartypants: false, remarkPlugins, rehypePlugins }),
