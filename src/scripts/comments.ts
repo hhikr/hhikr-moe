@@ -8,6 +8,8 @@ interface Author {
   handle: string;
   role: 'user' | 'endmin';
   avatar: string | null;
+  /** Present only for the signed-in user's own account. */
+  login?: 'password' | 'google';
 }
 interface Comment {
   id: number;
@@ -137,6 +139,7 @@ function init(root: HTMLElement) {
     if (me.role !== 'endmin') menu.append(button('改昵称', rename));
     menu.append(button('换头像', () => picker.click()));
     if (me.avatar) menu.append(button('移除头像', async () => applyUser(await api('/api/me/avatar', undefined, 'DELETE'))));
+    if (me.role !== 'endmin') menu.append(button('账号', openAccount));
     menu.append(button('退出', signOut));
     profile.append(avatar(me), el('span', { class: 'c-me' }, '以 ', nameOf(me), ' 的身份评论'), menu);
   }
@@ -154,6 +157,71 @@ function init(root: HTMLElement) {
     const res = await api('/api/me', { nickname: next }, 'PATCH');
     applyUser(res);
     if (res.ok) say(`现在的完整名字是 ${res.data.user.handle}，登录时需要用它。`);
+  }
+
+  /* ---------- account: password, other devices, deletion ---------- */
+
+  function openAccount() {
+    const user = me!;
+    const dialog = el('dialog', { class: 'c-auth c-account', ariaLabel: '账号' });
+    const close = el('button', { type: 'button', class: 'c-close', ariaLabel: '关闭' }, '×');
+    close.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => dialog.remove());
+    const note = el('p', { class: 'c-status', role: 'status' });
+    const input = (name: string, type: string, autocomplete: string) => el('input', { name, type, autocomplete: autocomplete as AutoFill, maxLength: 200 });
+    const field = (label: string, control: HTMLElement, hint?: string) =>
+      el('label', {}, el('span', { class: 'label' }, label), control, ...(hint ? [el('small', {}, hint)] : []));
+    const section = (title: string, ...children: (Node | string)[]) => el('section', {}, el('h4', { class: 'label' }, title), ...children);
+    // Runs a request from a form's submit button, showing what went wrong next to it.
+    const submitTo = (form: HTMLFormElement, run: () => Promise<string | undefined>) =>
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const button = form.querySelector<HTMLButtonElement>('[type=submit]')!;
+        button.disabled = true;
+        note.textContent = (await run()) ?? '';
+        button.disabled = false;
+      });
+
+    dialog.append(close, el('h3', { class: 'cjk' }, '账号'), el('p', { class: 'c-hint' }, '你的完整名字是 ', el('strong', {}, user.handle), '。'));
+
+    if (user.login === 'password') {
+      const current = input('current', 'password', 'current-password');
+      const next = input('next', 'password', 'new-password');
+      const form = el('form', { noValidate: true }, field('当前密码', current), field('新密码', next, '至少 10 个字符。修改后，其他设备上的登录会失效。'), el('button', { type: 'submit', class: 'chip' }, '修改密码'));
+      submitTo(form, async () => {
+        const res = await api('/api/me/password', { current: current.value, next: next.value });
+        if (!res.ok) return res.error.message;
+        form.reset();
+        return '密码已修改。';
+      });
+      dialog.append(section('密码', form));
+    }
+
+    const elsewhere = el('button', { type: 'button', class: 'chip' }, '退出其他设备');
+    elsewhere.addEventListener('click', async () => {
+      const res = await api('/api/me/sessions', undefined, 'DELETE');
+      note.textContent = res.ok ? '其他设备上的登录已全部退出。' : res.error.message;
+    });
+    dialog.append(section('登录状态', el('p', { class: 'c-fine' }, '在别的电脑或手机上登录过、现在不再使用时，可以让那些登录全部失效。'), elsewhere));
+
+    const byPassword = user.login === 'password';
+    const proof = input('proof', byPassword ? 'password' : 'text', byPassword ? 'current-password' : 'off');
+    const remove = el('form', { noValidate: true }, field(byPassword ? '输入密码以确认' : `输入完整的名字 ${user.handle} 以确认`, proof), el('button', { type: 'submit', class: 'chip c-danger' }, '永久删除账号'));
+    submitTo(remove, async () => {
+      if (!confirm('删除账号后，你发表的所有评论会一并删除，无法恢复。继续？')) return undefined;
+      const res = await api('/api/me', { proof: proof.value }, 'DELETE');
+      if (!res.ok) return res.error.message;
+      dialog.close();
+      me = null;
+      renderProfile();
+      load();
+      say('账号已删除。');
+      return undefined;
+    });
+    dialog.append(section('删除账号', el('p', { class: 'c-fine' }, '账号、头像和你发表的全部评论会立即删除，无法恢复。'), remove), note);
+
+    root.append(dialog);
+    dialog.showModal();
   }
 
   async function signOut() {
