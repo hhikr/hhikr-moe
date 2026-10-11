@@ -72,4 +72,47 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: '002_accounts',
+    sql: `
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY,
+        role TEXT NOT NULL CHECK (role IN ('user','endmin')) DEFAULT 'user',
+        nickname TEXT NOT NULL COLLATE NOCASE,
+        discriminator TEXT NOT NULL,
+        password_hash TEXT,
+        google_sub TEXT UNIQUE,
+        avatar_sha256 TEXT,
+        status TEXT NOT NULL CHECK (status IN ('active','banned')) DEFAULT 'active',
+        created_at TEXT NOT NULL,
+        UNIQUE (nickname, discriminator)
+      );
+
+      CREATE TABLE sessions (
+        token_hash TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL
+      );
+      CREATE INDEX sessions_user ON sessions(user_id);
+
+      CREATE TABLE rate_limits (
+        key TEXT PRIMARY KEY,
+        count INTEGER NOT NULL,
+        window_start INTEGER NOT NULL
+      );
+
+      -- Proof-of-work challenges that have been spent, kept until they expire.
+      CREATE TABLE used_challenges (
+        salt TEXT PRIMARY KEY,
+        expires_at INTEGER NOT NULL
+      );
+
+      -- One-time sign-in links created from the server's command line.
+      CREATE TABLE login_links (
+        token_hash TEXT PRIMARY KEY,
+        expires_at INTEGER NOT NULL
+      );
+    `,
+  },
 ];

@@ -1,0 +1,124 @@
+---
+// The management area. The middleware answers 404 here for everyone but the endministrator.
+import Base from '@/layouts/Base.astro';
+import { listAllPosts } from '@/server/posts.ts';
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const posts = listAllPosts();
+const counts = [
+  { n: posts.filter((p) => p.status === 'published' && !p.hidden).length, label: '已发布' },
+  { n: posts.filter((p) => p.status === 'published' && p.hidden).length, label: '隐藏' },
+  { n: posts.filter((p) => p.status === 'draft').length, label: '草稿' },
+];
+const drafts = posts.filter((p) => p.status === 'draft');
+---
+
+<Base title="管理面板" noindex>
+  <div class="wrap">
+    <header class="page-head">
+      <p class="label kicker">Endministrator · {user.nickname}</p>
+      <h1>管理面板<span class="en">Dashboard</span></h1>
+    </header>
+
+    <section class="stats" aria-label="文章数量">
+      {
+        counts.map((c) => (
+          <div class="stat">
+            <span class="n display">{c.n}</span>
+            <span class="cjk">{c.label}</span>
+          </div>
+        ))
+      }
+    </section>
+
+    {
+      drafts.length > 0 && (
+        <section class="block">
+          <h2 class="label">草稿</h2>
+          <ul>
+            {drafts.map((p) => (
+              <li>
+                <span class="cjk">{p.title}</span>
+                <span class="label">{p.slug}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <p class="note">写文章、文件、评论、统计和备份的管理界面还没有做好。</p>
+
+    <div class="actions">
+      <a class="chip" href="/">查看网站</a>
+      <button class="chip" type="button" data-logout>退出登录</button>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { api } from '@/scripts/account';
+
+  document.querySelector('[data-logout]')?.addEventListener('click', async () => {
+    await api('/api/auth/logout', {});
+    location.assign('/');
+  });
+</script>
+
+<style>
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3rem;
+    padding: 2rem 0;
+    border-top: 1.5px solid var(--rule-strong);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .stat {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+
+  .n {
+    font-size: 3.2rem;
+    line-height: 1;
+  }
+
+  .block {
+    padding-top: 2rem;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+  }
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .note {
+    margin: 2rem 0 0;
+    color: var(--ink-3);
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 2rem 0 4rem;
+  }
+
+  .chip {
+    padding: 0.45em 1.2em;
+    cursor: pointer;
+  }
+</style>

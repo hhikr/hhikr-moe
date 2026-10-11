@@ -215,6 +215,25 @@ runuser -u hhikr-web -- sh -c "umask 027; set -a; . /etc/hhikr-web/env; set +a; 
 
 页面地址以斜杠结尾，不带斜杠的请求会被 301 到带斜杠的地址；接口（`/api/*`）和文件不受此限制。
 
+### 环境变量与登录
+
+`/etc/hhikr-web/env`（`root:hhikr-web`，权限 640）里除了监听地址和数据目录，还有登录需要的配置。修改后执行 `systemctl restart hhikr-web`。
+
+| 变量 | 用途 |
+| --- | --- |
+| `SITE_ORIGIN` | `https://hhikr.moe`。决定 Cookie 是否带 `Secure`、请求来源校验和 Google 回调地址 |
+| `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` | Google 登录。本机副本在 `.deployment/google-oauth.json` |
+| `ENDMIN_GOOGLE_EMAIL` | 首次用这个 Google 账号登录的人成为 endministrator；绑定之后只认 Google 账号编号，这一项不再起作用 |
+| `SECRET_KEY` | 签名和哈希用的密钥，在服务器上生成，只存在于这个文件。丢失或更换后，尚未使用的验证挑战和限速记录失效，已登录的会话不受影响 |
+
+Google 无法访问时，生成一个五分钟内有效、只能用一次的 endministrator 登录链接：
+
+```sh
+runuser -u hhikr-web -- sh -c "set -a; . /etc/hhikr-web/env; set +a; cd /srv/hhikr/app/current && node scripts/endmin-login-link.mjs"
+```
+
+把打印出的地址粘贴到浏览器即可。链接等同于管理员身份，不要发给别人，也不要留在聊天记录或截图里。
+
 首次搭建环境（安装 Node.js、创建账号和目录、安装服务）用 [setup-web.sh](setup-web.sh)，它需要 [hhikr-web.service](hhikr-web.service) 已上传到 `/root/`，可以重复执行。修改 Caddy 配置时上传 [Caddyfile](Caddyfile)，先 `caddy validate` 再 `systemctl reload caddy`。
 
 ## 8. 回滚与备份
