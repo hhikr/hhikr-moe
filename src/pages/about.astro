@@ -4,15 +4,11 @@ import Base from '@/layouts/Base.astro';
 import Icon from '@/components/Icon.astro';
 import { AUTHOR, SOCIALS } from '@/site.config';
 import { CHANGELOG } from '@/data/changelog';
-import { getPosts, postUrl } from '@/lib/posts';
 import avatar from '@/assets/avatar.png';
 
-const posts = await getPosts();
-const capsule = posts.find((p) => p.id === 'time-machine');
-const building = posts.find((p) => p.id === 'building-website');
 
 const stack = [
-  ['Astro', '静态站点生成'],
+  ['Astro', '页面框架'],
   ['Pagefind', '全文搜索（含中文分词）'],
   ['Waline', '评论与阅读计数'],
   ['KaTeX', '数学公式'],
@@ -40,19 +36,9 @@ const stack = [
           软件工程专业的学生。早就想做个人网站了，拖了很久终于做了出来。这里什么都可能放：专业、语言和音乐的学习笔记，观影杂谈，
           或者是捣鼓一些自己感兴趣的东西——尝试不同的 Linux 发行版和桌面环境、折腾网站的新功能之类。
         </p>
-        {
-          capsule && (
-            <p>
-              网站的来路记在<a href={postUrl(capsule)}>「时间胶囊」</a>里
-              {building && (
-                <>
-                  ，最初的建站过程见<a href={postUrl(building)}>「记录我的第一次建站」</a>
-                </>
-              )}
-              。
-            </p>
-          )
-        }
+        <p>
+          网站的来路记在<a href="/posts/time-machine/">「时间胶囊」</a>里，最初的建站过程见<a href="/posts/building-website/">「记录我的第一次建站」</a>。
+        </p>
         <ul class="socials">
           {
             SOCIALS.map((s) => (

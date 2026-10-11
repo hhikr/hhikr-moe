@@ -1,21 +1,19 @@
 ---
-import { Image } from 'astro:assets';
 import Base from '@/layouts/Base.astro';
 import PostRow from '@/components/PostRow.astro';
 import SeriesCard from '@/components/SeriesCard.astro';
 import Icon from '@/components/Icon.astro';
 import { AUTHOR, CATEGORIES, SITE, SOCIALS } from '@/site.config';
-import { categoryUrl, fmtDate, getPosts, groupBy, postUrl } from '@/lib/posts';
-import { readingStats } from '@/lib/stats';
-import sky from '@/assets/sky.jpg';
-import avatar from '@/assets/avatar.png';
+import { categoryUrl, fmtDate, getPosts, groupBy, postUrl, viewerOf } from '@/lib/posts';
 
-const posts = await getPosts();
-const latest = posts.filter((p) => !p.data.draft).slice(0, 6);
+export const prerender = false;
+
+const posts = getPosts(viewerOf(Astro.locals));
+const latest = posts.slice(0, 6);
 const series = [...groupBy(posts, (p) => p.data.series)].sort((a, b) => b[1].length - a[1].length);
 const byCategory = groupBy(posts, (p) => p.data.category);
 const tagCount = new Set(posts.flatMap((p) => p.data.tags)).size;
-const words = (await Promise.all(posts.map(readingStats))).reduce((n, s) => n + s.words, 0);
+const words = posts.reduce((n, p) => n + p.words, 0);
 const startHere = posts.find((p) => p.id === 'time-machine');
 
 const stats = [
@@ -65,11 +63,11 @@ const stats = [
 
     <figure class="postcard rise" style="--i:2">
       <div class="stamp">
-        <Image src={sky} alt="蓝天白云下抬头望天的女孩插画" widths={[480, 760, 1100]} sizes="(max-width: 860px) 92vw, 34rem" loading="eager" class="sky" />
+        <img src="/img/sky-1100.webp" srcset="/img/sky-480.webp 480w, /img/sky-760.webp 760w, /img/sky-1100.webp 1100w" sizes="(max-width: 860px) 92vw, 34rem" width="1440" height="811" alt="蓝天白云下抬头望天的女孩插画" loading="eager" decoding="async" class="sky" />
         <span class="postmark label" aria-hidden="true">HHIKR.MOE<br />{fmtDate(new Date())}</span>
       </div>
       <div class="polaroid">
-        <Image src={avatar} alt={`${AUTHOR.name} 的头像（铅笔线稿）`} width={220} class="avatar" />
+        <img src="/img/avatar-220.webp" width="220" height="248" alt={`${AUTHOR.name} 的头像（铅笔线稿）`} loading="lazy" decoding="async" class="avatar" />
         <span class="cjk">hhikr</span>
       </div>
     </figure>

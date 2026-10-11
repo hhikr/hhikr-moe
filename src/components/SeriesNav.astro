@@ -21,7 +21,7 @@ const pos = posts.findIndex((p) => p.id === current.id);
   <ol>
     {
       posts.map((p, i) => (
-        <li class:list={[{ current: p.id === current.id, draft: p.data.draft }]}>
+        <li class:list={[{ current: p.id === current.id }]}>
           <span class="i">{String(i + 1).padStart(2, '0')}</span>
           {p.id === current.id ? (
             <span aria-current="page">{p.data.title}</span>

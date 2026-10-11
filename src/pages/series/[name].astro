@@ -1,17 +1,17 @@
 ---
 import Base from '@/layouts/Base.astro';
 import Icon from '@/components/Icon.astro';
-import { fmtDate, getPosts, groupBy, postUrl, seriesName, slugify, sortSeries, type Post } from '@/lib/posts';
+import { fmtDate, getPosts, groupBy, postUrl, seriesName, slugify, sortSeries, viewerOf } from '@/lib/posts';
 import { readingStats } from '@/lib/stats';
 
-export async function getStaticPaths() {
-  const groups = groupBy(await getPosts(), (p) => p.data.series);
-  return [...groups].map(([name, posts]) => ({ params: { name: slugify(name) }, props: { name, posts } }));
-}
+export const prerender = false;
 
-const { name } = Astro.props as { name: string; posts: Post[] };
-const posts = sortSeries(Astro.props.posts);
-const stats = await Promise.all(posts.map(readingStats));
+const groups = groupBy(getPosts(viewerOf(Astro.locals)), (p) => p.data.series);
+const found = [...groups].find(([name]) => slugify(name) === Astro.params.name);
+if (!found) return new Response(null, { status: 404 });
+const name = found[0];
+const posts = sortSeries(found[1]);
+const stats = posts.map(readingStats);
 const totalWords = stats.reduce((n, s) => n + s.words, 0);
 const totalMinutes = stats.reduce((n, s) => n + s.minutes, 0);
 ---
@@ -26,13 +26,13 @@ const totalMinutes = stats.reduce((n, s) => n + s.minutes, 0);
     <ol class="chapters">
       {
         posts.map((p, i) => (
-          <li class:list={['ch rise', { draft: p.data.draft }]} style={`--i:${i}`}>
+          <li class="ch rise" style={`--i:${i}`}>
             <a href={postUrl(p)}>
               <span class="no display">{String(i + 1).padStart(2, '0')}</span>
               <span class="body">
                 <span class="t cjk">
                   {p.data.title}
-                  {p.data.draft && <span class="badge-draft">草稿</span>}
+                  {p.data.hidden && <span class="badge-draft">隐藏</span>}
                 </span>
                 {p.data.summary && <span class="s">{p.data.summary}</span>}
               </span>

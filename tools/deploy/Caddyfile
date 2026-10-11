@@ -1,16 +1,57 @@
 hhikr.moe {
-    root * /srv/hhikr/current
     encode zstd gzip
+    header Strict-Transport-Security "max-age=31536000"
+    header X-Content-Type-Options "nosniff"
+    header Referrer-Policy "strict-origin-when-cross-origin"
 
     @hashed path /_astro/*
     header @hashed Cache-Control "public, max-age=31536000, immutable"
-    @html path / /hot100/* /posts/* /tags/* /categories/* /series/* /about/* /links/*
-    header @html Cache-Control "no-cache"
+    # Pages must be revalidated. The `?` keeps a header the Node service set
+    # itself, such as `private, no-store` on hidden posts.
+    @html path / /hot100/* /posts/* /tags/* /categories/* /series/* /about/*
+    header @html ?Cache-Control "no-cache"
 
-    file_server
-    handle_errors {
-        rewrite * /404.html
+    # Uploaded images and attachments: content-addressed, so they never change.
+    handle /media/* {
+        root * /srv/hhikr/data
+        header Cache-Control "public, max-age=31536000, immutable"
         file_server
+    }
+
+    # The search index is rebuilt at runtime and lives with the data.
+    handle /pagefind/* {
+        root * /srv/hhikr/data
+        header Cache-Control "no-cache"
+        file_server
+    }
+
+    # A prerendered page requested without its trailing slash is redirected to
+    # the canonical address. (The Node service does the same for its pages.)
+    @needslash {
+        not path */
+        file {
+            root /srv/hhikr/app/current/dist/client
+            try_files {path}/index.html
+        }
+    }
+    redir @needslash {path}/ 301
+
+    # Files and prerendered pages that exist in the build are served directly.
+    @static file {
+        root /srv/hhikr/app/current/dist/client
+        try_files {path} {path}index.html
+    }
+    handle @static {
+        root * /srv/hhikr/app/current/dist/client
+        rewrite * {http.matchers.file.relative}
+        file_server
+    }
+
+    # Everything else goes to the Node service; requests wait while it restarts.
+    handle {
+        reverse_proxy 127.0.0.1:4400 {
+            lb_try_duration 5s
+        }
     }
 }
 

@@ -1,0 +1,23 @@
+[Unit]
+Description=hhikr.moe web service
+After=network.target
+
+[Service]
+User=hhikr-web
+Group=hhikr-web
+WorkingDirectory=/srv/hhikr/app/current
+EnvironmentFile=/etc/hhikr-web/env
+ExecStart=/usr/local/bin/node dist/server/entry.mjs
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/srv/hhikr/data
+# Data files are readable by the hhikr-web group (which Caddy belongs to) and nobody else.
+UMask=0027
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

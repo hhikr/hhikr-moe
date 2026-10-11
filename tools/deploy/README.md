@@ -1,6 +1,8 @@
 # hhikr.moe 部署与维护
 
-本文记录 2026 年 10 月 9 日的实际部署。网站在本机构建，ByteVirt VPS 上的 Caddy 提供静态文件，NameSilo 管理域名解析。VPS 不需要运行 Node.js、Astro 开发服务器或 Java 编译服务。
+网站在本机构建，部署到 ByteVirt VPS，NameSilo 管理域名解析。
+
+**2026 年 10 月 11 日起，网站由常驻的 Node 服务加 Caddy 提供**：构建产物里已有的文件和预渲染页面由 Caddy 直接发送，其余请求转给监听 `127.0.0.1:4400` 的 Node 服务（`hhikr-web.service`）。日常发布和回滚见第 7、8 节。第 2、3 节记录的是 10 月 9 日首次部署静态站点的过程，其中的目录和上传命令已不是当前做法，保留作为历史和回滚参考。VPS 不运行 Java 编译服务。
 
 ## 1. 资源、端口与目录
 
@@ -14,12 +16,17 @@
 | 分配的 IPv6 | `2407:cdc0:d010:249d::`，本次未配置 AAAA |
 | 系统 / 架构 | Debian 13.7 / x86_64 |
 | 内存 / 磁盘 | 约 3922 MiB / 40 GB |
-| SSH | `root`，TCP `17648`，密码登录 |
+| SSH | `root`，TCP `17648`，仅密钥登录（2026 年 10 月 11 日起禁用密码，配置在 `/etc/ssh/sshd_config.d/00-hhikr.conf`） |
 | Caddy 软件包 | `2.6.2-12+deb13u1` |
-| 当前发布 | `/srv/hhikr/releases/20261009` |
-| 网站入口 | `/srv/hhikr/current`，符号链接指向当前发布 |
+| Node.js | `v24.19.0`，来自 nodejs.org 并核对过校验和，位于 `/opt/node-v24.19.0`，`/usr/local/bin` 下有链接。不随系统更新，需手动升级 |
+| 服务 | `hhikr-web.service`，账号 `hhikr-web`，监听 `127.0.0.1:4400`，开机启动 |
+| 环境变量 | `/etc/hhikr-web/env`，权限 640，以后存放密钥 |
+| 发布目录 | `/srv/hhikr/app/releases/<UTC 时间戳>/`，内含 `dist/` 和 `node_modules/` |
+| 网站入口 | `/srv/hhikr/app/current`，符号链接指向当前发布 |
+| 数据目录 | `/srv/hhikr/data`，属于 `hhikr-web`，发布时不动（目前为空） |
+| 旧静态站点 | `/srv/hhikr/releases/20261009` 和 `/srv/hhikr/current`，已不再使用，保留用于回滚 |
 | Caddy 配置 | `/etc/caddy/Caddyfile` |
-| 首次配置备份 | `/etc/caddy/Caddyfile.before-hhikr` |
+| 配置备份 | `/etc/caddy/Caddyfile.before-node`（静态站点时的配置）、`/etc/caddy/Caddyfile.before-hhikr`（最初的配置） |
 | Caddy 证书与状态 | `/var/lib/caddy/.local/share/caddy/`，由服务管理 |
 | 本机项目 | `C:\Users\hhikr\Downloads\hhikr-moe` |
 
@@ -51,7 +58,7 @@ scp -P 17648 tools/deploy/Caddyfile root@89.34.227.228:/root/hhikr.Caddyfile
 ssh -p 17648 root@89.34.227.228
 ```
 
-`scp -P` 使用大写 P，`ssh -p` 使用小写 p。密码在 OpenSSH 提示中输入，不放进命令行。首次连接应与服务商控制台核对 SSH 主机指纹。
+`scp -P` 使用大写 P，`ssh -p` 使用小写 p。服务器只接受密钥登录，命令需加 `-i $env:USERPROFILE\.ssh\hhikr_vps`；密钥丢失时只能通过 ByteVirt 控制台进入服务器。首次连接应与服务商控制台核对 SSH 主机指纹。
 
 ## 3. 服务器准备与首次发布
 
@@ -85,7 +92,7 @@ systemctl enable caddy
 systemctl reload caddy
 ```
 
-[Caddyfile](Caddyfile) 是正式配置：主域名提供静态文件，启用 gzip/zstd；`/_astro/` 下带哈希的资源缓存一年；指定 HTML 页面要求重新验证缓存；不存在的路径返回自定义 404；`www` 永久跳转。
+仓库里的 [Caddyfile](Caddyfile) 现在是第 7 节所述 Node 服务的配置，不是本节首次部署时使用的那一份（那一份在服务器的 `/etc/caddy/Caddyfile.before-node`）。当时的配置：主域名提供静态文件，启用 gzip/zstd；`/_astro/` 下带哈希的资源缓存一年；指定 HTML 页面要求重新验证缓存；不存在的路径返回自定义 404；`www` 永久跳转。
 
 当前 Caddy 为 2.6.2，配置使用不带状态码参数的 `handle_errors { ... }`。不要直接替换成只适用于更新版本的写法。修改配置后先 validate，通过后再 reload。
 
@@ -171,34 +178,71 @@ ss -lntup
 
 ## 7. 日常发布与原子切换
 
-按第 2 节在本机构建和上传。以下在 VPS 执行，发布目录每次唯一：
+在本机项目目录的 PowerShell 执行。构建产物分为 `dist/client/`（静态文件）和 `dist/server/`（Node 服务）。不要在 VPS 上构建。
 
-```sh
-release_id=$(date -u +%Y%m%dT%H%M%SZ)
-release_dir="/srv/hhikr/releases/$release_id"
-mkdir "$release_dir"
-tar -xzf /root/hhikr-site.tar.gz -C "$release_dir"
-chmod -R a+rX "$release_dir"
-test -f "$release_dir/index.html"
-test -f "$release_dir/404.html"
-readlink -f /srv/hhikr/current
-ln -s "$release_dir" /srv/hhikr/current.next
-mv -Tf /srv/hhikr/current.next /srv/hhikr/current
-curl -fsS https://hhikr.moe/ -o /dev/null
+```powershell
+npm run build
+tar -czf .deployment/hhikr-app.tar.gz dist package.json package-lock.json scripts src/server src/markdown src/plugins
+scp -i $env:USERPROFILE\.ssh\hhikr_vps -P 17648 .deployment/hhikr-app.tar.gz tools/deploy/release.sh root@89.34.227.228:/root/
+ssh -i $env:USERPROFILE\.ssh\hhikr_vps -p 17648 root@89.34.227.228 "sed -i 's/\r$//' /root/release.sh && sh /root/release.sh /root/hhikr-app.tar.gz"
 ```
 
-执行前 `current.next` 应不存在；若残留，先用 `readlink` 核对来源和目标，再处理。`mv -Tf` 在同一文件系统内原子替换链接，旧目录保留。切换静态文件版本不用重启 Caddy。不要往当前目录直接覆盖上传，以免出现不完整版本。
+压缩包里除了构建产物，还要带上 `scripts/` 和 `src/server`、`src/markdown`、`src/plugins`：服务器上的维护脚本（如重建搜索索引）直接运行这些源文件。
+
+[release.sh](release.sh) 在服务器上完成其余步骤：解压到唯一的发布目录，检查关键文件，执行 `npm ci --omit=dev`，原子替换 `current` 链接，重启 `hhikr-web`，请求 `http://127.0.0.1:4400/api/health`，最后以 `hhikr-web` 身份重建搜索索引。健康检查失败时自动切回上一个发布并以非零状态退出；搜索索引重建失败只给出警告，旧索引保留。依赖必须在服务器上安装，因为 `sharp` 和 `pagefind` 带有与操作系统相关的二进制文件。
+
+重启服务的一两秒内，Caddy 会让请求等待（`lb_try_duration 5s`）而不是报错。只改静态文件也要走这套流程。不要往当前目录直接覆盖上传。
+
+发布后至少检查首页、一篇文章及其图片、`/hot100/206/`、`/api/health`、`/pagefind/pagefind.js`，以及一个不存在的地址返回 404。
+
+### 数据目录
+
+文章、媒体文件和搜索索引在 `/srv/hhikr/data`，**不属于发布内容，发布时不会改动**：
+
+| 路径 | 内容 |
+| --- | --- |
+| `site.db`（及 `-wal`、`-shm`） | SQLite 数据库。启动时自动执行未执行过的结构迁移，迁移前会留一份 `site.db.before-<迁移名>` |
+| `media/` | 文章图片和封面，按内容哈希存放，Caddy 直接从这里提供 `/media/*` |
+| `pagefind/` | 搜索索引，Caddy 直接从这里提供 `/pagefind/*` |
+
+目录属于 `hhikr-web`，权限 750；`caddy` 账号已加入 `hhikr-web` 组以便读取。10 月 11 日首次安装的数据来自本机 `npm run import:posts` 的结果（23 篇文章，其中 16 篇已发布、7 篇草稿）。**此后服务器上的数据库是唯一的正本，不要再用本机的 `.data/` 覆盖它。**
+
+单独重建搜索索引：
+
+```sh
+runuser -u hhikr-web -- sh -c "umask 027; set -a; . /etc/hhikr-web/env; set +a; cd /srv/hhikr/app/current && node scripts/rebuild-search.mjs"
+```
+
+页面地址以斜杠结尾，不带斜杠的请求会被 301 到带斜杠的地址；接口（`/api/*`）和文件不受此限制。
+
+首次搭建环境（安装 Node.js、创建账号和目录、安装服务）用 [setup-web.sh](setup-web.sh)，它需要 [hhikr-web.service](hhikr-web.service) 已上传到 `/root/`，可以重复执行。修改 Caddy 配置时上传 [Caddyfile](Caddyfile)，先 `caddy validate` 再 `systemctl reload caddy`。
 
 ## 8. 回滚与备份
 
-新版本异常时切回已存在的旧目录。以下示例回滚首次发布：
+新版本异常时切回已存在的旧发布目录：
 
 ```sh
-test -f /srv/hhikr/releases/20261009/index.html
-ln -s /srv/hhikr/releases/20261009 /srv/hhikr/current.next
-mv -Tf /srv/hhikr/current.next /srv/hhikr/current
-curl -fsS https://hhikr.moe/ -o /dev/null
+ls /srv/hhikr/app/releases
+ln -s /srv/hhikr/app/releases/<旧的发布编号> /srv/hhikr/app/current.next
+mv -Tf /srv/hhikr/app/current.next /srv/hhikr/app/current
+systemctl restart hhikr-web
+curl -s http://127.0.0.1:4400/api/health/
 ```
+
+Node 服务整体出问题时，可以退回 10 月 9 日的纯静态站点，它不依赖 Node：
+
+```sh
+cp -a /etc/caddy/Caddyfile /etc/caddy/Caddyfile.node
+install -m 0644 /etc/caddy/Caddyfile.before-node /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile
+systemctl reload caddy
+```
+
+静态站点的内容停留在 10 月 9 日，仍含友链页面和 Google Analytics，7 篇草稿也仍然公开显示。它只是“Node 服务完全起不来”时的应急手段：此后在数据库里新写或修改的文章不会出现在里面。上一阶段（文章仍为静态页面）的 Caddy 配置另存为 `/etc/caddy/Caddyfile.phase2`。
+
+回滚代码版本时注意数据库结构：新版本执行过的结构迁移不会随代码回退。回退到迁移之前的版本时，要同时用迁移前留下的 `site.db.before-<迁移名>` 替换数据库，并接受此后的数据改动丢失。
+
+每个发布目录约 370 MB（主要是 `node_modules`），磁盘共 40 GB，旧发布需要定期清理，保留最近两三个即可。
 
 分别保留源码与 lockfile、服务器发布目录和 Caddyfile、DNS 快照，以及私密凭据和代理配置。证书状态含私钥，不应复制到公开目录。服务器重建时按第 3—5 节恢复网站，再单独恢复代理。
 

@@ -1,8 +1,10 @@
 ---
 import Base from '@/layouts/Base.astro';
-import { getPosts, groupBy, tagUrl } from '@/lib/posts';
+import { getPosts, groupBy, tagUrl, viewerOf } from '@/lib/posts';
 
-const tags = [...groupBy(await getPosts(), (p) => p.data.tags)].sort(
+export const prerender = false;
+
+const tags = [...groupBy(getPosts(viewerOf(Astro.locals)), (p) => p.data.tags)].sort(
   (a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'zh-CN'),
 );
 const max = Math.max(...tags.map(([, ps]) => ps.length));

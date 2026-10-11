@@ -1,16 +1,12 @@
 ---
 import TermList from '@/layouts/TermList.astro';
-import { categoryOf, getPosts, groupBy, type Post } from '@/lib/posts';
+import { categoryOf, getPosts, viewerOf } from '@/lib/posts';
 
-export async function getStaticPaths() {
-  const groups = groupBy(await getPosts(), (p) => p.data.category);
-  return [...groups].map(([, posts]) => {
-    const cat = categoryOf(posts[0])!;
-    return { params: { cat: cat.slug }, props: { cat, posts } };
-  });
-}
+export const prerender = false;
 
-const { cat, posts } = Astro.props as { cat: NonNullable<ReturnType<typeof categoryOf>>; posts: Post[] };
+const posts = getPosts(viewerOf(Astro.locals)).filter((p) => categoryOf(p)?.slug === Astro.params.cat);
+const cat = posts[0] && categoryOf(posts[0]);
+if (!cat) return new Response(null, { status: 404 });
 ---
 
 <TermList
