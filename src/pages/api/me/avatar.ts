@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { fail, json, needSignIn, tooMany } from '@/lib/http';
 import { MAX_UPLOAD_BYTES, saveAvatar } from '@/server/avatars.ts';
 import { allow, LIMITS } from '@/server/ratelimit.ts';
-import { setAvatar, toPublic, userById } from '@/server/users.ts';
+import { setAvatar, toSelf, userById } from '@/server/users.ts';
 
 export const prerender = false;
 
@@ -19,11 +19,11 @@ export const PUT: APIRoute = async ({ request, locals }) => {
   } catch (err) {
     return fail('invalid', err instanceof Error ? err.message : '图片无法处理');
   }
-  return json({ user: toPublic(userById(user.id)!) });
+  return json({ user: toSelf(userById(user.id)!) });
 };
 
 export const DELETE: APIRoute = ({ locals }) => {
   if (!locals.user) return needSignIn();
   setAvatar(locals.user.id, null);
-  return json({ user: toPublic(userById(locals.user.id)!) });
+  return json({ user: toSelf(userById(locals.user.id)!) });
 };

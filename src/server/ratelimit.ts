@@ -17,6 +17,7 @@ export const LIMITS = {
   comment: { max: 5, window: 600 },
   avatar: { max: 5, window: 3600 },
   rename: { max: 5, window: 3600 },
+  password: { max: 8, window: 3600 },
   hit: { max: 240, window: 600 },
 } satisfies Record<string, Limit>;
 

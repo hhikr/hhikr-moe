@@ -450,6 +450,48 @@ const tools: [string, string, string][] = [
     font-size: 1.5rem;
   }
 
+  .c-account section {
+    display: grid;
+    gap: 0.6rem;
+    justify-items: start;
+    padding: 1rem 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .c-account h4,
+  .c-account p {
+    margin: 0;
+  }
+
+  .c-account form {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+    width: 100%;
+  }
+
+  .c-account label {
+    width: 100%;
+  }
+
+  .c-account .chip {
+    padding: 0.4em 1.2em;
+    cursor: pointer;
+  }
+
+  .c-account .c-danger {
+    border-color: var(--signal);
+    color: var(--signal);
+  }
+
+  .c-account .c-danger:hover {
+    background: var(--signal);
+    color: #fff;
+  }
+
   .c-hint {
     margin: 0.35rem 0 1.25rem;
     color: var(--ink-3);

@@ -7,16 +7,21 @@ import { redeemChallenge, type Solution } from './challenge.ts';
 import { db } from './db.ts';
 import type { GoogleProfile } from './google.ts';
 import { addressKey, allow, LIMITS } from './ratelimit.ts';
+import { endAllSessions } from './sessions.ts';
 import { decoyHash, hashPassword, randomToken, sha256, verifyPassword } from './secrets.ts';
 import {
   createUser,
+  deleteUser,
   endminUser,
+  handleOf,
   nicknameFromProfile,
   nicknameProblem,
   passwordProblem,
   promoteToEndmin,
+  setPasswordHash,
   userByGoogleSub,
   userByHandle,
+  userById,
   type User,
 } from './users.ts';
 
@@ -86,6 +91,53 @@ export function signInWithGoogle(profile: GoogleProfile): User {
     user = promoteToEndmin(user.id);
   }
   return user;
+}
+
+/**
+ * Change one's own password. Every session of the account ends, so a password
+ * someone else learned stops working everywhere; the caller signs this browser
+ * back in.
+ */
+export async function changePassword(user: User, current: unknown, next: unknown): Promise<void> {
+  if (!user.passwordHash || user.role === 'endmin') throw new AuthError('invalid', '这个账号通过 Google 登录，没有密码');
+  if (typeof current !== 'string' || typeof next !== 'string') throw new AuthError('invalid', '请填写当前密码和新密码');
+  if (!allow(`password:${user.id}`, LIMITS.password)) throw TOO_MANY();
+  if (!(await verifyPassword(current, user.passwordHash))) throw new AuthError('bad_credentials', '当前密码不正确', 401);
+  const problem = next === current ? '新密码不能和当前密码相同' : passwordProblem(next, user.nickname);
+  if (problem) throw new AuthError('invalid', problem);
+  setPasswordHash(user.id, await hashPassword(next));
+  endAllSessions(user.id);
+}
+
+/**
+ * Delete one's own account, together with its comments and sessions. A
+ * password account proves itself with the password; a Google account, which
+ * has none, by typing its full name.
+ */
+export async function deleteOwnAccount(user: User, proof: unknown): Promise<void> {
+  if (user.role === 'endmin') throw new AuthError('invalid', '这个账号不能删除');
+  if (typeof proof !== 'string' || !proof) throw new AuthError('invalid', user.passwordHash ? '请填写密码' : '请填写完整的名字');
+  if (!allow(`password:${user.id}`, LIMITS.password)) throw TOO_MANY();
+  if (user.passwordHash) {
+    if (!(await verifyPassword(proof, user.passwordHash))) throw new AuthError('bad_credentials', '密码不正确', 401);
+  } else if (proof.trim() !== handleOf(user)) {
+    throw new AuthError('bad_credentials', '名字不一致', 401);
+  }
+  deleteUser(user.id);
+}
+
+/**
+ * The endministrator's answer to "I forgot my password": a new random one,
+ * shown once, to pass on. The account is signed out everywhere.
+ */
+export async function resetPassword(userId: number): Promise<string> {
+  const user = userById(userId);
+  if (!user || user.role === 'endmin') throw new AuthError('not_found', '用户不存在，或不能对其执行这个操作', 404);
+  if (!user.passwordHash) throw new AuthError('invalid', '这个账号通过 Google 登录，没有密码');
+  const password = randomToken(12);
+  setPasswordHash(user.id, await hashPassword(password));
+  endAllSessions(user.id);
+  return password;
 }
 
 const LINK_LIFETIME = 300;

@@ -47,6 +47,14 @@ export const toPublic = (u: User): PublicUser => ({
   avatar: u.avatarSha256 ? `/avatars/${u.avatarSha256}.webp` : null,
 });
 
+/** What a signed-in user is told about their own account. */
+export interface SelfUser extends PublicUser {
+  /** How this account signs in, which decides what it can change about itself. */
+  login: 'password' | 'google';
+}
+
+export const toSelf = (u: User): SelfUser => ({ ...toPublic(u), login: u.passwordHash ? 'password' : 'google' });
+
 function toUser(row: any): User {
   return {
     id: Number(row.id),
@@ -147,6 +155,18 @@ export function renameUser(user: User, nickname: string): User {
     .prepare('UPDATE users SET nickname = ?, discriminator = ? WHERE id = ?')
     .run(name, clash ? freeDiscriminator(name) : user.discriminator, user.id);
   return userById(user.id)!;
+}
+
+export function setPasswordHash(userId: number, passwordHash: string): void {
+  db().prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, userId);
+}
+
+/** How many places each user is signed in, and when they last signed in. */
+export function userActivity(): Map<number, { sessions: number; lastSignIn: Date }> {
+  const rows = db()
+    .prepare('SELECT user_id, count(*) AS n, max(created_at) AS last FROM sessions WHERE expires_at > ? GROUP BY user_id')
+    .all(new Date().toISOString());
+  return new Map(rows.map((r: any) => [Number(r.user_id), { sessions: Number(r.n), lastSignIn: new Date(r.last) }]));
 }
 
 export function setAvatar(userId: number, sha256: string | null): void {
