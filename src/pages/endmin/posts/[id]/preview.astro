@@ -1,0 +1,38 @@
+---
+// The post as it would look if the editor's current content were published.
+import PostArticle from '@/components/PostArticle.astro';
+import { getPosts, type PostWithBody } from '@/lib/posts';
+import { getEditablePost, getWorkingCopy, renderDraft } from '@/server/posts.ts';
+
+export const prerender = false;
+
+const id = Number(Astro.params.id);
+const stored = getEditablePost(id);
+if (!stored) return new Response(null, { status: 404 });
+const copy = getWorkingCopy(id);
+const p = await renderDraft(copy?.fields ?? stored.fields, copy?.sourceMd ?? stored.sourceMd);
+
+const post: PostWithBody = {
+  id: p.slug,
+  words: p.words,
+  minutes: p.minutes,
+  html: p.html,
+  headings: p.headings,
+  data: {
+    title: p.title,
+    date: p.publishedAt,
+    updated: p.updatedAt,
+    summary: p.summary,
+    category: p.category,
+    tags: p.tags,
+    series: p.series,
+    seriesOrder: p.seriesOrder,
+    cover: p.cover,
+    hidden: p.hidden,
+    pinned: p.pinned,
+    comments: p.commentsEnabled,
+  },
+};
+---
+
+<PostArticle post={post} all={getPosts({ role: 'endmin' })} preview editHref={`/endmin/posts/${id}/`} />

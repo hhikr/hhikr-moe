@@ -128,3 +128,71 @@ export function coverOf(m: Media | undefined): Cover | undefined {
   steps.push(`${displayUrl(m)} ${m.width}w`);
   return { src: displayUrl(m), srcset: steps.join(', '), width: m.width, height: m.height, og: urlOf(m.sha256, 'og.jpg') };
 }
+
+/* ---------- management: uploads and the media library ---------- */
+
+/** Largest upload accepted for a post image or attachment. */
+export const MAX_MEDIA_BYTES = 50 * 1024 * 1024;
+const ATTACHMENTS = new Set(['pdf', 'zip', 'txt', 'md', 'csv', 'json', 'java', 'py', 'c', 'cpp', 'h', 'js', 'ts', 'sh']);
+
+/**
+ * Store an upload. Raster images must actually decode as images; anything
+ * else must have one of a short list of harmless extensions. SVG is refused
+ * because an SVG opened directly can run scripts on this site's origin.
+ */
+export async function ingestUpload(filename: string, body: Buffer): Promise<Media> {
+  if (body.length === 0) throw new Error('没有收到文件');
+  if (body.length > MAX_MEDIA_BYTES) throw new Error('文件太大了（上限 50 MB）');
+  const base = path.basename(filename).replace(/[\x00-\x1f<>:"/\\|?*]/g, '_').slice(-120) || 'file';
+  const ext = path.extname(base).slice(1).toLowerCase();
+  if (RASTER.has(ext)) {
+    try {
+      await sharp(body, { limitInputPixels: 100_000_000 }).metadata();
+    } catch {
+      throw new Error('这不是一张有效的图片');
+    }
+  } else if (!ATTACHMENTS.has(ext)) {
+    throw new Error(`不支持上传 .${ext || '?'} 文件`);
+  }
+  const tmpDir = dataPath('tmp');
+  fs.mkdirSync(tmpDir, { recursive: true });
+  const tmp = path.join(tmpDir, `${crypto.randomUUID()}.${ext}`);
+  fs.writeFileSync(tmp, body);
+  try {
+    const media = await ingestFile(tmp);
+    // ingestFile recorded the temporary name; keep the one the file was uploaded with.
+    db().prepare('UPDATE media SET filename = ? WHERE id = ? AND filename = ?').run(base, media.id, path.basename(tmp));
+    return findMedia(media.sha256)!;
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
+export interface MediaEntry extends Media {
+  url: string;
+  /** Posts whose text or cover refers to this file. */
+  usedBy: { id: number; title: string }[];
+}
+
+export function listMedia(): MediaEntry[] {
+  const posts: any[] = db().prepare('SELECT id, title, source_md, cover_media_id FROM posts').all();
+  const copies: any[] = db().prepare('SELECT post_id, source_md, fields_json FROM post_working_copies').all();
+  return (db().prepare('SELECT * FROM media ORDER BY id DESC').all() as unknown as Media[]).map((m) => {
+    const used = posts.filter(
+      (p) => p.cover_media_id === m.id || p.source_md.includes(m.sha256) || copies.some((c) => c.post_id === p.id && (c.source_md.includes(m.sha256) || c.fields_json.includes(`"coverMediaId":${m.id}`))),
+    );
+    return { ...m, url: displayUrl(m), usedBy: used.map((p) => ({ id: Number(p.id), title: p.title })) };
+  });
+}
+
+/** Delete a file nothing refers to. Returns false when it is still in use or unknown. */
+export function deleteMedia(id: number): boolean {
+  const entry = listMedia().find((m) => m.id === id);
+  if (!entry || entry.usedBy.length > 0) return false;
+  db().prepare('DELETE FROM media WHERE id = ?').run(id);
+  const dir = dataPath('media', relDir(entry.sha256));
+  if (fs.existsSync(dir)) {
+    for (const name of fs.readdirSync(dir)) if (name.startsWith(`${entry.sha256}.`)) fs.rmSync(path.join(dir, name), { force: true });
+  }
+  return true;
+}

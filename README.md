@@ -11,7 +11,8 @@ npm install
 npm run dev          # http://localhost:4321
 npm run build        # 类型检查 + 构建 + 生成搜索索引
 npm run preview      # 预览构建结果（搜索只在构建后可用）
-npm run new -- my-post "标题" --category StudyBase --series 笔记-操作系统
+npm run test:server  # 服务端逻辑的测试
+npm run import:posts # 把 src/content/posts 导入本机数据库（.data/），供开发使用
 ```
 
 网站已部署到 ByteVirt VPS，通过 NameSilo 管理 `hhikr.moe` 解析，使用 Caddy 提供 HTTPS。完整的构建、上传、服务器配置、DNS、证书、验收和回滚流程见 [部署与维护](tools/deploy/README.md)。独立加密代理的配置、验证范围和连接方法见 [VPS 代理](tools/deploy/proxy.md)。
@@ -32,23 +33,9 @@ npm run java:serve   # 启动允许 https://hhikr.moe 连接的本机服务
 
 ## 写文章
 
-每篇文章是一个文件夹：`src/content/posts/<slug>/index.md`，图片放在同一个文件夹里，用相对路径引用即可，构建时会自动压缩成 WebP。
+文章保存在服务器的数据库里，不在这个仓库中。用站长的 Google 账号在 `/login/` 登录后进入管理面板 `/endmin/`，在「文章」里写新文章或编辑已有的文章：左边写 Markdown，右边实时预览，粘贴或拖入图片会自动上传。修改会自动保存，点「发布」或「更新」之后读者才能看到。
 
-```yaml
----
-title: "第二章 处理器管理"
-date: 2025-05-05T21:36:22+08:00
-summary: "一句话简介"
-category: "StudyBase"        # StudyBase / TechPlay / Echoes，见 src/site.config.ts
-tags: ["笔记", "操作系统"]
-series: "笔记-操作系统"        # 可选：合订本
-seriesOrder: 2               # 可选：在合订本中的顺序
-cover: ./featured.png        # 可选：封面
-draft: true                  # 可选：草稿（带标记显示，不进 RSS）
-updated: 2026-10-08          # 可选
-comments: false              # 可选：关闭评论
----
-```
+`src/content/posts/` 下的 Markdown 是迁移到数据库之前的原件，修改它们不会影响网站。
 
 Markdown 扩展语法（与 Obsidian 兼容）：
 

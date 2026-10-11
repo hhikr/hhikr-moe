@@ -78,3 +78,11 @@ export const pendingCookieOptions = () => ({
 
 export const needSignIn = () => fail('signed_out', '请先登录', 401);
 export const tooMany = () => fail('rate_limited', '操作太频繁了，请稍后再试', 429);
+
+/**
+ * Set while the endministrator is browsing as a guest. Readable by scripts on
+ * purpose: the page shows an "exit preview" bar when it sees it. On its own it
+ * grants nothing; the middleware honours it only for the endministrator.
+ */
+export const VIEW_AS_COOKIE = 'view_as';
+export const viewAsCookieOptions = () => ({ httpOnly: false, secure: secureCookies(), sameSite: 'lax' as const, path: '/' });

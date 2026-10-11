@@ -60,8 +60,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (session?.renewedUntil) {
     context.cookies.set(sessionCookieName(), context.cookies.get(sessionCookieName())!.value, sessionCookieOptions(session.renewedUntil));
   }
-  context.locals.user = session?.user;
-  context.locals.viewer = { role: session?.user.role ?? 'guest' };
+  // "Browse as a guest": outside the management area the endministrator is
+  // treated exactly like someone who is not signed in.
+  const asGuest = session?.user.role === 'endmin' && !isManagement(pathname) && context.cookies.get('view_as')?.value === 'guest';
+  context.locals.user = asGuest ? undefined : session?.user;
+  context.locals.viewer = { role: asGuest ? 'guest' : (session?.user.role ?? 'guest') };
 
   // The management area does not exist as far as anyone else can tell.
   if (isManagement(pathname) && session?.user.role !== 'endmin') return notFound();
