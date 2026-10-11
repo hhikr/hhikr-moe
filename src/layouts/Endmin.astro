@@ -21,14 +21,13 @@ const backupProblems = backupStatus().warnings.filter((w) => w.level === 'red').
 const sections = [
   { href: '/endmin/', label: '概览', en: 'Overview' },
   { href: '/endmin/posts/', label: '文章', en: 'Posts' },
+  { href: '/endmin/works/', label: '作品', en: 'Works' },
   { href: '/endmin/media/', label: '媒体', en: 'Media' },
   { href: '/endmin/comments/', label: '评论', en: 'Comments', badge: pending },
   { href: '/endmin/users/', label: '用户', en: 'Users' },
   { href: '/endmin/stats/', label: '统计', en: 'Stats' },
   { href: '/endmin/backup/', label: '备份', en: 'Backup', badge: backupProblems },
 ];
-// Parts of the plan that have no screen yet. Shown so the rail does not reshuffle later.
-const upcoming = ['文件'];
 const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
 ---
 
@@ -56,10 +55,6 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
               </li>
             ))
           }
-        </ul>
-        <p class="label em-later">尚未完成</p>
-        <ul class="em-soon">
-          {upcoming.map((name) => <li><span class="cjk">{name}</span></li>)}
         </ul>
       </nav>
 

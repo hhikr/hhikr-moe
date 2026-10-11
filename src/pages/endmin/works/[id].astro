@@ -1,0 +1,569 @@
+---
+// Edit one work: its page (saved with one button) and its versions and files
+// (each change takes effect at once).
+import Endmin from '@/layouts/Endmin.astro';
+import { fmtDate } from '@/lib/posts';
+import { listAllPosts } from '@/server/posts.ts';
+import { getProjectById, maxFileBytes, PROJECT_KINDS } from '@/server/projects.ts';
+import { formatBytes } from '@/server/system.ts';
+
+export const prerender = false;
+
+const work = getProjectById(Number(Astro.params.id));
+if (!work) return new Response(null, { status: 404 });
+
+const posts = listAllPosts().filter((p) => p.status === 'published');
+const data = {
+  id: work.id,
+  links: work.links,
+  images: work.images.map((i) => ({ id: i.id, url: i.url })),
+  coverMediaId: work.coverMediaId ?? null,
+  maxFileBytes: maxFileBytes(),
+};
+---
+
+<Endmin title={work.title} en="Work">
+  <div class="em-filters">
+    <a class="label" href="/endmin/works/">← 全部作品</a>
+    <span class={`em-state ${work.hidden ? 'hidden' : 'published'}`}>{work.hidden ? '隐藏' : '公开'}</span>
+    <span class="saved" data-saved role="status"></span>
+    <a class="em-btn view" href={`/works/${work.slug}/`} target="_blank" data-view>查看页面</a>
+    <button type="button" class="em-btn go" data-save>保存</button>
+  </div>
+
+  <form class="wk" data-form onsubmit="return false" novalidate>
+    <section class="em-panel">
+      <h2>基本信息</h2>
+      <div class="grid">
+        <label class="wide">
+          <span class="label">名称</span>
+          <input name="title" maxlength="120" value={work.title} />
+        </label>
+        <label>
+          <span class="label">地址</span>
+          <span class="slug"><span>/works/</span><input name="slug" maxlength="80" spellcheck="false" value={work.slug} /><span>/</span></span>
+        </label>
+        <label>
+          <span class="label">类型</span>
+          <select name="kind">
+            {Object.entries(PROJECT_KINDS).map(([key, name]) => <option value={key} selected={key === work.kind}>{name}</option>)}
+          </select>
+        </label>
+        <label class="wide">
+          <span class="label">一句话简介</span>
+          <textarea name="summary" rows="2" maxlength="300">{work.summary ?? ''}</textarea>
+        </label>
+        <label class="wide">
+          <span class="label">相关文章（页面上会有一个跳转到它的链接）</span>
+          <select name="postId">
+            <option value="">无</option>
+            {posts.map((p) => <option value={p.id} selected={p.id === work.postId}>{p.title}{p.hidden ? '（隐藏）' : ''}</option>)}
+          </select>
+        </label>
+        <label class="wide check">
+          <input name="public" type="checkbox" checked={!work.hidden} /> 公开（不勾选时只有你能看到这个作品和它的文件）
+        </label>
+      </div>
+    </section>
+
+    <section class="em-panel">
+      <h2>链接 <button type="button" class="em-btn" data-add-link>添加</button></h2>
+      <ul class="links" data-links></ul>
+      <p class="hint">例如源代码仓库、发布页、视频。只接受 http 或 https 地址。</p>
+    </section>
+
+    <section class="em-panel">
+      <h2>介绍 <button type="button" class="em-btn" data-insert-image>插入图片</button></h2>
+      <textarea class="desc" name="descriptionMd" rows="16" spellcheck="false" placeholder="用 Markdown 写。支持和文章一样的公式、提示框、代码高亮；可以直接粘贴或拖入图片。">{work.descriptionMd}</textarea>
+    </section>
+
+    <section class="em-panel">
+      <h2>图片 <button type="button" class="em-btn" data-add-images>上传</button></h2>
+      <ul class="shots" data-shots></ul>
+      <p class="hint">显示在页面的「图片」一栏。封面用于作品列表和页面顶部。</p>
+      <input type="file" accept="image/*" multiple hidden data-image-input />
+    </section>
+  </form>
+
+  <section class="em-panel versions">
+    <h2>版本与文件</h2>
+    <p class="hint">这里的操作立即生效，不需要点「保存」。单个文件上限 {formatBytes(maxFileBytes())}。</p>
+
+    <form class="new-version" data-new-version onsubmit="return false">
+      <input name="version" placeholder="新版本号，例如 1.0.0" maxlength="40" aria-label="新版本号" />
+      <textarea name="notesMd" rows="2" placeholder="这个版本改了什么（Markdown，可选）" aria-label="更新说明"></textarea>
+      <button type="submit" class="em-btn go">添加版本</button>
+    </form>
+
+    {
+      work.releases.length === 0 ? (
+        <p class="em-empty">还没有版本。先添加一个版本，再往里面上传文件。</p>
+      ) : (
+        work.releases.map((release, i) => (
+          <article class="version" data-release={release.id}>
+            <header>
+              <input name="version" value={release.version} maxlength="40" aria-label="版本号" />
+              <span class="label">{i === 0 ? '最新 · ' : ''}{fmtDate(release.createdAt)}</span>
+              <button type="button" class="em-btn" data-save-release>保存版本号和说明</button>
+              <button type="button" class="em-btn danger" data-api={`/api/endmin/releases/${release.id}`} data-method="DELETE" data-confirm={`删除版本 ${release.version} 和它的 ${release.files.length} 个文件？无法恢复。`}>
+                删除版本
+              </button>
+            </header>
+            <textarea name="notesMd" rows="3" placeholder="更新说明（Markdown，可选）" aria-label="更新说明">{release.notesMd}</textarea>
+            <ul class="em-rows">
+              {release.files.map((f) => (
+                <li>
+                  <div>
+                    <div class="fname">{f.filename}</div>
+                    <div class="em-meta">
+                      {f.note && <span>{f.note}</span>}
+                      <span>{formatBytes(f.size)}</span>
+                      <span>下载 {f.downloads.toLocaleString('zh-CN')}</span>
+                      <span title={f.sha256}>SHA-256 {f.sha256.slice(0, 12)}…</span>
+                    </div>
+                  </div>
+                  <div class="em-acts">
+                    <a class="em-btn" href={f.url}>下载</a>
+                    <button type="button" class="em-btn danger" data-api={`/api/endmin/assets/${f.id}`} data-method="DELETE" data-confirm={`删除 ${f.filename}？无法恢复。`}>
+                      删除
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div class="upload">
+              <input name="note" placeholder="文件说明（可选），例如「Windows 版」" maxlength="120" aria-label="文件说明" />
+              <button type="button" class="em-btn" data-upload-file>上传文件</button>
+              <input type="file" multiple hidden />
+              <progress max="1" value="0" hidden></progress>
+              <span class="label" data-upload-state></span>
+            </div>
+          </article>
+        ))
+      )
+    }
+  </section>
+
+  <script type="application/json" id="work-data" set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+</Endmin>
+
+<script>
+  import { api } from '@/scripts/account';
+
+  interface Link {
+    label: string;
+    url: string;
+  }
+  interface Shot {
+    id: number;
+    url: string;
+  }
+  const data = JSON.parse(document.getElementById('work-data')!.textContent!) as { id: number; links: Link[]; images: Shot[]; coverMediaId: number | null; maxFileBytes: number };
+  const form = document.querySelector<HTMLFormElement>('[data-form]')!;
+  const flash = document.querySelector<HTMLElement>('[data-flash]')!;
+  const savedNote = document.querySelector<HTMLElement>('[data-saved]')!;
+  const field = <T extends HTMLElement = HTMLInputElement>(name: string) => form.elements.namedItem(name) as unknown as T;
+  const desc = field<HTMLTextAreaElement>('descriptionMd');
+  let dirty = false;
+  const touch = () => {
+    dirty = true;
+    savedNote.textContent = '有未保存的修改';
+  };
+  const fail = (message: string) => {
+    flash.textContent = message;
+    flash.hidden = false;
+    flash.scrollIntoView({ block: 'center' });
+  };
+  form.addEventListener('input', touch);
+  addEventListener('beforeunload', (e) => dirty && e.preventDefault());
+
+  /* ---------- links ---------- */
+  const linkList = document.querySelector<HTMLElement>('[data-links]')!;
+  function addLinkRow(link: Link = { label: '', url: '' }) {
+    const li = document.createElement('li');
+    li.innerHTML = '<input placeholder="名称，例如 GitHub" maxlength="40" aria-label="链接名称"><input placeholder="https://…" maxlength="500" aria-label="链接地址" spellcheck="false"><button type="button" class="em-btn danger">移除</button>';
+    const [label, url] = li.querySelectorAll('input');
+    label.value = link.label;
+    url.value = link.url;
+    li.querySelector('button')!.addEventListener('click', () => (li.remove(), touch()));
+    linkList.append(li);
+  }
+  data.links.forEach(addLinkRow);
+  document.querySelector('[data-add-link]')!.addEventListener('click', () => addLinkRow());
+  const readLinks = (): Link[] =>
+    [...linkList.children].map((li) => {
+      const [label, url] = li.querySelectorAll('input');
+      return { label: label.value.trim(), url: url.value.trim() };
+    });
+
+  /* ---------- pictures ---------- */
+  const shotList = document.querySelector<HTMLElement>('[data-shots]')!;
+  let shots = data.images;
+  let cover = data.coverMediaId;
+  function drawShots() {
+    shotList.replaceChildren(
+      ...shots.map((shot, i) => {
+        const li = document.createElement('li');
+        li.classList.toggle('is-cover', shot.id === cover);
+        li.innerHTML = `<img alt="" loading="lazy"><div class="em-acts"><button type="button" class="em-btn" data-act="cover"></button><button type="button" class="em-btn" data-act="left" aria-label="前移">←</button><button type="button" class="em-btn" data-act="right" aria-label="后移">→</button><button type="button" class="em-btn danger" data-act="remove">移除</button></div>`;
+        li.querySelector('img')!.src = shot.url;
+        li.querySelector('[data-act="cover"]')!.textContent = shot.id === cover ? '封面 ✓' : '设为封面';
+        li.addEventListener('click', (e) => {
+          const act = (e.target as HTMLElement).closest<HTMLElement>('[data-act]')?.dataset.act;
+          if (!act) return;
+          if (act === 'cover') cover = cover === shot.id ? null : shot.id;
+          if (act === 'remove') {
+            shots = shots.filter((s) => s !== shot);
+            if (cover === shot.id) cover = null;
+          }
+          const to = act === 'left' ? i - 1 : act === 'right' ? i + 1 : -1;
+          if (to >= 0 && to < shots.length) [shots[i], shots[to]] = [shots[to], shots[i]];
+          touch();
+          drawShots();
+        });
+        return li;
+      }),
+    );
+  }
+  drawShots();
+
+  async function uploadImage(file: File): Promise<Shot | undefined> {
+    const res = await api(`/api/endmin/media?name=${encodeURIComponent(file.name || 'image.png')}`, file, 'POST');
+    if (!res.ok) return void fail(`${file.name}：${res.error.message}`);
+    if (!res.data.image) return void fail(`${file.name} 不是图片`);
+    return { id: res.data.id, url: res.data.url };
+  }
+  const imageInput = document.querySelector<HTMLInputElement>('[data-image-input]')!;
+  let imageTarget: 'gallery' | 'text' = 'gallery';
+  document.querySelector('[data-add-images]')!.addEventListener('click', () => ((imageTarget = 'gallery'), imageInput.click()));
+  document.querySelector('[data-insert-image]')!.addEventListener('click', () => ((imageTarget = 'text'), imageInput.click()));
+  function insertIntoText(text: string) {
+    desc.setRangeText(text, desc.selectionStart, desc.selectionEnd, 'end');
+    touch();
+  }
+  async function takeImages(files: File[], target: 'gallery' | 'text') {
+    for (const file of files) {
+      const shot = await uploadImage(file);
+      if (!shot) continue;
+      if (target === 'text') insertIntoText(`![](${shot.url})\n`);
+      else if (!shots.some((s) => s.id === shot.id)) shots.push(shot);
+    }
+    touch();
+    drawShots();
+  }
+  imageInput.addEventListener('change', async () => {
+    await takeImages([...(imageInput.files ?? [])], imageTarget);
+    imageInput.value = '';
+  });
+  // Pictures pasted or dropped into the text are uploaded and referenced where the cursor is.
+  const imagesIn = (list: DataTransfer | null) => [...(list?.files ?? [])].filter((f) => f.type.startsWith('image/'));
+  desc.addEventListener('paste', (e) => {
+    const files = imagesIn(e.clipboardData);
+    if (files.length) (e.preventDefault(), void takeImages(files, 'text'));
+  });
+  desc.addEventListener('drop', (e) => {
+    const files = imagesIn(e.dataTransfer);
+    if (files.length) (e.preventDefault(), void takeImages(files, 'text'));
+  });
+
+  /* ---------- save ---------- */
+  async function save(): Promise<boolean> {
+    const res = await api(
+      `/api/endmin/works/${data.id}`,
+      {
+        title: field('title').value,
+        slug: field('slug').value,
+        kind: field<HTMLSelectElement>('kind').value,
+        summary: field<HTMLTextAreaElement>('summary').value,
+        postId: Number(field<HTMLSelectElement>('postId').value) || null,
+        hidden: !field('public').checked,
+        descriptionMd: desc.value,
+        links: readLinks(),
+        imageIds: shots.map((s) => s.id),
+        coverMediaId: cover,
+      },
+      'PUT',
+    );
+    if (!res.ok) return fail(res.error.message), false;
+    dirty = false;
+    flash.hidden = true;
+    savedNote.textContent = '已保存';
+    document.querySelector<HTMLAnchorElement>('[data-view]')!.href = `/works/${res.data.slug}/`;
+    return true;
+  }
+  document.querySelector('[data-save]')!.addEventListener('click', async () => {
+    // Reload so the title, state badge and address shown around the form are current.
+    if (await save()) location.reload();
+  });
+  /** Version changes reload the page; keep what is in the form by saving it first. */
+  const saveIfDirty = async () => !dirty || (await save());
+  // The shared handler for buttons with data-api (delete version, delete file) reloads as well.
+  document.addEventListener(
+    'click',
+    (e) => {
+      if (dirty && (e.target as HTMLElement).closest('.versions button[data-api]')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        fail('页面上方还有未保存的修改，请先点「保存」再删除版本或文件。');
+      }
+    },
+    true,
+  );
+
+  /* ---------- versions ---------- */
+  const newVersion = document.querySelector<HTMLFormElement>('[data-new-version]')!;
+  newVersion.addEventListener('submit', async () => {
+    if (!(await saveIfDirty())) return;
+    const values = Object.fromEntries(new FormData(newVersion));
+    const res = await api(`/api/endmin/works/${data.id}/releases`, values);
+    if (res.ok) location.reload();
+    else fail(res.error.message);
+  });
+
+  for (const card of document.querySelectorAll<HTMLElement>('[data-release]')) {
+    const id = card.dataset.release!;
+    const input = (name: string) => card.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`)!;
+    card.querySelector('[data-save-release]')!.addEventListener('click', async () => {
+      if (!(await saveIfDirty())) return;
+      const res = await api(`/api/endmin/releases/${id}`, { version: input('version').value, notesMd: input('notesMd').value }, 'PATCH');
+      if (res.ok) location.reload();
+      else fail(res.error.message);
+    });
+
+    const picker = card.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const bar = card.querySelector('progress')!;
+    const state = card.querySelector<HTMLElement>('[data-upload-state]')!;
+    card.querySelector('[data-upload-file]')!.addEventListener('click', () => picker.click());
+    // Plain XMLHttpRequest, because it reports how much has been sent.
+    const send = (file: File) =>
+      new Promise<string | undefined>((resolve) => {
+        const xhr = new XMLHttpRequest();
+        const query = new URLSearchParams({ releaseId: id, name: file.name, note: input('note').value });
+        xhr.open('PUT', `/api/endmin/assets?${query}`);
+        xhr.upload.addEventListener('progress', (e) => {
+          bar.value = e.loaded / e.total;
+          state.textContent = `${file.name} · ${Math.round((e.loaded / e.total) * 100)}%`;
+        });
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 201) return resolve(undefined);
+          let message = '上传失败';
+          try {
+            message = JSON.parse(xhr.responseText).error.message;
+          } catch {}
+          resolve(`${file.name}：${message}`);
+        });
+        xhr.addEventListener('error', () => resolve(`${file.name}：网络连接中断`));
+        xhr.send(file);
+      });
+    picker.addEventListener('change', async () => {
+      if (!(await saveIfDirty())) return;
+      const files = [...(picker.files ?? [])];
+      const tooBig = files.find((f) => f.size > data.maxFileBytes);
+      if (tooBig) return fail(`${tooBig.name} 超过了单个文件的上限`);
+      bar.hidden = false;
+      const problems: string[] = [];
+      for (const file of files) {
+        const problem = await send(file);
+        if (problem) problems.push(problem);
+      }
+      if (problems.length === 0) return location.reload();
+      bar.hidden = true;
+      state.textContent = '';
+      fail(problems.join('；'));
+    });
+  }
+</script>
+
+<style>
+  .saved {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--ink-3);
+  }
+
+  .wk .em-panel,
+  .versions {
+    padding-top: 1.75rem;
+  }
+
+  .em-panel h2 .em-btn {
+    margin-left: auto;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .grid label {
+    display: grid;
+    gap: 0.3rem;
+    align-content: start;
+  }
+
+  .wide {
+    grid-column: 1 / -1;
+  }
+
+  .check {
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ink-2);
+  }
+
+  :is(.wk, .versions) :is(input:not([type='checkbox']), select, textarea) {
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+  }
+
+  :is(.wk, .versions) :is(input, select, textarea):focus-visible {
+    outline: 2px solid var(--sky);
+    outline-offset: 1px;
+  }
+
+  .slug {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--ink-3);
+  }
+
+  .hint {
+    margin: 0.6rem 0 0;
+    color: var(--ink-3);
+    font-size: 0.85rem;
+  }
+
+  .desc,
+  .versions textarea {
+    font-family: var(--font-mono) !important;
+    font-size: 0.86rem !important;
+    line-height: 1.7;
+    resize: vertical;
+  }
+
+  .links {
+    display: grid;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 1rem 0 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .links :global(li) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+    gap: 0.5rem;
+  }
+
+  .shots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    gap: 1rem;
+    list-style: none;
+    margin: 0;
+    padding: 1rem 0 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .shots :global(img) {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+  }
+
+  .shots :global(.is-cover img) {
+    outline: 2px solid var(--sky);
+    outline-offset: 2px;
+  }
+
+  .shots :global(.em-acts) {
+    justify-content: flex-start;
+    margin-top: 0.4rem;
+  }
+
+  .new-version {
+    display: grid;
+    grid-template-columns: minmax(0, 14rem) minmax(0, 1fr) auto;
+    gap: 0.6rem;
+    align-items: start;
+    margin-top: 1rem;
+    padding: 1rem 0;
+    border-block: 1px solid var(--rule);
+  }
+
+  .version {
+    margin-top: 1.5rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+  }
+
+  .version header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .version header input {
+    width: 11rem;
+    font-family: var(--font-mono);
+  }
+
+  .version header .label {
+    margin-right: auto;
+  }
+
+  .version .em-rows {
+    margin-top: 0.75rem;
+  }
+
+  .fname {
+    font-family: var(--font-mono);
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+  }
+
+  .upload {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.9rem;
+  }
+
+  .upload input[name='note'] {
+    width: min(100%, 20rem);
+  }
+
+  .upload progress {
+    width: 10rem;
+    accent-color: var(--sky);
+  }
+
+  @media (max-width: 700px) {
+    .grid,
+    .new-version,
+    .links :global(li) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

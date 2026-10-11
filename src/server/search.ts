@@ -1,10 +1,11 @@
 // Full-text search index, built at runtime because posts are no longer part
-// of the static build. The index holds the prerendered pages plus every post a
-// guest can read; hidden posts and drafts are never indexed.
+// of the static build. The index holds the prerendered pages plus every post
+// and work a guest can open; hidden ones and drafts are never indexed.
 import fs from 'node:fs';
 import * as pagefind from 'pagefind';
 import { dataPath } from './config.ts';
 import { GUEST, listPosts } from './posts.ts';
+import { listProjects } from './projects.ts';
 
 export interface SearchIndexResult {
   pages: number;
@@ -24,8 +25,8 @@ export async function rebuildSearchIndex(origin: string, clientDir: string): Pro
     if (dir.errors.length) throw new Error(`pagefind: ${dir.errors.join('; ')}`);
 
     const posts = listPosts(GUEST);
-    for (const post of posts) {
-      const url = `/posts/${post.slug}/`;
+    const urls = [...posts.map((post) => `/posts/${post.slug}/`), ...listProjects(GUEST).map((work) => `/works/${work.slug}/`)];
+    for (const url of urls) {
       // Fetch the page exactly as a guest receives it.
       const res = await fetch(new URL(url, origin));
       if (!res.ok) throw new Error(`${url} answered ${res.status}`);

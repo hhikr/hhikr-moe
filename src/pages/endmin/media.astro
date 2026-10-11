@@ -34,8 +34,8 @@ const unused = media.filter((m) => m.usedBy.length === 0).length;
               <span>{formatBytes(m.size)}</span>
             </p>
             <p class="em-meta">
-              {m.usedBy.length === 0 ? <span>未使用</span> : m.usedBy.slice(0, 2).map((p) => <a href={`/endmin/posts/${p.id}/`}>{p.title}</a>)}
-              {m.usedBy.length > 2 && <span>等 {m.usedBy.length} 篇</span>}
+              {m.usedBy.length === 0 ? <span>未使用</span> : m.usedBy.slice(0, 2).map((p) => <a href={p.href}>{p.title}</a>)}
+              {m.usedBy.length > 2 && <span>等 {m.usedBy.length} 处</span>}
             </p>
             <div class="em-acts">
               <button type="button" class="em-btn" data-copy={isRaster(m) ? `![](${m.url})` : `[${m.filename}](${m.url})`}>复制引用</button>

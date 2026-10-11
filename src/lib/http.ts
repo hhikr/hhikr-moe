@@ -3,6 +3,7 @@ import type { APIContext } from 'astro';
 import { AuthError } from '@/server/auth.ts';
 import { CommentError } from '@/server/comments.ts';
 import { secureCookies, siteOrigin } from '@/server/config.ts';
+import { ProjectError } from '@/server/projects.ts';
 import { sessionCookieName, sessionCookieOptions, startSession } from '@/server/sessions.ts';
 import type { User } from '@/server/users.ts';
 
@@ -18,6 +19,7 @@ export const fail = (code: string, message: string, status = 400) => json({ erro
 export function failFrom(err: unknown): Response {
   if (err instanceof AuthError) return fail(err.code, err.message, err.status);
   if (err instanceof CommentError) return fail('invalid', err.message, err.status);
+  if (err instanceof ProjectError) return fail('invalid', err.message, err.status);
   console.error(err);
   return fail('server_error', '服务器出了点问题，请稍后再试', 500);
 }

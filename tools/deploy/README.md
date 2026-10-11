@@ -193,7 +193,7 @@ ssh -i $env:USERPROFILE\.ssh\hhikr_vps -p 17648 root@89.34.227.228 "sed -i 's/\r
 
 重启服务的一两秒内，Caddy 会让请求等待（`lb_try_duration 5s`）而不是报错。只改静态文件也要走这套流程。不要往当前目录直接覆盖上传。
 
-发布后至少检查首页、一篇文章及其图片、`/hot100/206/`、`/api/health`、`/pagefind/pagefind.js`，以及一个不存在的地址返回 404。
+发布后至少检查首页、一篇公开的文章（如 `/posts/building-website/`）及其图片、`/works/`、`/hot100/206/`、`/api/health`、`/pagefind/pagefind.js`，以及一个不存在的地址返回 404。
 
 ### 数据目录
 
@@ -203,6 +203,8 @@ ssh -i $env:USERPROFILE\.ssh\hhikr_vps -p 17648 root@89.34.227.228 "sed -i 's/\r
 | --- | --- |
 | `site.db`（及 `-wal`、`-shm`） | SQLite 数据库：文章、账号、评论和访问统计。启动时自动执行未执行过的结构迁移，迁移前会留一份 `site.db.before-<迁移名>` |
 | `media/` | 文章图片和封面，按内容哈希存放，Caddy 直接从这里提供 `/media/*` |
+| `files/` | 作品的可下载文件，按内容哈希存放（`files/<前两位>/<哈希>`），由 Node 服务通过 `/dl/…` 发送。单个上限默认 1.9 GiB，可在环境变量文件里用 `MAX_FILE_BYTES` 调整 |
+| `tmp/` | 上传过程中的临时文件，完成或失败后即删除。服务异常中断后这里可能有残留，可以直接清空 |
 | `avatars/` | 用户头像，由服务端重新编码成 256×256 的 WebP，Caddy 直接从这里提供 `/avatars/*` |
 | `pagefind/` | 搜索索引，Caddy 直接从这里提供 `/pagefind/*`。发布时重建；在管理面板里发布、撤回或隐藏文章后约 15 秒由服务自己重建 |
 
