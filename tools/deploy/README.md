@@ -225,6 +225,7 @@ runuser -u hhikr-web -- sh -c "umask 027; set -a; . /etc/hhikr-web/env; set +a; 
 | `SITE_ORIGIN` | `https://hhikr.moe`。决定 Cookie 是否带 `Secure`、请求来源校验和 Google 回调地址 |
 | `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET` | Google 登录。本机副本在 `.deployment/google-oauth.json` |
 | `ENDMIN_GOOGLE_EMAIL` | 首次用这个 Google 账号登录的人成为 endministrator；绑定之后只认 Google 账号编号，这一项不再起作用 |
+| `BACKUP_REPO`、`BACKUP_GITHUB_TOKEN` | 备份仓库和只对它有效的访问令牌，见 8a 节 |
 | `SECRET_KEY` | 签名和哈希用的密钥，在服务器上生成，只存在于这个文件。丢失或更换后，尚未使用的验证挑战和限速记录失效，已登录的会话不受影响 |
 
 Google 无法访问时，生成一个五分钟内有效、只能用一次的 endministrator 登录链接：
@@ -266,7 +267,56 @@ systemctl reload caddy
 
 分别保留源码与 lockfile、服务器发布目录和 Caddyfile、DNS 快照，以及私密凭据和代理配置。证书状态含私钥，不应复制到公开目录。服务器重建时按第 3—5 节恢复网站，再单独恢复代理。
 
-旧发布目录方便回滚，但同一台 VPS 上的副本不能代替离线备份。本文没有配置自动异地备份。
+旧发布目录方便回滚，但同一台 VPS 上的副本不能代替异地备份。异地备份见下一节。
+
+## 8a. 备份到 GitHub 与恢复
+
+每天新加坡时间凌晨 4 点，`hhikr-backup.timer` 运行 `node scripts/backup.mjs`，把数据备份到 GitHub 上的**私有**仓库（`/etc/hhikr-web/env` 里的 `BACKUP_REPO`）。管理面板的「备份」页显示状态和警告，也可以手动触发。
+
+| 内容 | 去向 |
+| --- | --- |
+| 数据库 | 导出为文本 `export/db.sql` 后进 git。登录会话、限速记录、一次性链接、当天的访客标记、备份运行记录这几张表只导出结构，不导出数据 |
+| 每篇文章 | 另存一份带 front matter 的 `export/posts/<地址>.md`，便于在 GitHub 上看修改历史 |
+| `media/`、`avatars/` 中不超过 50 MB 的文件 | git |
+| 超过 50 MB 的媒体文件、`files/` 下的全部文件 | 备份仓库的 Release 附件，按月一个 Release（`blobs-YYYY-MM`），附件名是文件的 SHA-256；对应关系记在数据库的 `backup_blobs` 表里 |
+| 数据库文件本身、搜索索引、`tmp/`、`apps/` | 不备份，都能重建 |
+
+做法上的几点：
+
+- 备份仓库的 git 目录是 `/srv/hhikr/backup.git`，工作目录就是 `/srv/hhikr/data`，所以文件不会在磁盘上多存一份。数据目录里的 `export/` 和 `.gitattributes` 是备份生成的，不要删。
+- 访问令牌是只对备份仓库有效的细粒度令牌（Contents 读写），存在 `/etc/hhikr-web/env` 的 `BACKUP_GITHUB_TOKEN`。它只通过环境变量传给 git，不写进仓库配置。更换令牌：把新令牌存成服务器上的一个文件，执行 `sh setup-backup.sh <所有者/仓库> <令牌文件>`，脚本写入后会删除该文件并重启服务。
+- **每次备份先向 GitHub 确认仓库是私有的，不是就停止**，因为备份里有密码哈希、草稿和隐藏文章。不要把备份仓库改成公开。
+- 首次配置用 [setup-backup.sh](setup-backup.sh)（安装 git、建目录、写环境变量、安装 [hhikr-backup.service](hhikr-backup.service) 和 [hhikr-backup.timer](hhikr-backup.timer)），需要先把这两个单元文件和 [hhikr-web.service](hhikr-web.service) 上传到 `/root/`。
+
+手动备份和查看结果：
+
+```sh
+systemctl start hhikr-backup.service
+journalctl -u hhikr-backup.service -n 20 --no-pager
+systemctl list-timers hhikr-backup.timer
+```
+
+### 恢复
+
+在一台装好 Node.js、git 并解压了网站发布包的机器上（新服务器按第 7 节和 `setup-web.sh` 准备）：
+
+```sh
+# 1. 把备份仓库克隆成新的数据目录（克隆时需要能读该私有仓库的凭据）
+git clone https://github.com/<所有者>/<备份仓库>.git /srv/hhikr/data
+
+# 2. 从导出文件重建数据库，并把 Release 附件下载回原位置，逐个核对 SHA-256
+cd /srv/hhikr/app/current
+BACKUP_REPO=<所有者>/<备份仓库> BACKUP_GITHUB_TOKEN=<令牌> node scripts/restore.mjs /srv/hhikr/data
+
+# 3. 交给服务账号，启动，重建搜索索引
+chown -R hhikr-web:hhikr-web /srv/hhikr/data && chmod 750 /srv/hhikr/data
+systemctl restart hhikr-web
+runuser -u hhikr-web -- sh -c "umask 027; set -a; . /etc/hhikr-web/env; set +a; cd /srv/hhikr/app/current && node scripts/rebuild-search.mjs"
+```
+
+`restore.mjs` 只接受还没有 `site.db` 的目录，不会覆盖现有数据库。恢复后所有人需要重新登录（会话不备份）；`/etc/hhikr-web/env` 不在备份里，其中的 Google 密钥在本机 `.deployment/`，`SECRET_KEY` 可以重新生成。要继续用恢复出来的目录做备份，把其中的 `.git` 移到 `/srv/hhikr/backup.git`。
+
+10 月 11 日按这个流程演练过一次：克隆到空目录，重建出的数据库与线上逐表一致，媒体文件内容一致，两个测试附件（60 MB 和 110 MB）下载后哈希相符，用恢复出的目录启动的第二个网站实例可以正常打开文章、图片、RSS 和站点地图，并能重建搜索索引。
 
 ## 9. 故障定位与功能边界
 

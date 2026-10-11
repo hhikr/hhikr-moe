@@ -1,0 +1,19 @@
+[Unit]
+Description=hhikr.moe backup to the private GitHub repository
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hhikr-web
+Group=hhikr-web
+WorkingDirectory=/srv/hhikr/app/current
+EnvironmentFile=/etc/hhikr-web/env
+ExecStart=/usr/local/bin/node scripts/backup.mjs
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/srv/hhikr/data /srv/hhikr/backup.git
+UMask=0027
+TimeoutStartSec=2h

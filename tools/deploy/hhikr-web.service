@@ -14,7 +14,9 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/srv/hhikr/data
+# backup.git is the backup repository's git directory; a backup started from
+# the management area runs inside this service.
+ReadWritePaths=/srv/hhikr/data /srv/hhikr/backup.git
 # Data files are readable by the hhikr-web group (which Caddy belongs to) and nobody else.
 UMask=0027
 MemoryMax=1G

@@ -1,6 +1,7 @@
 ---
 import Endmin from '@/layouts/Endmin.astro';
 import { fmtDate } from '@/lib/posts';
+import { backupStatus } from '@/server/backup.ts';
 import { commentCounts, listAllComments } from '@/server/comments.ts';
 import { listAllPosts } from '@/server/posts.ts';
 import { statsReport } from '@/server/stats.ts';
@@ -17,6 +18,8 @@ const comments = commentCounts();
 const recent = listAllComments(5);
 const users = listUsers().filter((u) => u.role !== 'endmin');
 const sys = systemStatus();
+const backup = backupStatus();
+const backupRed = backup.warnings.filter((w) => w.level === 'red').length;
 const visits = statsReport(30);
 const lastWeek = visits.series.slice(-7);
 const today = visits.series[visits.series.length - 1];
@@ -153,8 +156,11 @@ const tiles = [
           <dd class:list={{ warn: !sys.searchIndexedAt }}>{sys.searchIndexedAt ? `更新于 ${when.format(sys.searchIndexedAt)}` : '尚未建立'}</dd>
         </div>
         <div>
-          <dt>备份</dt>
-          <dd class="warn">尚未配置</dd>
+          <dt><a href="/endmin/backup/">备份</a></dt>
+          <dd class:list={{ warn: backupRed > 0 || !backup.lastOk }}>
+            {!backup.configured ? '尚未配置' : backup.running ? '正在备份…' : backup.lastOk ? `上次成功 ${when.format(new Date(backup.lastOk.startedAt))}` : '还没有成功过'}
+            {backupRed > 0 && ` · ${backupRed} 个问题`}
+          </dd>
         </div>
         <div>
           <dt>已运行</dt>

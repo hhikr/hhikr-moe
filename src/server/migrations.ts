@@ -179,4 +179,32 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       ) WITHOUT ROWID;
     `,
   },
+  {
+    id: '005_backup',
+    sql: `
+      CREATE TABLE backup_runs (
+        id INTEGER PRIMARY KEY,
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
+        ok INTEGER,
+        -- Whether this run found anything new to commit.
+        committed INTEGER NOT NULL DEFAULT 0,
+        uploaded INTEGER NOT NULL DEFAULT 0,
+        repo_bytes INTEGER,
+        warnings_json TEXT NOT NULL DEFAULT '[]',
+        error TEXT
+      );
+
+      -- Files kept as release attachments instead of in git, by their place
+      -- in the data directory. The attachment is named after the SHA-256.
+      CREATE TABLE backup_blobs (
+        path TEXT PRIMARY KEY,
+        sha256 TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        release_tag TEXT NOT NULL,
+        asset_id INTEGER NOT NULL,
+        uploaded_at TEXT NOT NULL
+      );
+    `,
+  },
 ];
