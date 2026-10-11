@@ -296,3 +296,22 @@ if (tocLinks.length) {
     })
     .catch(() => {});
 }
+/* ---------- forms handled entirely by script never navigate ---------- */
+document.addEventListener('submit', (e) => {
+  if ((e.target as HTMLElement).matches('form[data-scripted]')) e.preventDefault();
+});
+
+/* ---------- browsing as a guest ---------- */
+// The endministrator browsing as a guest gets a way back. The cookie is only a
+// marker; the server decides what it means.
+if (document.cookie.split('; ').includes('view_as=guest')) {
+  const bar = document.createElement('button');
+  bar.type = 'button';
+  bar.className = 'view-as-bar';
+  bar.textContent = '正在以游客视角浏览 · 退出';
+  bar.addEventListener('click', async () => {
+    await fetch('/api/endmin/view-as', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"guest":false}' });
+    location.assign('/endmin/');
+  });
+  document.body.append(bar);
+}

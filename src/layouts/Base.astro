@@ -3,6 +3,7 @@ import '@/styles/global.css';
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
 import Search from '@/components/Search.astro';
+import { CSP_META, THEME_SCRIPT } from '@/lib/csp';
 import { AUTHOR, SITE } from '@/site.config';
 
 interface Props {
@@ -42,6 +43,7 @@ const jsonLd = {
 <html lang="zh-CN" data-theme="light" data-theme-pref="auto">
   <head>
     <meta charset="utf-8" />
+    {import.meta.env.PROD && <meta http-equiv="Content-Security-Policy" content={CSP_META} />}
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
@@ -70,18 +72,7 @@ const jsonLd = {
     <meta name="twitter:card" content="summary_large_image" />
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
-    <script is:inline>
-      (() => {
-        let pref = 'auto';
-        try {
-          pref = localStorage.getItem('theme') || 'auto';
-        } catch {}
-        const dark = pref === 'dark' || (pref === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-        const root = document.documentElement;
-        root.dataset.theme = dark ? 'dark' : 'light';
-        root.dataset.themePref = pref;
-      })();
-    </script>
+    <script is:inline set:html={THEME_SCRIPT} />
 
     <slot name="head" />
   </head>
@@ -95,21 +86,6 @@ const jsonLd = {
     <Search />
     <script>
       import '@/scripts/site.ts';
-    </script>
-    <script is:inline>
-      // The endministrator browsing as a guest gets a way back. The cookie is
-      // only a marker; the server decides what it means.
-      if (document.cookie.split('; ').includes('view_as=guest')) {
-        const bar = document.createElement('button');
-        bar.type = 'button';
-        bar.className = 'view-as-bar';
-        bar.textContent = '正在以游客视角浏览 · 退出';
-        bar.addEventListener('click', async () => {
-          await fetch('/api/endmin/view-as', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"guest":false}' });
-          location.assign('/endmin/');
-        });
-        document.body.append(bar);
-      }
     </script>
   </body>
 </html>
