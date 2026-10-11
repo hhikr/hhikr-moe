@@ -7,7 +7,7 @@ const lessons = Object.keys(import.meta.glob('../pages/hot100/*.astro'))
   .filter((id): id is string => !!id)
   .sort((a, b) => Number(a) - Number(b));
 
-const STATIC = ['/', '/about/', '/posts/', '/tags/', '/categories/', '/series/', '/hot100/', ...lessons.map((id) => `/hot100/${id}/`)];
+const STATIC = ['/', '/about/', '/privacy/', '/posts/', '/tags/', '/categories/', '/series/', '/hot100/', ...lessons.map((id) => `/hot100/${id}/`)];
 
 /** Every public address. Hidden posts and drafts are never listed. */
 export function sitemapEntries(): { loc: string; lastmod?: Date }[] {
