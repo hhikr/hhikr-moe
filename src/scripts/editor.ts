@@ -5,6 +5,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import { basicSetup } from 'codemirror';
+import { diffLines, diffStats, withContext, type DiffLine } from '@/lib/diff';
 import { api } from './account';
 
 interface Fields {
@@ -211,6 +212,8 @@ document.addEventListener('click', async (e) => {
     changed();
     return;
   }
+  if (action === 'compare') return openDiff(button.dataset.id!);
+  if (action === 'diff-close') return diffDialog.close();
   if (action === 'today') {
     field('updatedAt').value = toLocal(new Date().toISOString());
     return changed();
@@ -225,6 +228,97 @@ document.addEventListener('click', async (e) => {
 });
 
 form.addEventListener('input', changed);
+
+/* ---------- comparing versions ---------- */
+type Version = { fields: Fields; sourceMd: string };
+
+const diffDialog = $<HTMLDialogElement>('[data-diff]');
+const diffAgainst = $<HTMLSelectElement>('[data-diff-against]');
+let diffRevision = '';
+
+const node = (tag: string, className: string, ...children: (Node | string)[]) => {
+  const n = document.createElement(tag);
+  if (className) n.className = className;
+  n.append(...children);
+  return n;
+};
+
+const FIELD_LABELS: [keyof Fields, string][] = [
+  ['title', '标题'],
+  ['slug', '地址'],
+  ['summary', '摘要'],
+  ['category', '分类'],
+  ['tags', '标签'],
+  ['series', '合订本'],
+  ['seriesOrder', '合订本顺序'],
+  ['publishedAt', '发布时间'],
+  ['updatedAt', '更新时间'],
+  ['hidden', '隐藏'],
+  ['pinned', '置顶'],
+  ['commentsEnabled', '允许评论'],
+  ['coverMediaId', '封面'],
+];
+const shown = (key: keyof Fields, value: unknown) => {
+  if (value === undefined || value === null || value === '') return '（无）';
+  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (Array.isArray(value)) return value.join('、') || '（无）';
+  if (key === 'publishedAt' || key === 'updatedAt') return toLocal(String(value)).replace('T', ' ');
+  if (key === 'coverMediaId') return `图片 #${value}`;
+  return String(value);
+};
+
+function diffRow(line: DiffLine) {
+  const text = node('span', 'text');
+  if (line.parts) text.append(...line.parts.map((p) => (p.op === 'same' ? p.text : node('mark', '', p.text))));
+  else text.textContent = line.text;
+  const sign = line.op === 'add' ? '+' : line.op === 'del' ? '−' : '';
+  return node('div', `row ${line.op}`, node('span', 'n', String(line.before ?? '')), node('span', 'n', String(line.after ?? '')), node('span', 'sign', sign), text);
+}
+
+function showDiff(before: Version, after: Version, beforeName: string, afterName: string) {
+  const lines = diffLines(before.sourceMd, after.sourceMd);
+  const stats = diffStats(lines);
+  $('[data-diff-sides]').textContent = `${beforeName} → ${afterName}`;
+  $('[data-diff-stats]').replaceChildren(node('span', 'plus', `+${stats.added} 行`), node('span', 'minus', `−${stats.removed} 行`));
+
+  // Compared as displayed: the form keeps times to the minute, stored ones have seconds.
+  const fields = FIELD_LABELS.filter(([key]) => shown(key, before.fields[key]) !== shown(key, after.fields[key]));
+  $('[data-diff-fields]').replaceChildren(
+    ...fields.map(([key, label]) => node('li', '', node('span', 'label', label), node('del', '', shown(key, before.fields[key])), '→', node('ins', '', shown(key, after.fields[key])))),
+  );
+
+  const body = $('[data-diff-body]');
+  if (stats.added + stats.removed === 0) return body.replaceChildren(node('p', 'none', fields.length ? '正文没有变化。' : '两个版本完全相同。'));
+  body.replaceChildren(...withContext(lines).map((item) => (typeof item === 'number' ? node('p', 'gap', `… ${item} 行没有变化 …`) : diffRow(item))));
+  body.scrollTop = 0;
+}
+
+async function loadDiff() {
+  const row = $(`[data-revision="${diffRevision}"]`);
+  const older = row.nextElementSibling as HTMLElement | null;
+  const fetchRevision = async (id: string) => {
+    const res = await api<Version>(`/api/endmin/posts/${data.id}/revisions/${id}`);
+    if (!res.ok) throw new Error(res.error.message);
+    return res.data;
+  };
+  try {
+    const revision = await fetchRevision(diffRevision);
+    const name = `${row.dataset.when} 的版本`;
+    if (diffAgainst.value === 'current') return showDiff(revision, { fields: collect(), sourceMd: source() }, name, '编辑器里现在的内容');
+    if (!older) return showDiff({ fields: revision.fields, sourceMd: '' }, revision, '（这是最早的版本，之前没有内容）', name);
+    showDiff(await fetchRevision(older.dataset.revision!), revision, `${older.dataset.when} 的版本`, name);
+  } catch (err) {
+    $('[data-diff-body]').replaceChildren(node('p', 'none', err instanceof Error ? err.message : '载入失败'));
+  }
+}
+
+function openDiff(revisionId: string) {
+  diffRevision = revisionId;
+  diffAgainst.value = 'current';
+  if (!diffDialog.open) diffDialog.showModal();
+  loadDiff();
+}
+diffAgainst.addEventListener('change', loadDiff);
 
 /* ---------- uploads ---------- */
 async function upload(file: File, cover = false) {
