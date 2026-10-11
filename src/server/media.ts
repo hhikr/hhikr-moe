@@ -143,7 +143,8 @@ const ATTACHMENTS = new Set(['pdf', 'zip', 'txt', 'md', 'csv', 'json', 'java', '
 export async function ingestUpload(filename: string, body: Buffer): Promise<Media> {
   if (body.length === 0) throw new Error('没有收到文件');
   if (body.length > MAX_MEDIA_BYTES) throw new Error('文件太大了（上限 50 MB）');
-  const base = path.basename(filename).replace(/[\x00-\x1f<>:"/\\|?*]/g, '_').slice(-120) || 'file';
+  // The name comes from the uploader's machine, so both kinds of separator count.
+  const base = (filename.split(/[\\/]/).pop() ?? '').replace(/[\x00-\x1f<>:"/\\|?*]/g, '_').slice(-120) || 'file';
   const ext = path.extname(base).slice(1).toLowerCase();
   if (RASTER.has(ext)) {
     try {
