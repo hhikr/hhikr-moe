@@ -80,7 +80,7 @@ const tiles = [
               {drafts.map((p) => (
                 <li>
                   <div>
-                    <div class="t">{p.title}</div>
+                    <div class="t"><a href={`/endmin/posts/${p.id}/`}>{p.title}</a></div>
                     <div class="em-meta">
                       <span>{p.slug}</span>
                       <span>{p.words.toLocaleString('zh-CN')} 字</span>
@@ -88,6 +88,7 @@ const tiles = [
                     </div>
                   </div>
                   <div class="em-acts">
+                    <a class="em-btn" href={`/endmin/posts/${p.id}/`}>编辑</a>
                     <button class="em-btn go" data-api={`/api/endmin/posts/${p.id}`} data-body='{"status":"published"}' data-confirm={`发布「${p.title}」？所有人都能看到它。`}>
                       发布
                     </button>

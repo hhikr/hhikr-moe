@@ -96,10 +96,46 @@ const jsonLd = {
     <script>
       import '@/scripts/site.ts';
     </script>
+    <script is:inline>
+      // The endministrator browsing as a guest gets a way back. The cookie is
+      // only a marker; the server decides what it means.
+      if (document.cookie.split('; ').includes('view_as=guest')) {
+        const bar = document.createElement('button');
+        bar.type = 'button';
+        bar.className = 'view-as-bar';
+        bar.textContent = '正在以游客视角浏览 · 退出';
+        bar.addEventListener('click', async () => {
+          await fetch('/api/endmin/view-as', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"guest":false}' });
+          location.assign('/endmin/');
+        });
+        document.body.append(bar);
+      }
+    </script>
   </body>
 </html>
 
 <style is:global>
+  .view-as-bar {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 300;
+    padding: 0.55rem 1rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    box-shadow: 4px 4px 0 var(--sky-soft);
+    cursor: pointer;
+  }
+
+  .view-as-bar:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
   .skip {
     position: absolute;
     left: 1rem;

@@ -1,0 +1,389 @@
+---
+// One article, laid out in full. Used by the public post page and by the
+// endministrator's preview of unpublished work.
+import '@/styles/prose.css';
+import Base from '@/layouts/Base.astro';
+import Toc from '@/components/Toc.astro';
+import SeriesNav from '@/components/SeriesNav.astro';
+import Comments from '@/components/Comments.astro';
+import Icon from '@/components/Icon.astro';
+import { categoryOf, categoryUrl, fmtDate, postUrl, relatedPosts, tagUrl, type Post, type PostWithBody } from '@/lib/posts';
+
+interface Props {
+  post: PostWithBody;
+  /** The posts the viewer can see, for the pager, the series box and related posts. */
+  all: Post[];
+  /** Showing unpublished work: no comments, and a note saying so. */
+  preview?: boolean;
+  /** Where the endministrator edits this post. Shown only to them. */
+  editHref?: string;
+}
+const { post, all, preview = false, editHref } = Astro.props;
+
+const at = all.findIndex((p) => p.id === post.id);
+const newer = at > 0 ? all[at - 1] : undefined;
+const older = at >= 0 ? all[at + 1] : undefined;
+const { headings, words, minutes } = post;
+const { title, summary, date, updated, tags, series, cover, hidden } = post.data;
+const cat = categoryOf(post);
+const seriesPosts = series ? all.filter((p) => p.data.series === series || p.id === post.id) : [];
+const related = relatedPosts(post, all);
+---
+
+<Base
+  title={title}
+  description={summary}
+  image={cover?.og}
+  type="article"
+  published={date}
+  modified={updated}
+  tags={tags}
+  noindex={hidden || preview}
+>
+  <article class="post wrap" data-article data-pagefind-body>
+    <header class="post-head">
+      <p class="crumbs label">
+        <a href="/posts/">Posts</a>
+        {
+          cat && (
+            <>
+              <span>/</span>
+              <a href={categoryUrl(cat.slug)}>
+                {cat.name} · {cat.en}
+              </a>
+            </>
+          )
+        }
+        {preview && <span class="badge-draft">预览 · 尚未发布的内容</span>}
+        {hidden && !preview && <span class="badge-draft">隐藏 · HIDDEN</span>}
+        {editHref && <a class="edit" href={editHref}>编辑</a>}
+      </p>
+      <h1 class="title cjk" data-pagefind-meta="title">{title}</h1>
+      {summary && <p class="summary">{summary}</p>}
+      <dl class="facts">
+        <div>
+          <dt class="label">发布</dt>
+          <dd><time datetime={date.toISOString()} data-pagefind-meta="date">{fmtDate(date)}</time></dd>
+        </div>
+        {
+          updated && (
+            <div>
+              <dt class="label">更新</dt>
+              <dd><time datetime={updated.toISOString()}>{fmtDate(updated)}</time></dd>
+            </div>
+          )
+        }
+        <div>
+          <dt class="label">篇幅</dt>
+          <dd>{words.toLocaleString('zh-CN')} 字 · {minutes} 分钟</dd>
+        </div>
+        {cat && <span hidden data-pagefind-meta="category">{cat.name}</span>}
+      </dl>
+      {
+        tags.length > 0 && (
+          <ul class="tags" aria-label="标签">
+            {tags.map((t) => (
+              <li>
+                <a class="chip" href={tagUrl(t)} data-pagefind-filter="tag">
+                  # {t}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+      {
+        cover && (
+          <figure class="cover">
+            <img src={cover.src} srcset={cover.srcset} sizes="(max-width: 1200px) 94vw, 76rem" width={cover.width} height={cover.height} alt="" loading="eager" decoding="async" />
+          </figure>
+        )
+      }
+    </header>
+
+    <div class="layout">
+      <div class="body">
+        {series && <SeriesNav series={series} posts={seriesPosts} current={post} />}
+        <div class="prose">
+          <Fragment set:html={post.html} />
+        </div>
+        <footer class="post-foot" data-pagefind-ignore>
+          <p class="end display" aria-hidden="true">✦ ✦ ✦</p>
+          <nav class="pager" aria-label="上一篇 / 下一篇">
+            {
+              older ? (
+                <a href={postUrl(older)} class="prev">
+                  <span class="label">← 更早</span>
+                  <span class="cjk">{older.data.title}</span>
+                </a>
+              ) : (
+                <span />
+              )
+            }
+            {
+              newer && (
+                <a href={postUrl(newer)} class="next">
+                  <span class="label">更新 →</span>
+                  <span class="cjk">{newer.data.title}</span>
+                </a>
+              )
+            }
+          </nav>
+          {
+            related.length > 0 && (
+              <section class="related">
+                <header class="section-head">
+                  <span class="label">§</span>
+                  <h2>相关文章</h2>
+                  <span class="en">See also</span>
+                </header>
+                <ul>
+                  {related.map((p) => (
+                    <li>
+                      <a href={postUrl(p)}>
+                        <span class="label">{fmtDate(p.data.date)}</span>
+                        <span class="cjk">{p.data.title}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )
+          }
+          {post.data.comments && !preview && <Comments slug={post.id} />}
+        </footer>
+      </div>
+      <aside class="aside" data-pagefind-ignore>
+        <div class="sticky">
+          <Toc headings={headings} />
+          <div class="aside-actions">
+            <button type="button" class="chip" data-to-top><Icon name="up" size={13} /> 顶部</button>
+            {post.data.comments && !preview && <a class="chip" href="#comments"><Icon name="comment" size={13} /> 留言</a>}
+          </div>
+        </div>
+      </aside>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .post-head {
+    padding-top: clamp(2.5rem, 7vw, 5.5rem);
+    padding-bottom: 2.5rem;
+    border-bottom: 1.5px solid var(--rule-strong);
+  }
+
+  .edit {
+    margin-left: auto;
+    padding: 0 0.7em;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    color: var(--ink-2);
+  }
+
+  .edit:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 1.5rem;
+  }
+
+  .crumbs a:hover {
+    color: var(--sky);
+  }
+
+  .title {
+    max-width: 18em;
+    margin: 0;
+    text-wrap: pretty;
+    font-size: clamp(2.2rem, 5.6vw, 4.2rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+  }
+
+  .summary {
+    max-width: 40rem;
+    margin: 1.25rem 0 0;
+    font-size: 1.12rem;
+    color: var(--ink-2);
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2.5rem;
+    margin: 2rem 0 0;
+  }
+
+  .facts div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .facts dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+    margin: 1.5rem 0 0;
+    padding: 0;
+  }
+
+  .cover {
+    margin: 2.25rem 0 0;
+  }
+
+  .cover img {
+    display: block;
+    width: 100%;
+    max-height: 26rem;
+    object-fit: cover;
+    border-radius: var(--radius);
+    border: 1px solid var(--rule);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, var(--measure)) minmax(12rem, 16rem);
+    justify-content: space-between;
+    gap: 4rem;
+    padding-top: 1rem;
+  }
+
+  .body {
+    min-width: 0;
+  }
+
+  .aside {
+    padding-top: 2.5rem;
+  }
+
+  .sticky {
+    position: sticky;
+    top: 5.5rem;
+  }
+
+  .aside-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 1.5rem;
+  }
+
+  .aside-actions .chip {
+    cursor: pointer;
+  }
+
+  .post-foot {
+    margin-top: 4rem;
+  }
+
+  .end {
+    text-align: center;
+    color: var(--ink-3);
+    letter-spacing: 0.6em;
+    margin: 0 0 3rem;
+  }
+
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1.5px solid var(--rule-strong);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .pager a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1.25rem 0;
+    transition: color 0.2s;
+  }
+
+  .pager a .cjk {
+    font-size: 1.15rem;
+    line-height: 1.4;
+  }
+
+  .pager a:hover .cjk {
+    color: var(--sky-ink);
+  }
+
+  .pager .next {
+    grid-column: 2;
+    text-align: right;
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--rule);
+  }
+
+  .pager .prev {
+    padding-right: 1.5rem;
+  }
+
+  .related {
+    margin-top: 3.5rem;
+  }
+
+  .related ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .related a {
+    display: flex;
+    gap: 1.25rem;
+    align-items: baseline;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .related a .cjk {
+    font-size: 1.08rem;
+  }
+
+  .related a:hover .cjk {
+    color: var(--sky-ink);
+  }
+
+  @media (max-width: 1080px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      max-width: var(--measure);
+      margin-inline: auto;
+    }
+    .aside {
+      display: none;
+    }
+    .post-head {
+      max-width: var(--measure);
+      margin-inline: auto;
+      padding-inline: 0;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .pager {
+      grid-template-columns: 1fr;
+    }
+    .pager .next {
+      grid-column: 1;
+      text-align: left;
+      padding-left: 0;
+      border-left: 0;
+      border-top: 1px solid var(--rule);
+    }
+  }
+</style>

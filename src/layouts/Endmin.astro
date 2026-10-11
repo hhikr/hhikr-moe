@@ -19,11 +19,12 @@ const pending = commentCounts().hidden;
 const sections = [
   { href: '/endmin/', label: '概览', en: 'Overview' },
   { href: '/endmin/posts/', label: '文章', en: 'Posts' },
+  { href: '/endmin/media/', label: '媒体', en: 'Media' },
   { href: '/endmin/comments/', label: '评论', en: 'Comments', badge: pending },
   { href: '/endmin/users/', label: '用户', en: 'Users' },
 ];
 // Parts of the plan that have no screen yet. Shown so the rail does not reshuffle later.
-const upcoming = ['写作', '文件', '统计', '备份'];
+const upcoming = ['文件', '统计', '备份'];
 const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
 ---
 
@@ -60,6 +61,7 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
 
       <div class="em-foot">
         <a href="/">查看网站 →</a>
+        <button type="button" data-view-as>以游客视角浏览</button>
         <button type="button" data-logout>退出登录</button>
       </div>
     </aside>
@@ -79,6 +81,12 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
   import { api } from '@/scripts/account';
 
   const flash = document.querySelector<HTMLElement>('[data-flash]');
+
+  // Browse the site exactly as someone who is not signed in would see it.
+  document.querySelector('[data-view-as]')?.addEventListener('click', async () => {
+    await api('/api/endmin/view-as', { guest: true });
+    location.assign('/');
+  });
 
   document.querySelector('[data-logout]')?.addEventListener('click', async () => {
     await api('/api/auth/logout', {});
