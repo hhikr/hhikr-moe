@@ -16,6 +16,9 @@ export default defineConfig({
   // compares against the wrong origin, so it would reject legitimate ones.
   security: { checkOrigin: false },
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
+  // Small scripts would otherwise be written into the page itself, where the
+  // content security policy (src/lib/csp.ts) refuses to run them.
+  vite: { build: { assetsInlineLimit: 0 } },
   markdown: {
     processor: unified({ smartypants: false, remarkPlugins, rehypePlugins }),
     shikiConfig,

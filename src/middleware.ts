@@ -1,4 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
+import { CSP_HEADER } from '@/lib/csp';
 import { siteOrigin } from '@/server/config.ts';
 import { readSession, sessionCookieName, sessionCookieOptions } from '@/server/sessions.ts';
 
@@ -74,6 +75,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Rendered pages come back as bare `text/html`; say which encoding it is.
   if (response.headers.get('Content-Type') === 'text/html') {
     response.headers.set('Content-Type', 'text/html; charset=utf-8');
+  }
+  // Development is left alone: the dev server injects scripts of its own.
+  if (import.meta.env.PROD && response.headers.get('Content-Type')?.startsWith('text/html')) {
+    response.headers.set('Content-Security-Policy', CSP_HEADER);
+    response.headers.set('X-Frame-Options', 'DENY');
   }
   // What the endministrator sees (hidden posts, management pages) must never be cached or shared.
   if (session?.user.role === 'endmin') response.headers.set('Cache-Control', 'private, no-store');

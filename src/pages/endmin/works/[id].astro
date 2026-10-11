@@ -31,7 +31,7 @@ const data = {
     <button type="button" class="em-btn go" data-save>保存</button>
   </div>
 
-  <form class="wk" data-form onsubmit="return false" novalidate>
+  <form class="wk" data-form data-scripted novalidate>
     <section class="em-panel">
       <h2>基本信息</h2>
       <div class="grid">
@@ -89,7 +89,7 @@ const data = {
     <h2>版本与文件</h2>
     <p class="hint">这里的操作立即生效，不需要点「保存」。单个文件上限 {formatBytes(maxFileBytes())}。</p>
 
-    <form class="new-version" data-new-version onsubmit="return false">
+    <form class="new-version" data-new-version data-scripted>
       <input name="version" placeholder="新版本号，例如 1.0.0" maxlength="40" aria-label="新版本号" />
       <textarea name="notesMd" rows="2" placeholder="这个版本改了什么（Markdown，可选）" aria-label="更新说明"></textarea>
       <button type="submit" class="em-btn go">添加版本</button>

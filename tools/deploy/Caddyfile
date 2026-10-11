@@ -3,6 +3,11 @@ hhikr.moe {
     header Strict-Transport-Security "max-age=31536000"
     header X-Content-Type-Options "nosniff"
     header Referrer-Policy "strict-origin-when-cross-origin"
+    # No other site may show ours inside a frame. The rest of the content
+    # security policy travels with each page (src/lib/csp.ts).
+    # The `?` leaves alone what the Node service already sent.
+    header ?X-Frame-Options "DENY"
+    header ?Content-Security-Policy "frame-ancestors 'none'"
 
     @hashed path /_astro/*
     header @hashed Cache-Control "public, max-age=31536000, immutable"
