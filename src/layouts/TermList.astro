@@ -20,7 +20,6 @@ const { kicker, title, en, description, posts, back } = Astro.props;
     <header class="page-head">
       <p class="label kicker"><a href={back.href} class="back">← {back.label}</a> · {kicker}</p>
       <h1>{title}{en && <span class="en">{en}</span>}</h1>
-      {description && <p>{description}</p>}
       <slot name="head" />
     </header>
     <slot />

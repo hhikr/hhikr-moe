@@ -1,3 +1,4 @@
+import { switchTheme } from './theme-transition.mjs';
 // Site-wide progressive enhancement. Every feature degrades to plain HTML.
 export {};
 
@@ -25,14 +26,24 @@ function currentPref(): Pref {
   }
 }
 
-$('[data-theme-toggle]')?.addEventListener('click', () => {
-  const order: Pref[] = ['auto', 'light', 'dark'];
-  const next = order[(order.indexOf(currentPref()) + 1) % order.length];
-  try {
-    localStorage.setItem('theme', next);
-  } catch {}
-  applyTheme(next);
+$('[data-theme-toggle]')?.addEventListener('click', (event) => {
+  const button = event.currentTarget as HTMLElement;
+  const next: Pref = (button.dataset.themeTarget || document.documentElement.dataset.theme) === 'dark' ? 'light' : 'dark';
+  button.dataset.themeTarget = next;
+  void switchTheme(() => {
+    try { localStorage.setItem('theme', next); } catch {}
+    applyTheme(next);
+  }, button);
 });
+document.addEventListener('click', (event) => {
+  if (!document.documentElement.classList.contains('day-night-transition')) return;
+  const button = $<HTMLButtonElement>('[data-theme-toggle]');
+  if (!button || button.contains(event.target as Node)) return;
+  const rect = button.getBoundingClientRect();
+  if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) {
+    event.preventDefault();event.stopImmediatePropagation();button.click();
+  }
+}, true);
 media.addEventListener('change', () => currentPref() === 'auto' && applyTheme('auto'));
 
 /* ---------- header: scrolled state + reading progress ---------- */

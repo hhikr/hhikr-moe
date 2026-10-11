@@ -10,7 +10,7 @@ const groups = groupBy(await getPosts(), (p) => p.data.category);
   <div class="wrap">
     <header class="page-head">
       <p class="label kicker">Sections · {Object.keys(CATEGORIES).length}</p>
-      <h1>分类<span class="en">Three drawers in the desk</span></h1>
+      <h1>分类<span class="en">Categories</span></h1>
     </header>
 
     {
@@ -24,7 +24,6 @@ const groups = groupBy(await getPosts(), (p) => p.data.category);
               <span class="en display">{c.en}</span>
               <span class="count label">{list.length} entries →</span>
             </a>
-            <p class="desc">{c.description}</p>
             <ul>
               {list.slice(0, 5).map((p) => (
                 <li>

@@ -10,8 +10,8 @@ const series = [...groupBy(await getPosts(), (p) => p.data.series)].sort((a, b) 
   <div class="wrap">
     <header class="page-head">
       <p class="label kicker">Bound volumes · {series.length}</p>
-      <h1>合订本<span class="en">Notes bound into volumes</span></h1>
-      <p>成体系的课程笔记。实心格是已完成的章节，虚线格是还在写的草稿。</p>
+      <h1>合订本<span class="en">Series</span></h1>
+      <p>实心格表示已完成的章节，虚线格表示草稿。</p>
     </header>
     <div class="grid">
       {series.map(([name, posts], i) => <SeriesCard name={name} posts={posts} index={i} />)}

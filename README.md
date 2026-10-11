@@ -14,11 +14,21 @@ npm run preview      # 预览构建结果（搜索只在构建后可用）
 npm run new -- my-post "标题" --category StudyBase --series 笔记-操作系统
 ```
 
-部署（rsync 到服务器，需先配置 SSH 密钥）：
+网站已部署到 ByteVirt VPS，通过 NameSilo 管理 `hhikr.moe` 解析，使用 Caddy 提供 HTTPS。完整的构建、上传、服务器配置、DNS、证书、验收和回滚流程见 [部署与维护](tools/deploy/README.md)。独立加密代理的配置、验证范围和连接方法见 [VPS 代理](tools/deploy/proxy.md)。
+
+## Hot 100 学习区
+
+导航中的“算法”进入 `/hot100/`。100 道题按 17 个分类组织，每题提供 Java 解法、输入输出说明、自定义输入动画和编程练习。动画支持 `A` 后退、`D` 前进；主题切换支持匀速扩散和中途反向。
+
+编译运行和类型提示通过本机 Java 服务提供。练习页可下载服务包，连接说明见 [本机 Java 服务](tools/hot100-java/README.md)，方法式练习与标准输入说明见 [Java 练习输入输出](tools/hot100-java/practice-guide.md)。网站保持静态部署，Java 程序在用户自己的电脑上执行。
 
 ```bash
-DEPLOY_HOST=1.2.3.4 ./scripts/deploy.sh
+npm run test:hot100   # 课程、算法、动画与结果比对验证
+npm run java:package # 从 tools/hot100-java 生成下载包
+npm run java:serve   # 启动允许 https://hhikr.moe 连接的本机服务
 ```
+
+服务需要 Node.js 和包含 `javac` 的 JDK。项目内调试其他网站来源时，执行 `node tools/hot100-java/server.mjs --site http://localhost:4321`，并在网页填写相同端口。
 
 ## 写文章
 
