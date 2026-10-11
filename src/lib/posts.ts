@@ -1,14 +1,67 @@
-import { getCollection, type CollectionEntry } from 'astro:content';
-import { CATEGORIES, SITE } from '@/site.config';
+import { CATEGORIES } from '@/site.config';
+import { GUEST, getPost as loadPost, listPosts, type PostFull, type PostSummary, type Viewer } from '@/server/posts.ts';
 
-export type Post = CollectionEntry<'posts'>;
+export type { Viewer };
+export { GUEST };
 
-const visible = (p: Post) => import.meta.env.DEV || SITE.showDrafts || !p.data.draft;
+/** A post as the pages and components use it. `id` is the slug. */
+export interface Post {
+  id: string;
+  words: number;
+  minutes: number;
+  data: {
+    title: string;
+    date: Date;
+    updated?: Date;
+    summary?: string;
+    category?: string;
+    tags: string[];
+    series?: string;
+    seriesOrder?: number;
+    cover?: PostSummary['cover'];
+    /** Published but visible to the endministrator only. */
+    hidden: boolean;
+    pinned: boolean;
+    comments: boolean;
+  };
+}
 
-/** All visible posts, newest first. */
-export async function getPosts(): Promise<Post[]> {
-  const posts = await getCollection('posts', visible);
-  return posts.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+export interface PostWithBody extends Post {
+  html: string;
+  headings: PostFull['headings'];
+}
+
+const toPost = (p: PostSummary): Post => ({
+  id: p.slug,
+  words: p.words,
+  minutes: p.minutes,
+  data: {
+    title: p.title,
+    date: p.publishedAt,
+    updated: p.updatedAt,
+    summary: p.summary,
+    category: p.category,
+    tags: p.tags,
+    series: p.series,
+    seriesOrder: p.seriesOrder,
+    cover: p.cover,
+    hidden: p.hidden,
+    pinned: p.pinned,
+    comments: p.commentsEnabled,
+  },
+});
+
+/** Who is looking at the page. Everyone is a guest until sign-in exists. */
+export const viewerOf = (locals: object): Viewer => (locals as { viewer?: Viewer }).viewer ?? GUEST;
+
+/** Posts the viewer may see, newest first. Drafts never appear here. */
+export function getPosts(viewer: Viewer = GUEST): Post[] {
+  return listPosts(viewer).map(toPost);
+}
+
+export function getPost(slug: string, viewer: Viewer = GUEST): PostWithBody | undefined {
+  const p = loadPost(slug, viewer);
+  return p && { ...toPost(p), html: p.html, headings: p.headings };
 }
 
 export const postUrl = (p: Post) => `/posts/${p.id}/`;
@@ -66,7 +119,7 @@ export function relatedPosts(post: Post, all: Post[], limit = 3) {
     .map((x) => x.p);
 }
 
-// Dates are shown in the author's timezone regardless of where the site is built.
+// Dates are shown in the author's timezone regardless of where the site runs.
 const parts = (d: Date) => {
   const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' });
   const [y, m, day] = f.format(d).split('-');

@@ -3,8 +3,11 @@ import type { APIContext } from 'astro';
 import { AUTHOR, SITE } from '@/site.config';
 import { categoryOf, getPosts, postUrl } from '@/lib/posts';
 
+export const prerender = false;
+
+// The feed is public: it never includes hidden posts, whoever asks.
 export async function GET(context: APIContext) {
-  const posts = (await getPosts()).filter((p) => !p.data.draft);
+  const posts = getPosts();
   return rss({
     title: SITE.title,
     description: SITE.description,

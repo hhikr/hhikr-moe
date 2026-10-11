@@ -1,7 +1,5 @@
 ---
 import '@/styles/prose.css';
-import { render } from 'astro:content';
-import { Image } from 'astro:assets';
 import Base from '@/layouts/Base.astro';
 import Toc from '@/components/Toc.astro';
 import SeriesNav from '@/components/SeriesNav.astro';
@@ -12,47 +10,48 @@ import {
   categoryOf,
   categoryUrl,
   fmtDate,
+  getPost,
   getPosts,
   postUrl,
   relatedPosts,
   tagUrl,
-  type Post,
+  viewerOf,
 } from '@/lib/posts';
-import { readingStats } from '@/lib/stats';
+import { resolveRedirect } from '@/server/posts.ts';
 
-export async function getStaticPaths() {
-  const posts = await getPosts();
-  return posts.map((post, i) => ({
-    params: { slug: post.id },
-    props: { post, newer: posts[i - 1], older: posts[i + 1], all: posts },
-  }));
+export const prerender = false;
+
+const viewer = viewerOf(Astro.locals);
+const slug = Astro.params.slug ?? '';
+const post = getPost(slug, viewer);
+if (!post) {
+  const moved = resolveRedirect(slug, viewer);
+  return moved ? Astro.redirect(`/posts/${moved}/`, 301) : new Response(null, { status: 404 });
 }
 
-interface Props {
-  post: Post;
-  newer?: Post;
-  older?: Post;
-  all: Post[];
-}
-
-const { post, newer, older, all } = Astro.props;
-const { Content, headings } = await render(post);
-const { words, minutes } = await readingStats(post);
-const { title, summary, date, updated, tags, series, cover, draft } = post.data;
+const all = getPosts(viewer);
+const at = all.findIndex((p) => p.id === post.id);
+const newer = all[at - 1];
+const older = all[at + 1];
+const { headings, words, minutes } = post;
+const { title, summary, date, updated, tags, series, cover, hidden } = post.data;
 const cat = categoryOf(post);
 const seriesPosts = series ? all.filter((p) => p.data.series === series) : [];
 const related = relatedPosts(post, all);
+
+// Hidden posts must never be stored by a shared cache.
+Astro.response.headers.set('Cache-Control', hidden ? 'private, no-store' : 'no-cache');
 ---
 
 <Base
   title={title}
   description={summary}
-  image={cover}
+  image={cover?.og}
   type="article"
   published={date}
   modified={updated}
   tags={tags}
-  noindex={draft}
+  noindex={hidden}
 >
   <article class="post wrap" data-article data-pagefind-body>
     <header class="post-head">
@@ -68,7 +67,7 @@ const related = relatedPosts(post, all);
             </>
           )
         }
-        {draft && <span class="badge-draft">草稿 · DRAFT</span>}
+        {hidden && <span class="badge-draft">隐藏 · HIDDEN</span>}
       </p>
       <h1 class="title cjk" data-pagefind-meta="title">{title}</h1>
       {summary && <p class="summary">{summary}</p>}
@@ -117,7 +116,7 @@ const related = relatedPosts(post, all);
       {
         cover && (
           <figure class="cover">
-            <Image src={cover} alt="" widths={[640, 1000, 1400]} sizes="(max-width: 1200px) 94vw, 76rem" loading="eager" />
+            <img src={cover.src} srcset={cover.srcset} sizes="(max-width: 1200px) 94vw, 76rem" width={cover.width} height={cover.height} alt="" loading="eager" decoding="async" />
           </figure>
         )
       }
@@ -127,7 +126,7 @@ const related = relatedPosts(post, all);
       <div class="body">
         {series && <SeriesNav series={series} posts={seriesPosts} current={post} />}
         <div class="prose">
-          <Content />
+          <Fragment set:html={post.html} />
         </div>
         <footer class="post-foot" data-pagefind-ignore>
           <p class="end display" aria-hidden="true">✦ ✦ ✦</p>

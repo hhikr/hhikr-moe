@@ -3,12 +3,13 @@ import Base from '@/layouts/Base.astro';
 import PostRow from '@/components/PostRow.astro';
 import Heatmap from '@/components/Heatmap.astro';
 import { CATEGORIES } from '@/site.config';
-import { getPosts, groupBy, yearOf } from '@/lib/posts';
+import { getPosts, groupBy, viewerOf, yearOf } from '@/lib/posts';
 
-const posts = await getPosts();
+export const prerender = false;
+
+const posts = getPosts(viewerOf(Astro.locals));
 const years = [...groupBy(posts, (p) => yearOf(p.data.date))];
 const counts = groupBy(posts, (p) => p.data.category);
-const drafts = posts.filter((p) => p.data.draft).length;
 ---
 
 <Base title="文章" description="全部文章归档，按年份排列。">
@@ -29,13 +30,6 @@ const drafts = posts.filter((p) => p.data.draft).length;
           </button>
         ))
       }
-      {
-        drafts > 0 && (
-          <label class="toggle label">
-            <input type="checkbox" data-hide-drafts /> 隐藏草稿 ({drafts})
-          </label>
-        )
-      }
     </div>
 
     {
@@ -44,7 +38,7 @@ const drafts = posts.filter((p) => p.data.draft).length;
           <h2 class="y display">{year}</h2>
           <ol class="rows">
             {list.map((p) => (
-              <PostRow post={p} data-item="" data-cat={p.data.category ?? ''} data-draft={p.data.draft ? '1' : undefined} />
+              <PostRow post={p} data-item="" data-cat={p.data.category ?? ''} />
             ))}
           </ol>
         </section>
@@ -57,13 +51,12 @@ const drafts = posts.filter((p) => p.data.draft).length;
   const bar = document.querySelector('[data-filters]');
   const items = [...document.querySelectorAll<HTMLElement>('[data-item]')];
   const years = [...document.querySelectorAll<HTMLElement>('[data-year]')];
-  const hideDrafts = document.querySelector<HTMLInputElement>('[data-hide-drafts]');
   let cat = new URLSearchParams(location.search).get('c') ?? 'all';
 
   function apply() {
     bar?.querySelectorAll<HTMLElement>('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === cat)));
     for (const it of items) {
-      it.hidden = (cat !== 'all' && it.dataset.cat !== cat) || (!!hideDrafts?.checked && it.dataset.draft === '1');
+      it.hidden = cat !== 'all' && it.dataset.cat !== cat;
     }
     for (const y of years) y.hidden = !y.querySelector('[data-item]:not([hidden])');
   }
@@ -77,7 +70,6 @@ const drafts = posts.filter((p) => p.data.draft).length;
     history.replaceState(null, '', url);
     apply();
   });
-  hideDrafts?.addEventListener('change', apply);
   apply();
 </script>
 

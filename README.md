@@ -2,7 +2,7 @@
 
 hhikr 的个人网站 —— <https://hhikr.moe>
 
-v2 起使用 [Astro](https://astro.build) 构建，仍然是纯静态站点（`npm run build` → `dist/`）。
+v2 起使用 [Astro](https://astro.build) 构建，以 Node 服务的形式运行：`npm run build` 生成 `dist/client/`（预渲染页面和静态文件）与 `dist/server/`（服务入口）。
 
 ## 开发
 

@@ -31,7 +31,6 @@ export const NAV = [
   { label: '文章', en: 'Posts', href: '/posts/' },
   { label: '合订本', en: 'Series', href: '/series/' },
   { label: '标签', en: 'Tags', href: '/tags/' },
-  { label: '友链', en: 'Links', href: '/links/' },
   { label: '关于', en: 'About', href: '/about/' },
 ];
 
@@ -45,8 +44,4 @@ export const CATEGORIES: Record<string, { name: string; slug: string; en: string
 export const COMMENTS = {
   /** Waline server. Set to '' to disable comments everywhere. */
   walineServer: 'https://waline-comments.hhikr.moe/',
-};
-
-export const ANALYTICS = {
-  googleId: 'G-CHMLGCP70P',
 };

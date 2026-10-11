@@ -3,15 +3,13 @@ import '@/styles/global.css';
 import Header from '@/components/Header.astro';
 import Footer from '@/components/Footer.astro';
 import Search from '@/components/Search.astro';
-import { ANALYTICS, AUTHOR, SITE } from '@/site.config';
-import { getImage } from 'astro:assets';
-import sky from '@/assets/sky.jpg';
-import type { ImageMetadata } from 'astro';
+import { AUTHOR, SITE } from '@/site.config';
 
 interface Props {
   title?: string;
   description?: string;
-  image?: ImageMetadata;
+  /** Site-relative address of a 1200×630 link-preview image. */
+  image?: string;
   type?: 'website' | 'article';
   published?: Date;
   modified?: Date;
@@ -23,8 +21,7 @@ const { title, description = SITE.description, image, type = 'website', publishe
 
 const fullTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${AUTHOR.name} 的个人网站`;
 const canonical = new URL(Astro.url.pathname, SITE.url);
-const og = await getImage({ src: image ?? sky, width: 1200, height: 630, fit: 'cover', format: 'jpeg' });
-const ogUrl = new URL(og.src, SITE.url);
+const ogUrl = new URL(image ?? '/img/og-default.jpg', SITE.url);
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -86,21 +83,6 @@ const jsonLd = {
       })();
     </script>
 
-    {
-      ANALYTICS.googleId && import.meta.env.PROD && (
-        <>
-          <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${ANALYTICS.googleId}`} />
-          <script is:inline define:vars={{ id: ANALYTICS.googleId }}>
-            window.dataLayer = window.dataLayer || [];
-            function gtag() {
-              dataLayer.push(arguments);
-            }
-            gtag('js', new Date());
-            gtag('config', id);
-          </script>
-        </>
-      )
-    }
     <slot name="head" />
   </head>
   <body>

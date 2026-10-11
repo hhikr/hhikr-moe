@@ -1,9 +1,11 @@
 ---
 import Base from '@/layouts/Base.astro';
 import SeriesCard from '@/components/SeriesCard.astro';
-import { getPosts, groupBy } from '@/lib/posts';
+import { getPosts, groupBy, viewerOf } from '@/lib/posts';
 
-const series = [...groupBy(await getPosts(), (p) => p.data.series)].sort((a, b) => b[1].length - a[1].length);
+export const prerender = false;
+
+const series = [...groupBy(getPosts(viewerOf(Astro.locals)), (p) => p.data.series)].sort((a, b) => b[1].length - a[1].length);
 ---
 
 <Base title="合订本" description="成系列的课程笔记与长篇记录。">
@@ -11,7 +13,6 @@ const series = [...groupBy(await getPosts(), (p) => p.data.series)].sort((a, b) 
     <header class="page-head">
       <p class="label kicker">Bound volumes · {series.length}</p>
       <h1>合订本<span class="en">Series</span></h1>
-      <p>实心格表示已完成的章节，虚线格表示草稿。</p>
     </header>
     <div class="grid">
       {series.map(([name, posts], i) => <SeriesCard name={name} posts={posts} index={i} />)}

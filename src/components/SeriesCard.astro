@@ -9,18 +9,17 @@ interface Props {
 
 const { name, posts, index = 0 } = Astro.props;
 const ordered = sortSeries(posts);
-const done = ordered.filter((p) => !p.data.draft).length;
 const latest = posts.reduce((a, b) => (a.data.date > b.data.date ? a : b));
 ---
 
 <a href={seriesUrl(name)} class="card rise" style={`--i:${index}`}>
   <span class="label">Vol. {String(index + 1).padStart(2, '0')}</span>
   <span class="name cjk">{seriesName(name)}</span>
-  <span class="segs" aria-label={`${done} / ${ordered.length} 篇已完成`}>
-    {ordered.map((p) => <span class:list={['seg', { draft: p.data.draft }]} title={p.data.title} />)}
+  <span class="segs" aria-label={`共 ${ordered.length} 篇`}>
+    {ordered.map((p) => <span class="seg" title={p.data.title} />)}
   </span>
   <span class="foot">
-    <span>{ordered.length} 篇{done < ordered.length && ` · ${ordered.length - done} 篇草稿`}</span>
+    <span>{ordered.length} 篇</span>
     <span>更新于 {fmtDate(latest.data.date)}</span>
   </span>
 </a>

@@ -11,7 +11,7 @@ interface Props {
 
 const { post, index, showSummary = true, ...attrs } = Astro.props;
 const cat = categoryOf(post);
-const { title, summary, date, series, draft } = post.data;
+const { title, summary, date, series, hidden } = post.data;
 ---
 
 <li class="row rise" style={index !== undefined ? `--i:${index}` : undefined} {...attrs}>
@@ -23,7 +23,7 @@ const { title, summary, date, series, draft } = post.data;
     <span class="main">
       <span class="title cjk">
         {title}
-        {draft && <span class="badge-draft">草稿</span>}
+        {hidden && <span class="badge-draft">隐藏</span>}
       </span>
       {showSummary && summary && <span class="summary">{summary}</span>}
     </span>

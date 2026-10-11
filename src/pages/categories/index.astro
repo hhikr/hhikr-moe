@@ -1,9 +1,11 @@
 ---
 import Base from '@/layouts/Base.astro';
 import { CATEGORIES } from '@/site.config';
-import { categoryUrl, fmtDate, getPosts, groupBy, postUrl } from '@/lib/posts';
+import { categoryUrl, fmtDate, getPosts, groupBy, postUrl, viewerOf } from '@/lib/posts';
 
-const groups = groupBy(await getPosts(), (p) => p.data.category);
+export const prerender = false;
+
+const groups = groupBy(getPosts(viewerOf(Astro.locals)), (p) => p.data.category);
 ---
 
 <Base title="分类" description="按分类浏览文章。">
