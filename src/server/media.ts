@@ -170,18 +170,34 @@ export async function ingestUpload(filename: string, body: Buffer): Promise<Medi
 
 export interface MediaEntry extends Media {
   url: string;
-  /** Posts whose text or cover refers to this file. */
-  usedBy: { id: number; title: string }[];
+  /** Posts and works whose text, cover or gallery refers to this file, with where to edit them. */
+  usedBy: { title: string; href: string }[];
 }
 
 export function listMedia(): MediaEntry[] {
   const posts: any[] = db().prepare('SELECT id, title, source_md, cover_media_id FROM posts').all();
   const copies: any[] = db().prepare('SELECT post_id, source_md, fields_json FROM post_working_copies').all();
+  const projects: any[] = db().prepare('SELECT id, title, description_md, cover_media_id, images_json FROM projects').all();
+  const notes: any[] = db().prepare('SELECT project_id, notes_md FROM releases').all();
   return (db().prepare('SELECT * FROM media ORDER BY id DESC').all() as unknown as Media[]).map((m) => {
-    const used = posts.filter(
+    const inPosts = posts.filter(
       (p) => p.cover_media_id === m.id || p.source_md.includes(m.sha256) || copies.some((c) => c.post_id === p.id && (c.source_md.includes(m.sha256) || c.fields_json.includes(`"coverMediaId":${m.id}`))),
     );
-    return { ...m, url: displayUrl(m), usedBy: used.map((p) => ({ id: Number(p.id), title: p.title })) };
+    const inProjects = projects.filter(
+      (p) =>
+        p.cover_media_id === m.id ||
+        (JSON.parse(p.images_json) as number[]).includes(m.id) ||
+        p.description_md.includes(m.sha256) ||
+        notes.some((n) => n.project_id === p.id && n.notes_md.includes(m.sha256)),
+    );
+    return {
+      ...m,
+      url: displayUrl(m),
+      usedBy: [
+        ...inPosts.map((p) => ({ title: p.title, href: `/endmin/posts/${p.id}/` })),
+        ...inProjects.map((p) => ({ title: p.title, href: `/endmin/works/${p.id}/` })),
+      ],
+    };
   });
 }
 

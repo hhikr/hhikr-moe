@@ -29,6 +29,7 @@ export const SOCIALS: Social[] = [
 export const NAV = [
   { label: '算法', en: 'Hot 100', href: '/hot100/' },
   { label: '文章', en: 'Posts', href: '/posts/' },
+  { label: '作品', en: 'Works', href: '/works/' },
   { label: '合订本', en: 'Series', href: '/series/' },
   { label: '标签', en: 'Tags', href: '/tags/' },
   { label: '关于', en: 'About', href: '/about/' },

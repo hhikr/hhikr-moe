@@ -1,0 +1,77 @@
+---
+import Endmin from '@/layouts/Endmin.astro';
+import { fmtDate } from '@/lib/posts';
+import { listProjects, PROJECT_KINDS } from '@/server/projects.ts';
+
+export const prerender = false;
+
+const works = listProjects({ role: 'endmin' });
+const hidden = works.filter((w) => w.hidden).length;
+---
+
+<Endmin title="作品" en="Works" lead="发布自己做的 mod 和其他文件。每个作品有介绍、图片、链接，以及按版本整理的文件。">
+  <div class="em-filters" data-filters role="toolbar" aria-label="按状态筛选">
+    <button type="button" class="chip" data-filter="all" aria-pressed="true">全部 {works.length}</button>
+    <button type="button" class="chip" data-filter="public" aria-pressed="false">公开 {works.length - hidden}</button>
+    <button type="button" class="chip" data-filter="hidden" aria-pressed="false">隐藏 {hidden}</button>
+    <button type="button" class="em-btn go new-work" data-new-work>新建作品</button>
+  </div>
+
+  {
+    works.length === 0 ? (
+      <p class="em-empty">还没有作品。新建的作品默认是隐藏的，准备好之后再公开。</p>
+    ) : (
+      <ul class="em-rows">
+        {works.map((w) => (
+          <li data-group={w.hidden ? 'hidden' : 'public'}>
+            <div>
+              <div class="t">
+                <a href={`/endmin/works/${w.id}/`}>{w.title}</a>
+                <span class={`em-state ${w.hidden ? 'hidden' : 'published'}`}>{w.hidden ? '隐藏' : '公开'}</span>
+              </div>
+              <div class="em-meta">
+                <span>{PROJECT_KINDS[w.kind]}</span>
+                <span>{w.slug}</span>
+                {w.latestVersion && <span>{w.latestVersion}</span>}
+                <span>{w.fileCount} 个文件</span>
+                <span>下载 {w.downloads.toLocaleString('zh-CN')}</span>
+                <span>更新 {fmtDate(w.updatedAt)}</span>
+              </div>
+            </div>
+            <div class="em-acts">
+              <a class="em-btn" href={`/endmin/works/${w.id}/`}>编辑</a>
+              <a class="em-btn" href={`/works/${w.slug}/`}>查看</a>
+              {w.hidden ? (
+                <button class="em-btn go" data-api={`/api/endmin/works/${w.id}`} data-body='{"hidden":false}' data-confirm={`公开「${w.title}」？所有人都能看到并下载。`}>
+                  公开
+                </button>
+              ) : (
+                <button class="em-btn" data-api={`/api/endmin/works/${w.id}`} data-body='{"hidden":true}'>
+                  隐藏
+                </button>
+              )}
+              <button class="em-btn danger" data-api={`/api/endmin/works/${w.id}`} data-method="DELETE" data-confirm={`删除「${w.title}」和它的全部版本、文件？无法恢复。`}>
+                删除
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</Endmin>
+
+<script>
+  import { api } from '@/scripts/account';
+
+  document.querySelector('[data-new-work]')?.addEventListener('click', async () => {
+    const res = await api('/api/endmin/works', {});
+    if (res.ok) location.assign(`/endmin/works/${res.data.id}/`);
+  });
+</script>
+
+<style>
+  .new-work {
+    margin-left: auto;
+  }
+</style>

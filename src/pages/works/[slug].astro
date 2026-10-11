@@ -1,0 +1,554 @@
+---
+// One work: what it is, its files by version, pictures and change log.
+import '@/styles/prose.css';
+import Base from '@/layouts/Base.astro';
+import { fmtDate, viewerOf } from '@/lib/posts';
+import { getProject, projectPost, PROJECT_KINDS, type ProjectRelease } from '@/server/projects.ts';
+import { formatBytes } from '@/server/system.ts';
+
+export const prerender = false;
+
+const viewer = viewerOf(Astro.locals);
+const work = getProject(Astro.params.slug ?? '', viewer);
+if (!work) return new Response(null, { status: 404 });
+Astro.response.headers.set('Cache-Control', work.hidden ? 'private, no-store' : 'no-cache');
+
+const post = projectPost(work.postId, viewer);
+const [latest, ...older] = work.releases;
+const withNotes = work.releases.filter((r) => r.notesHtml.trim());
+const n = (value: number) => value.toLocaleString('zh-CN');
+const editHref = viewer.role === 'endmin' ? `/endmin/works/${work.id}/` : undefined;
+
+const tabs = [
+  { href: '#about', label: '介绍' },
+  { href: '#files', label: '文件', count: work.fileCount },
+  ...(work.images.length ? [{ href: '#images', label: '图片', count: work.images.length }] : []),
+  ...(withNotes.length ? [{ href: '#log', label: '更新日志', count: withNotes.length }] : []),
+];
+const filesOf = (release: ProjectRelease) => release.files;
+---
+
+<Base title={work.title} description={work.summary} image={work.cover?.og} noindex={work.hidden}>
+  <article class="wrap work" data-pagefind-body>
+    <header class="head">
+      <div class="intro">
+        <p class="crumbs label">
+          <a href="/works/">Works</a>
+          <span>/</span>
+          <span>{PROJECT_KINDS[work.kind]}</span>
+          {work.hidden && <span class="badge-draft">隐藏 · HIDDEN</span>}
+          {editHref && <a class="edit" href={editHref}>编辑</a>}
+        </p>
+        <h1 class="cjk" data-pagefind-meta="title">{work.title}</h1>
+        {work.summary && <p class="summary">{work.summary}</p>}
+
+        <dl class="facts" data-pagefind-ignore>
+          {
+            latest && (
+              <div>
+                <dt class="label">最新版本</dt>
+                <dd>{latest.version}</dd>
+              </div>
+            )
+          }
+          <div>
+            <dt class="label">更新</dt>
+            <dd><time datetime={work.updatedAt.toISOString()}>{fmtDate(work.updatedAt)}</time></dd>
+          </div>
+          {
+            work.fileCount > 0 && (
+              <div>
+                <dt class="label">下载</dt>
+                <dd>{n(work.downloads)} 次</dd>
+              </div>
+            )
+          }
+        </dl>
+
+        <div class="actions" data-pagefind-ignore>
+          {
+            latest && latest.files.length === 1 ? (
+              <a class="primary" href={latest.files[0].url} download>
+                下载 {latest.version}
+                <small>{formatBytes(latest.files[0].size)}</small>
+              </a>
+            ) : (
+              work.fileCount > 0 && <a class="primary" href="#files">下载</a>
+            )
+          }
+          {
+            post && (
+              <a class="chip" href={`/posts/${post.slug}/`}>
+                相关文章：{post.title} →
+              </a>
+            )
+          }
+          {work.links.map((link) => <a class="chip" href={link.url} target="_blank" rel="noopener noreferrer">{link.label} ↗</a>)}
+        </div>
+      </div>
+
+      {
+        work.cover && (
+          <figure class="cover" data-zoom>
+            <img src={work.cover.src} srcset={work.cover.srcset} sizes="(max-width: 900px) 94vw, 36rem" width={work.cover.width} height={work.cover.height} alt="" loading="eager" decoding="async" />
+          </figure>
+        )
+      }
+    </header>
+
+    <nav class="tabs" aria-label="本页内容" data-pagefind-ignore>
+      {
+        tabs.map((t) => (
+          <a href={t.href}>
+            <span class="cjk">{t.label}</span>
+            {t.count !== undefined && <span class="n">{t.count}</span>}
+          </a>
+        ))
+      }
+    </nav>
+
+    <section id="about" class="part">
+      <div class="prose">
+        {work.descriptionHtml.trim() ? <Fragment set:html={work.descriptionHtml} /> : <p class="quiet">还没有介绍。</p>}
+      </div>
+    </section>
+
+    <section id="files" class="part" data-pagefind-ignore>
+      <header class="section-head">
+        <span class="label">§</span>
+        <h2>文件</h2>
+        <span class="en">Files</span>
+      </header>
+      {
+        !latest ? (
+          <p class="quiet">还没有可以下载的文件。</p>
+        ) : (
+          <>
+            <div class="release">
+              <p class="rel-head">
+                <strong>{latest.version}</strong>
+                <span class="label">最新 · {fmtDate(latest.createdAt)}</span>
+              </p>
+              {filesOf(latest).length === 0 ? (
+                <p class="quiet">这个版本还没有文件。</p>
+              ) : (
+                <ul class="files">
+                  {filesOf(latest).map((f) => (
+                    <li>
+                      <div>
+                        <p class="fname">{f.filename}</p>
+                        {f.note && <p class="fnote">{f.note}</p>}
+                        <p class="fmeta">
+                          <span>{formatBytes(f.size)}</span>
+                          <span>下载 {n(f.downloads)}</span>
+                          <span title={`SHA-256: ${f.sha256}`}>SHA-256 {f.sha256.slice(0, 12)}…</span>
+                        </p>
+                      </div>
+                      <a class="get" href={f.url} download>下载</a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {older.length > 0 && (
+              <details class="older">
+                <summary>旧版本（{older.length}）</summary>
+                {older.map((release) => (
+                  <div class="release">
+                    <p class="rel-head">
+                      <strong>{release.version}</strong>
+                      <span class="label">{fmtDate(release.createdAt)}</span>
+                    </p>
+                    {release.files.length === 0 ? (
+                      <p class="quiet">这个版本没有文件。</p>
+                    ) : (
+                      <ul class="files">
+                        {release.files.map((f) => (
+                          <li>
+                            <div>
+                              <p class="fname">{f.filename}</p>
+                              {f.note && <p class="fnote">{f.note}</p>}
+                              <p class="fmeta">
+                                <span>{formatBytes(f.size)}</span>
+                                <span>下载 {n(f.downloads)}</span>
+                                <span title={`SHA-256: ${f.sha256}`}>SHA-256 {f.sha256.slice(0, 12)}…</span>
+                              </p>
+                            </div>
+                            <a class="get" href={f.url} download>下载</a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </details>
+            )}
+          </>
+        )
+      }
+    </section>
+
+    {
+      work.images.length > 0 && (
+        <section id="images" class="part" data-pagefind-ignore>
+          <header class="section-head">
+            <span class="label">§</span>
+            <h2>图片</h2>
+            <span class="en">Images</span>
+          </header>
+          <ul class="gallery" data-zoom>
+            {work.images.map((image) => (
+              <li>
+                <img src={image.url} data-full={image.full} width={image.width} height={image.height} alt={`${work.title} 的图片`} loading="lazy" decoding="async" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      withNotes.length > 0 && (
+        <section id="log" class="part">
+          <header class="section-head">
+            <span class="label">§</span>
+            <h2>更新日志</h2>
+            <span class="en">Changes</span>
+          </header>
+          {withNotes.map((release) => (
+            <div class="entry">
+              <p class="rel-head">
+                <strong>{release.version}</strong>
+                <span class="label">{fmtDate(release.createdAt)}</span>
+              </p>
+              <div class="prose notes" set:html={release.notesHtml} />
+            </div>
+          ))}
+        </section>
+      )
+    }
+  </article>
+</Base>
+
+<style>
+  .work {
+    padding-bottom: 5rem;
+  }
+
+  .head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    align-items: center;
+    padding-block: clamp(2.5rem, 6vw, 4.5rem) 2.5rem;
+  }
+
+  .head:not(:has(.cover)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 1.25rem;
+  }
+
+  .crumbs a:hover {
+    color: var(--sky);
+  }
+
+  .edit {
+    margin-left: auto;
+    padding: 0 0.7em;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    color: var(--ink-2);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2.1rem, 5vw, 3.6rem);
+    line-height: 1.12;
+    text-wrap: pretty;
+  }
+
+  .summary {
+    max-width: 36rem;
+    margin: 1rem 0 0;
+    font-size: 1.1rem;
+    color: var(--ink-2);
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2.5rem;
+    margin: 1.75rem 0 0;
+  }
+
+  .facts div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .facts dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1.75rem;
+  }
+
+  .actions .chip {
+    padding: 0.35em 0.9em;
+    white-space: normal;
+  }
+
+  .primary {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.6em;
+    padding: 0.6rem 1.4rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-cjk);
+    font-size: 1.05rem;
+    transition:
+      background 0.2s,
+      border-color 0.2s;
+  }
+
+  .primary:hover {
+    border-color: var(--sky-ink);
+    background: var(--sky-ink);
+  }
+
+  .primary small {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    opacity: 0.75;
+  }
+
+  .cover {
+    margin: 0;
+  }
+
+  .cover img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 24rem;
+    object-fit: cover;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    cursor: zoom-in;
+  }
+
+  /* ---------- in-page tabs ---------- */
+  .tabs {
+    position: sticky;
+    top: 3.9rem;
+    z-index: 5;
+    display: flex;
+    gap: 0.25rem;
+    border-top: 1.5px solid var(--rule-strong);
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
+    overflow-x: auto;
+  }
+
+  .tabs a {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.8rem 1.1rem;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-2);
+    white-space: nowrap;
+    transition:
+      color 0.2s,
+      border-color 0.2s;
+  }
+
+  .tabs a:hover {
+    border-bottom-color: var(--sky);
+    color: var(--ink);
+  }
+
+  .tabs .cjk {
+    font-size: 1.08rem;
+  }
+
+  .tabs .n {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-3);
+  }
+
+  .part {
+    padding-top: 2.5rem;
+    scroll-margin-top: 7rem;
+  }
+
+  .part > .prose {
+    max-width: var(--measure);
+  }
+
+  .quiet {
+    color: var(--ink-3);
+  }
+
+  /* ---------- files ---------- */
+  .release + .release,
+  .older {
+    margin-top: 1.75rem;
+  }
+
+  .rel-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    margin: 0 0 0.6rem;
+  }
+
+  .rel-head strong {
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 500;
+  }
+
+  .files {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .files li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .files p {
+    margin: 0;
+  }
+
+  .fname {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    overflow-wrap: anywhere;
+  }
+
+  .fnote {
+    margin-top: 0.2rem !important;
+    color: var(--ink-2);
+    font-size: 0.92rem;
+  }
+
+  .fmeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 1rem;
+    margin-top: 0.3rem !important;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+  }
+
+  .get {
+    padding: 0.4rem 1.1rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    font-family: var(--font-cjk);
+    white-space: nowrap;
+    transition:
+      background 0.2s,
+      color 0.2s;
+  }
+
+  .get:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .older summary {
+    padding: 0.6rem 0;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+
+  .older .release {
+    margin-top: 1rem;
+  }
+
+  /* ---------- gallery ---------- */
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.9rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .gallery img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    cursor: zoom-in;
+    transition: opacity 0.2s;
+  }
+
+  .gallery img:hover {
+    opacity: 0.88;
+  }
+
+  /* ---------- change log ---------- */
+  .entry {
+    padding: 1.1rem 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .notes {
+    max-width: var(--measure);
+  }
+
+  .notes :global(> :first-child) {
+    margin-top: 0;
+  }
+
+  .notes :global(> :last-child) {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 900px) {
+    .head {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .files li {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .get {
+      justify-self: start;
+    }
+  }
+</style>

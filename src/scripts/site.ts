@@ -239,10 +239,11 @@ if (prose) {
   document.body.append(box);
   const big = box.querySelector('img')!;
   const cap = box.querySelector('p')!;
-  prose.addEventListener('click', (e) => {
-    const img = (e.target as HTMLElement).closest<HTMLImageElement>('img');
+  // Pictures in the text, and anywhere else marked with data-zoom (a gallery).
+  document.addEventListener('click', (e) => {
+    const img = (e.target as HTMLElement).closest<HTMLImageElement>('.prose img, [data-zoom] img');
     if (!img || img.closest('a')) return;
-    big.src = img.currentSrc || img.src;
+    big.src = img.dataset.full || img.currentSrc || img.src;
     big.alt = img.alt;
     cap.textContent = img.closest('figure')?.querySelector('figcaption')?.textContent || img.alt || '';
     box.showModal();

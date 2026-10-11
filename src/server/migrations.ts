@@ -207,4 +207,52 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: '006_projects',
+    sql: `
+      -- Things the author made and offers for download: project, versions, files.
+      CREATE TABLE projects (
+        id INTEGER PRIMARY KEY,
+        slug TEXT NOT NULL UNIQUE,
+        kind TEXT NOT NULL CHECK (kind IN ('mod','app','other')) DEFAULT 'mod',
+        title TEXT NOT NULL,
+        summary TEXT,
+        description_md TEXT NOT NULL DEFAULT '',
+        description_html TEXT NOT NULL DEFAULT '',
+        cover_media_id INTEGER REFERENCES media(id),
+        -- JSON arrays: gallery images as media ids, links as {label, url}.
+        images_json TEXT NOT NULL DEFAULT '[]',
+        links_json TEXT NOT NULL DEFAULT '[]',
+        -- A post about this work, linked from its page.
+        post_id INTEGER REFERENCES posts(id) ON DELETE SET NULL,
+        hidden INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE releases (
+        id INTEGER PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        version TEXT NOT NULL,
+        notes_md TEXT NOT NULL DEFAULT '',
+        notes_html TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        UNIQUE (project_id, version)
+      );
+
+      -- The bytes live at files/<first two hex chars>/<sha256>.
+      CREATE TABLE assets (
+        id INTEGER PRIMARY KEY,
+        release_id INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+        filename TEXT NOT NULL,
+        note TEXT,
+        sha256 TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        downloads INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        UNIQUE (release_id, filename)
+      );
+      CREATE INDEX assets_sha ON assets(sha256);
+    `,
+  },
 ];

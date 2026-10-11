@@ -1,4 +1,5 @@
 import { SITE } from '@/site.config';
+import { listProjects } from '@/server/projects.ts';
 import { categoryOf, categoryUrl, getPosts, groupBy, postUrl, seriesUrl, tagUrl } from './posts';
 
 // Prerendered pages. The Hot 100 lessons are discovered from their source files.
@@ -7,7 +8,7 @@ const lessons = Object.keys(import.meta.glob('../pages/hot100/*.astro'))
   .filter((id): id is string => !!id)
   .sort((a, b) => Number(a) - Number(b));
 
-const STATIC = ['/', '/about/', '/privacy/', '/posts/', '/tags/', '/categories/', '/series/', '/hot100/', ...lessons.map((id) => `/hot100/${id}/`)];
+const STATIC = ['/', '/about/', '/privacy/', '/posts/', '/works/', '/tags/', '/categories/', '/series/', '/hot100/', ...lessons.map((id) => `/hot100/${id}/`)];
 
 /** Every public address. Hidden posts and drafts are never listed. */
 export function sitemapEntries(): { loc: string; lastmod?: Date }[] {
@@ -16,6 +17,7 @@ export function sitemapEntries(): { loc: string; lastmod?: Date }[] {
   return [
     ...STATIC.map((path) => ({ loc: path })),
     ...posts.map((p) => ({ loc: postUrl(p), lastmod: p.data.updated ?? p.data.date })),
+    ...listProjects().map((p) => ({ loc: `/works/${p.slug}/`, lastmod: p.updatedAt })),
     ...[...groupBy(posts, (p) => p.data.tags).keys()].map((t) => ({ loc: tagUrl(t) })),
     ...[...cats].map((slug) => ({ loc: categoryUrl(slug) })),
     ...[...groupBy(posts, (p) => p.data.series).keys()].map((s) => ({ loc: seriesUrl(s) })),

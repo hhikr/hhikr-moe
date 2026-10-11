@@ -6,7 +6,7 @@ import { readSession, sessionCookieName, sessionCookieOptions } from '@/server/s
 // (trailingSlash: 'ignore') so that API routes and files work without one;
 // this keeps a single canonical address for pages.
 const isPage = (pathname: string) =>
-  !pathname.startsWith('/api/') && !pathname.startsWith('/media/') && !/\.[a-z0-9]+$/i.test(pathname);
+  !pathname.startsWith('/api/') && !pathname.startsWith('/media/') && !pathname.startsWith('/dl/') && !/\.[a-z0-9]+$/i.test(pathname);
 
 const isManagement = (pathname: string) => pathname.startsWith('/endmin') || pathname.startsWith('/api/endmin');
 
