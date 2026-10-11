@@ -1,124 +1,136 @@
 ---
-// The management area. The middleware answers 404 here for everyone but the endministrator.
-import Base from '@/layouts/Base.astro';
+import Endmin from '@/layouts/Endmin.astro';
+import { fmtDate } from '@/lib/posts';
+import { commentCounts, listAllComments } from '@/server/comments.ts';
 import { listAllPosts } from '@/server/posts.ts';
+import { formatBytes, systemStatus } from '@/server/system.ts';
+import { listUsers } from '@/server/users.ts';
 
 export const prerender = false;
 
-const user = Astro.locals.user!;
 const posts = listAllPosts();
-const counts = [
-  { n: posts.filter((p) => p.status === 'published' && !p.hidden).length, label: '已发布' },
-  { n: posts.filter((p) => p.status === 'published' && p.hidden).length, label: '隐藏' },
-  { n: posts.filter((p) => p.status === 'draft').length, label: '草稿' },
-];
+const published = posts.filter((p) => p.status === 'published' && !p.hidden);
+const hidden = posts.filter((p) => p.status === 'published' && p.hidden);
 const drafts = posts.filter((p) => p.status === 'draft');
+const comments = commentCounts();
+const recent = listAllComments(5);
+const users = listUsers().filter((u) => u.role !== 'endmin');
+const sys = systemStatus();
+
+const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+const duration = (s: number) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} 分钟` : s < 86400 ? `${Math.round(s / 3600)} 小时` : `${Math.round(s / 86400)} 天`);
+const diskUsed = sys.diskTotalBytes && sys.diskFreeBytes !== null ? 1 - sys.diskFreeBytes / sys.diskTotalBytes : null;
+
+const tiles = [
+  { n: published.length, label: '已发布', href: '/endmin/posts/' },
+  { n: hidden.length, label: '隐藏', href: '/endmin/posts/' },
+  { n: drafts.length, label: '草稿', href: '/endmin/posts/' },
+  { n: comments.total, label: '评论', href: '/endmin/comments/', note: comments.hidden ? `${comments.hidden} 待审` : '' },
+  { n: users.length, label: '用户', href: '/endmin/users/' },
+];
 ---
 
-<Base title="管理面板" noindex>
-  <div class="wrap">
-    <header class="page-head">
-      <p class="label kicker">Endministrator · {user.nickname}</p>
-      <h1>管理面板<span class="en">Dashboard</span></h1>
-    </header>
-
-    <section class="stats" aria-label="文章数量">
-      {
-        counts.map((c) => (
-          <div class="stat">
-            <span class="n display">{c.n}</span>
-            <span class="cjk">{c.label}</span>
-          </div>
-        ))
-      }
-    </section>
-
+<Endmin title="概览" en="Overview">
+  <div class="em-tiles">
     {
-      drafts.length > 0 && (
-        <section class="block">
-          <h2 class="label">草稿</h2>
-          <ul>
-            {drafts.map((p) => (
-              <li>
-                <span class="cjk">{p.title}</span>
-                <span class="label">{p.slug}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )
+      tiles.map((t) => (
+        <a class="em-tile" href={t.href}>
+          <span class="n">
+            {t.n}
+            {t.note && <small>{t.note}</small>}
+          </span>
+          <span class="cjk">{t.label}</span>
+        </a>
+      ))
     }
-
-    <p class="note">写文章、文件、评论、统计和备份的管理界面还没有做好。</p>
-
-    <div class="actions">
-      <a class="chip" href="/">查看网站</a>
-      <button class="chip" type="button" data-logout>退出登录</button>
-    </div>
   </div>
-</Base>
 
-<script>
-  import { api } from '@/scripts/account';
+  <div class="em-cols">
+    <div>
+      <section class="em-panel">
+        <h2>最新评论 <a href="/endmin/comments/">全部 →</a></h2>
+        {
+          recent.length === 0 ? (
+            <p class="em-empty">还没有评论。</p>
+          ) : (
+            <ul class="em-rows">
+              {recent.map((c) => (
+                <li>
+                  <div class="em-meta">
+                    <span>{c.author?.handle ?? '已删除的用户'}</span>
+                    <span>{when.format(new Date(c.createdAt))}</span>
+                    <a href={`/posts/${c.postSlug}/#comment-${c.id}`}>{c.postTitle}</a>
+                  </div>
+                  {c.status === 'hidden' && <span class="em-state hidden">待审</span>}
+                  <div class="em-quote clip" set:html={c.html} />
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
 
-  document.querySelector('[data-logout]')?.addEventListener('click', async () => {
-    await api('/api/auth/logout', {});
-    location.assign('/');
-  });
-</script>
+      <section class="em-panel">
+        <h2>草稿 <a href="/endmin/posts/">全部文章 →</a></h2>
+        {
+          drafts.length === 0 ? (
+            <p class="em-empty">没有草稿。</p>
+          ) : (
+            <ul class="em-rows">
+              {drafts.map((p) => (
+                <li>
+                  <div>
+                    <div class="t">{p.title}</div>
+                    <div class="em-meta">
+                      <span>{p.slug}</span>
+                      <span>{p.words.toLocaleString('zh-CN')} 字</span>
+                      <span>{fmtDate(p.publishedAt)}</span>
+                    </div>
+                  </div>
+                  <div class="em-acts">
+                    <button class="em-btn go" data-api={`/api/endmin/posts/${p.id}`} data-body='{"status":"published"}' data-confirm={`发布「${p.title}」？所有人都能看到它。`}>
+                      发布
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+    </div>
 
-<style>
-  .stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3rem;
-    padding: 2rem 0;
-    border-top: 1.5px solid var(--rule-strong);
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .stat {
-    display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
-  }
-
-  .n {
-    font-size: 3.2rem;
-    line-height: 1;
-  }
-
-  .block {
-    padding-top: 2rem;
-  }
-
-  ul {
-    list-style: none;
-    margin: 0.75rem 0 0;
-    padding: 0;
-  }
-
-  li {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.6rem 0;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .note {
-    margin: 2rem 0 0;
-    color: var(--ink-3);
-  }
-
-  .actions {
-    display: flex;
-    gap: 0.5rem;
-    padding: 2rem 0 4rem;
-  }
-
-  .chip {
-    padding: 0.45em 1.2em;
-    cursor: pointer;
-  }
-</style>
+    <section class="em-panel">
+      <h2>服务器</h2>
+      <dl class="em-facts">
+        <div>
+          <dt>磁盘</dt>
+          <dd class:list={{ warn: diskUsed !== null && diskUsed > 0.85 }}>
+            {sys.diskFreeBytes === null ? '未知' : `剩余 ${formatBytes(sys.diskFreeBytes)}`}
+            {diskUsed !== null && ` · 已用 ${Math.round(diskUsed * 100)}%`}
+          </dd>
+        </div>
+        <div>
+          <dt>数据库</dt>
+          <dd>{formatBytes(sys.databaseBytes)}</dd>
+        </div>
+        <div>
+          <dt>图片与头像</dt>
+          <dd>{sys.mediaFiles} 个文件 · {formatBytes(sys.mediaBytes)}</dd>
+        </div>
+        <div>
+          <dt>搜索索引</dt>
+          <dd class:list={{ warn: !sys.searchIndexedAt }}>{sys.searchIndexedAt ? `更新于 ${when.format(sys.searchIndexedAt)}` : '尚未建立'}</dd>
+        </div>
+        <div>
+          <dt>备份</dt>
+          <dd class="warn">尚未配置</dd>
+        </div>
+        <div>
+          <dt>已运行</dt>
+          <dd>{duration(sys.uptimeSeconds)} · Node {sys.node}</dd>
+        </div>
+      </dl>
+    </section>
+  </div>
+</Endmin>

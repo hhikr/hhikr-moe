@@ -1,6 +1,7 @@
 // Helpers shared by the API routes.
 import type { APIContext } from 'astro';
 import { AuthError } from '@/server/auth.ts';
+import { CommentError } from '@/server/comments.ts';
 import { secureCookies, siteOrigin } from '@/server/config.ts';
 import { sessionCookieName, sessionCookieOptions, startSession } from '@/server/sessions.ts';
 import type { User } from '@/server/users.ts';
@@ -16,6 +17,7 @@ export const fail = (code: string, message: string, status = 400) => json({ erro
 /** Turn a thrown error into a response. Unexpected errors are logged and answered without detail. */
 export function failFrom(err: unknown): Response {
   if (err instanceof AuthError) return fail(err.code, err.message, err.status);
+  if (err instanceof CommentError) return fail('invalid', err.message, err.status);
   console.error(err);
   return fail('server_error', '服务器出了点问题，请稍后再试', 500);
 }
@@ -73,3 +75,6 @@ export const pendingCookieOptions = () => ({
   path: '/api/auth/google',
   maxAge: 600,
 });
+
+export const needSignIn = () => fail('signed_out', '请先登录', 401);
+export const tooMany = () => fail('rate_limited', '操作太频繁了，请稍后再试', 429);

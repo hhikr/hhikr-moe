@@ -50,3 +50,37 @@ export async function rebuildSearchIndex(origin: string, clientDir: string): Pro
     await pagefind.close();
   }
 }
+
+let timer: ReturnType<typeof setTimeout> | undefined;
+let running = false;
+let again = false;
+
+/**
+ * Rebuild the index shortly after something changed which posts guests can
+ * read. Changes made in quick succession are folded into one rebuild.
+ */
+export function scheduleSearchRebuild(delayMs = 15_000): void {
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    if (running) {
+      again = true;
+      return;
+    }
+    running = true;
+    try {
+      // The running site answers on its own port; the build's pages sit beside the server entry.
+      const origin = `http://127.0.0.1:${process.env.PORT ?? 4321}`;
+      const result = await rebuildSearchIndex(origin, `${process.cwd()}/dist/client`);
+      console.log(`search index rebuilt: ${result.pages} prerendered pages, ${result.posts} posts`);
+    } catch (err) {
+      console.error('search index rebuild failed:', err instanceof Error ? err.message : err);
+    } finally {
+      running = false;
+      if (again) {
+        again = false;
+        scheduleSearchRebuild(delayMs);
+      }
+    }
+  }, delayMs);
+  timer.unref?.();
+}

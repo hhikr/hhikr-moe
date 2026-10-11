@@ -14,6 +14,9 @@ export const LIMITS = {
   loginByAddress: { max: 20, window: 600 },
   loginByAccount: { max: 10, window: 600 },
   challenge: { max: 60, window: 600 },
+  comment: { max: 5, window: 600 },
+  avatar: { max: 5, window: 3600 },
+  rename: { max: 5, window: 3600 },
 } satisfies Record<string, Limit>;
 
 const now = () => Math.floor(Date.now() / 1000);

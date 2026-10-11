@@ -179,3 +179,24 @@ export async function savePost(input: PostInput): Promise<number> {
     return id;
   });
 }
+
+export function postIdBySlug(slug: string, viewer: Viewer = GUEST): number | undefined {
+  const row: any = db().prepare(`SELECT id FROM posts WHERE slug = ? AND ${visibleTo(viewer)}`).get(slug);
+  return row ? Number(row.id) : undefined;
+}
+
+/** Publish, withdraw to draft, hide or unhide a post. Management only. */
+export function setPostState(id: number, change: { status?: PostStatus; hidden?: boolean }): boolean {
+  const sets: string[] = [];
+  const args: (string | number)[] = [];
+  if (change.status === 'draft' || change.status === 'published') {
+    sets.push('status = ?');
+    args.push(change.status);
+  }
+  if (typeof change.hidden === 'boolean') {
+    sets.push('hidden = ?');
+    args.push(change.hidden ? 1 : 0);
+  }
+  if (sets.length === 0) return false;
+  return Number(db().prepare(`UPDATE posts SET ${sets.join(', ')} WHERE id = ?`).run(...args, id).changes) === 1;
+}
