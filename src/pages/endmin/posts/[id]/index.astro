@@ -44,7 +44,7 @@ const data = { id, status: post.status, fields, sourceMd, cover };
       </div>
     </header>
 
-    <form class="ed-fields" data-fields onsubmit="return false" novalidate>
+    <form class="ed-fields" data-fields data-scripted novalidate>
       <input class="ed-title cjk" name="title" placeholder="标题" aria-label="标题" maxlength="200" />
       <details open={!published}>
         <summary class="label">文章属性</summary>
@@ -127,10 +127,11 @@ const data = { id, status: post.status, fields, sourceMd, cover };
           ) : (
             <ul>
               {revisions.map((r) => (
-                <li>
+                <li data-revision={r.id} data-when={when.format(new Date(r.createdAt))}>
                   <span>{when.format(new Date(r.createdAt))}</span>
                   <span class="cjk">{r.title}</span>
                   <span class="label">{r.characters.toLocaleString('zh-CN')} 字符</span>
+                  <button type="button" class="em-btn" data-do="compare" data-id={r.id}>对比</button>
                   <button type="button" class="em-btn" data-do="revision" data-id={r.id}>载入</button>
                 </li>
               ))}
@@ -140,6 +141,25 @@ const data = { id, status: post.status, fields, sourceMd, cover };
       </details>
       <button type="button" class="em-btn danger" data-do="delete">删除这篇文章</button>
     </footer>
+
+    <dialog class="ed-diff" data-diff aria-label="版本对比">
+      <header>
+        <h2 class="cjk">版本对比</h2>
+        <label>
+          <span class="label">把这个版本与</span>
+          <select data-diff-against>
+            <option value="current">编辑器里现在的内容</option>
+            <option value="previous">它的上一个版本</option>
+          </select>
+          <span class="label">比较</span>
+        </label>
+        <span class="ed-diff-stats" data-diff-stats></span>
+        <button type="button" class="em-btn" data-do="diff-close">关闭</button>
+      </header>
+      <p class="ed-diff-sides label" data-diff-sides></p>
+      <ul class="ed-diff-fields" data-diff-fields></ul>
+      <div class="ed-diff-body" data-diff-body></div>
+    </dialog>
 
     <input type="file" data-file-input multiple hidden />
     <input type="file" data-cover-input accept="image/*" hidden />
@@ -419,6 +439,189 @@ const data = { id, status: post.status, fields, sourceMd, cover };
 
   .ed-foot li .em-btn {
     margin-left: auto;
+  }
+
+  .ed-foot li .em-btn + .em-btn {
+    margin-left: 0;
+  }
+
+  /* ---------- comparing versions ---------- */
+  .ed-diff {
+    --diff-add-ink: #1a7f37;
+    --diff-del-ink: #cf222e;
+    --diff-add: color-mix(in srgb, #2da44e 16%, transparent);
+    --diff-add-strong: color-mix(in srgb, #2da44e 40%, transparent);
+    --diff-del: color-mix(in srgb, #cf222e 13%, transparent);
+    --diff-del-strong: color-mix(in srgb, #cf222e 36%, transparent);
+    width: min(100vw - 2rem, 72rem);
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    border: 1px solid var(--rule-strong);
+    border-radius: 6px;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow:
+      8px 8px 0 var(--sky-soft),
+      var(--shadow);
+  }
+
+  [data-theme='dark'] .ed-diff {
+    --diff-add-ink: #56d364;
+    --diff-del-ink: #ff7b72;
+  }
+
+  .ed-diff[open] {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+
+  .ed-diff::backdrop {
+    background: color-mix(in srgb, var(--paper) 40%, rgb(10 12 18 / 0.45));
+    backdrop-filter: blur(3px);
+  }
+
+  .ed-diff header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.25rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1.5px solid var(--rule-strong);
+  }
+
+  .ed-diff h2 {
+    margin: 0;
+    font-size: 1.4rem;
+  }
+
+  .ed-diff header label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ed-diff select {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.9rem;
+  }
+
+  .ed-diff-stats {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+  }
+
+  .ed-diff-stats .plus {
+    color: var(--diff-add-ink);
+  }
+
+  .ed-diff-stats .minus {
+    margin-left: 0.6em;
+    color: var(--diff-del-ink);
+  }
+
+  .ed-diff-sides {
+    margin: 0;
+    padding: 0.6rem 1.25rem;
+  }
+
+  .ed-diff-fields {
+    list-style: none;
+    margin: 0;
+    padding: 0 1.25rem 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .ed-diff-fields:empty {
+    display: none;
+  }
+
+  .ed-diff-fields li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.6rem;
+    padding: 0.2rem 0;
+  }
+
+  .ed-diff-fields del {
+    color: var(--diff-del-ink);
+  }
+
+  .ed-diff-fields ins {
+    color: var(--diff-add-ink);
+    text-decoration: none;
+  }
+
+  .ed-diff-body {
+    border-top: 1px solid var(--rule);
+    background: var(--card);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    overflow: auto;
+  }
+
+  .ed-diff-body .row {
+    display: grid;
+    grid-template-columns: 3.2rem 3.2rem 1.4rem minmax(0, 1fr);
+  }
+
+  .ed-diff-body .n {
+    padding-right: 0.6rem;
+    color: var(--ink-3);
+    text-align: right;
+    user-select: none;
+  }
+
+  .ed-diff-body .sign {
+    color: var(--ink-3);
+    text-align: center;
+    user-select: none;
+  }
+
+  .ed-diff-body .text {
+    padding-right: 1rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .ed-diff-body .add {
+    background: var(--diff-add);
+  }
+
+  .ed-diff-body .del {
+    background: var(--diff-del);
+  }
+
+  .ed-diff-body .add mark {
+    background: var(--diff-add-strong);
+    color: inherit;
+  }
+
+  .ed-diff-body .del mark {
+    background: var(--diff-del-strong);
+    color: inherit;
+  }
+
+  .ed-diff-body .gap,
+  .ed-diff-body .none {
+    margin: 0;
+    padding: 0.3rem 1rem;
+    background: var(--paper-2);
+    color: var(--ink-3);
+    text-align: center;
+  }
+
+  .ed-diff-body .none {
+    padding: 2rem 1rem;
+    background: none;
+    font-family: var(--font-cjk);
+    font-size: 1rem;
   }
 
   .ed-foot .none {
