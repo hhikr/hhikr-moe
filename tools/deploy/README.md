@@ -201,7 +201,7 @@ ssh -i $env:USERPROFILE\.ssh\hhikr_vps -p 17648 root@89.34.227.228 "sed -i 's/\r
 
 | 路径 | 内容 |
 | --- | --- |
-| `site.db`（及 `-wal`、`-shm`） | SQLite 数据库。启动时自动执行未执行过的结构迁移，迁移前会留一份 `site.db.before-<迁移名>` |
+| `site.db`（及 `-wal`、`-shm`） | SQLite 数据库：文章、账号、评论和访问统计。启动时自动执行未执行过的结构迁移，迁移前会留一份 `site.db.before-<迁移名>` |
 | `media/` | 文章图片和封面，按内容哈希存放，Caddy 直接从这里提供 `/media/*` |
 | `avatars/` | 用户头像，由服务端重新编码成 256×256 的 WebP，Caddy 直接从这里提供 `/avatars/*` |
 | `pagefind/` | 搜索索引，Caddy 直接从这里提供 `/pagefind/*`。发布时重建；在管理面板里发布、撤回或隐藏文章后约 15 秒由服务自己重建 |
@@ -279,6 +279,7 @@ systemctl reload caddy
 | 搜索资源 404 | 完整构建是否成功、是否上传 `dist/pagefind/` |
 | 更新未生效 | 先核对 `current`，再查浏览器缓存 |
 | Java 无法编译 | 用户本机 Node.js、JDK、本机 Java 服务及允许的网站来源 |
-| 评论不可用 | 独立 Waline 服务 `waline-comments.hhikr.moe`，本次没有部署该后端 |
+| 评论或登录不可用 | `systemctl status hhikr-web`、`journalctl -u hhikr-web -n 80`；评论和账号都在本机的 Node 服务里 |
+| 访问统计不增加 | 爬虫、脚本和站长本人的访问本来就不计；其余情况看浏览器对 `/api/hit` 的请求是否返回 200 或 204 |
 
 Java 在访问者本机执行，VPS 不公开代码执行接口。项目旧 `scripts/deploy.sh` 属于另一套 rsync 流程，不是此次上线方式，执行前必须核对其目标目录和参数。网站和代理各有独立的 systemd 服务。

@@ -3,10 +3,12 @@ import Endmin from '@/layouts/Endmin.astro';
 import { fmtDate } from '@/lib/posts';
 import { CATEGORIES } from '@/site.config';
 import { listAllPosts, type PostSummary } from '@/server/posts.ts';
+import { viewsByPost } from '@/server/stats.ts';
 
 export const prerender = false;
 
 const posts = listAllPosts();
+const views = viewsByPost();
 const groupOf = (p: PostSummary) => (p.status === 'draft' ? 'draft' : p.hidden ? 'hidden' : 'published');
 const LABEL = { published: '已发布', hidden: '隐藏', draft: '草稿' };
 const count = (g: string) => posts.filter((p) => groupOf(p) === g).length;
@@ -43,6 +45,7 @@ const body = (o: object) => JSON.stringify(o);
                 {p.category && <span>{CATEGORIES[p.category]?.name ?? p.category}</span>}
                 {p.series && <span>{p.series.replace(/^笔记-/, '')}</span>}
                 <span>{p.words.toLocaleString('zh-CN')} 字</span>
+                {group !== 'draft' && <span>阅读 {(views.get(p.id) ?? 0).toLocaleString('zh-CN')}</span>}
               </div>
             </div>
             <div class="em-acts">

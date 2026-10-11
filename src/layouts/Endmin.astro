@@ -22,9 +22,10 @@ const sections = [
   { href: '/endmin/media/', label: '媒体', en: 'Media' },
   { href: '/endmin/comments/', label: '评论', en: 'Comments', badge: pending },
   { href: '/endmin/users/', label: '用户', en: 'Users' },
+  { href: '/endmin/stats/', label: '统计', en: 'Stats' },
 ];
 // Parts of the plan that have no screen yet. Shown so the rail does not reshuffle later.
-const upcoming = ['文件', '统计', '备份'];
+const upcoming = ['文件', '备份'];
 const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
 ---
 

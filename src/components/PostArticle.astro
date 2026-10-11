@@ -77,6 +77,14 @@ const related = relatedPosts(post, all);
           <dt class="label">篇幅</dt>
           <dd>{words.toLocaleString('zh-CN')} 字 · {minutes} 分钟</dd>
         </div>
+        {
+          !preview && (
+            <div data-views hidden data-pagefind-ignore>
+              <dt class="label">阅读</dt>
+              <dd><span data-views-n /> 次</dd>
+            </div>
+          )
+        }
         {cat && <span hidden data-pagefind-meta="category">{cat.name}</span>}
       </dl>
       {
@@ -225,6 +233,10 @@ const related = relatedPosts(post, all);
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
+  }
+
+  .facts div[hidden] {
+    display: none;
   }
 
   .facts dd {

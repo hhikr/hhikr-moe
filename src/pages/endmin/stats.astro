@@ -1,0 +1,309 @@
+---
+import Endmin from '@/layouts/Endmin.astro';
+import { listAllPosts } from '@/server/posts.ts';
+import { statsReport, type Ranked } from '@/server/stats.ts';
+
+export const prerender = false;
+
+const RANGES = [
+  { days: 7, label: '7 天' },
+  { days: 30, label: '30 天' },
+  { days: 365, label: '一年' },
+];
+const days = RANGES.find((r) => String(r.days) === Astro.url.searchParams.get('days'))?.days ?? 30;
+const report = statsReport(days);
+const today = report.series[report.series.length - 1];
+const n = (value: number) => value.toLocaleString('zh-CN');
+
+// A year is drawn month by month; shorter ranges day by day.
+interface Point {
+  label: string;
+  views: number;
+  visitors: number;
+}
+let points: Point[];
+if (days > 31) {
+  const months = new Map<string, Point>();
+  for (const d of report.series) {
+    const key = d.day.slice(0, 7);
+    const m = months.get(key) ?? { label: key.replace('-', '.'), views: 0, visitors: 0 };
+    m.views += d.views;
+    m.visitors += d.visitors;
+    months.set(key, m);
+  }
+  points = [...months.values()];
+} else {
+  points = report.series.map((d) => ({ label: d.day.slice(5).replace('-', '.'), views: d.views, visitors: d.visitors }));
+}
+
+// Chart geometry, in SVG units.
+const W = 720;
+const H = 230;
+const LEFT = 40;
+const TOP = 12;
+const BOTTOM = 26;
+const innerW = W - LEFT - 6;
+const innerH = H - TOP - BOTTOM;
+const niceMax = (value: number) => {
+  if (value <= 4) return 4;
+  const pow = 10 ** Math.floor(Math.log10(value));
+  return [1, 2, 4, 5, 10].map((k) => k * pow).find((step) => step >= value)!;
+};
+const top = niceMax(Math.max(...points.map((p) => p.views)));
+const band = innerW / points.length;
+const x = (i: number) => LEFT + band * (i + 0.5);
+const y = (value: number) => TOP + innerH * (1 - value / top);
+const barW = Math.max(2, Math.min(28, band * 0.62));
+const line = points.map((p, i) => `${x(i).toFixed(1)},${y(p.visitors).toFixed(1)}`).join(' ');
+const labelEvery = Math.ceil(points.length / 8);
+const ticks = [0, top / 2, top];
+
+const titles = new Map(listAllPosts().map((p) => [`/posts/${p.slug}/`, p.title]));
+const FIXED: Record<string, string> = { '/': '首页', '/posts/': '文章归档', '/about/': '关于', '/hot100/': '算法 · Hot 100', '/tags/': '标签', '/categories/': '分类', '/series/': '合订本', '/privacy/': '隐私说明' };
+const pageName = (path: string) => {
+  const lesson = /^\/hot100\/(\d+)\/$/.exec(path)?.[1];
+  const term = /^\/(tags|categories|series)\/(.+)\/$/.exec(path);
+  if (term) return `${FIXED[`/${term[1]}/`]} · ${term[2]}`;
+  return titles.get(path) ?? FIXED[path] ?? (lesson ? `Hot 100 · 第 ${lesson} 题` : path);
+};
+const share = (list: Ranked[], item: Ranked) => `${Math.max(2, Math.round((item.views / (list[0]?.views || 1)) * 100))}%`;
+
+const lists = [
+  { title: '来源网站', items: report.referrers, empty: '没有从其他网站过来的访问。' },
+  { title: '浏览器', items: report.browsers, empty: '没有记录。' },
+  { title: '设备', items: report.devices, empty: '没有记录。' },
+];
+---
+
+<Endmin title="统计" en="Stats" lead="访问量由网站自己统计，不保存 IP 地址。你自己的访问和爬虫不计入。">
+  <div class="em-filters" role="toolbar" aria-label="时间范围">
+    {
+      RANGES.map((r) => (
+        <a class="chip" href={`/endmin/stats/?days=${r.days}`} aria-current={r.days === days ? 'true' : undefined}>
+          最近 {r.label}
+        </a>
+      ))
+    }
+  </div>
+
+  <div class="em-tiles">
+    <div class="em-tile"><span class="n">{n(today.views)}</span><span class="cjk">今日浏览</span></div>
+    <div class="em-tile"><span class="n">{n(today.visitors)}</span><span class="cjk">今日访客</span></div>
+    <div class="em-tile"><span class="n">{n(report.views)}</span><span class="cjk">{days} 天浏览</span></div>
+    <div class="em-tile"><span class="n">{n(report.visitors)}</span><span class="cjk">{days} 天访客</span></div>
+  </div>
+
+  <section class="em-panel chart-panel">
+    <h2>
+      趋势
+      <span class="legend"><i class="k-views"></i>浏览 <i class="k-visitors"></i>访客</span>
+    </h2>
+    <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`最近 ${days} 天的浏览次数和访客数`}>
+      {
+        ticks.map((t) => (
+          <g>
+            <line class="grid" x1={LEFT} x2={W} y1={y(t)} y2={y(t)} />
+            <text class="axis" x={LEFT - 8} y={y(t) + 4} text-anchor="end">{n(t)}</text>
+          </g>
+        ))
+      }
+      {
+        points.map((p, i) => (
+          <g>
+            <title>{`${p.label}：${n(p.views)} 次浏览，${n(p.visitors)} 位访客`}</title>
+            <rect class="hover" x={LEFT + band * i} y={TOP} width={band} height={innerH} />
+            <rect class="bar" x={x(i) - barW / 2} y={y(p.views)} width={barW} height={Math.max(0, TOP + innerH - y(p.views))} />
+            {i % labelEvery === 0 && <text class="axis" x={x(i)} y={H - 6} text-anchor="middle">{p.label}</text>}
+          </g>
+        ))
+      }
+      <polyline class="line" points={line} />
+      {points.length <= 31 && points.map((p, i) => <circle class="dot" cx={x(i)} cy={y(p.visitors)} r="2.6" />)}
+    </svg>
+    <p class="note">访客按天计算：同一个人一天内只算一次，隔天再来会再算一次。{days > 31 && '一年的图按月汇总。'}</p>
+  </section>
+
+  <div class="em-cols">
+    <section class="em-panel">
+      <h2>页面</h2>
+      {
+        report.pages.length === 0 ? (
+          <p class="em-empty">这段时间还没有访问记录。</p>
+        ) : (
+          <ol class="rank">
+            {report.pages.map((p) => (
+              <li style={`--w:${share(report.pages, p)}`}>
+                <a href={p.name}>{pageName(p.name)}</a>
+                <span class="v">{n(p.views)}<small> / {n(p.visitors ?? 0)} 人</small></span>
+              </li>
+            ))}
+          </ol>
+        )
+      }
+    </section>
+
+    <div>
+      {
+        lists.map((list) => (
+          <section class="em-panel">
+            <h2>{list.title}</h2>
+            {list.items.length === 0 ? (
+              <p class="em-empty">{list.empty}</p>
+            ) : (
+              <ol class="rank">
+                {list.items.map((item) => (
+                  <li style={`--w:${share(list.items, item)}`}>
+                    <span>{item.name}</span>
+                    <span class="v">{n(item.views)}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        ))
+      }
+    </div>
+  </div>
+</Endmin>
+
+<style>
+  .em-filters a.chip[aria-current] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .chart-panel {
+    padding-top: 2rem;
+  }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+  }
+
+  .legend i {
+    display: inline-block;
+    margin-left: 0.6rem;
+  }
+
+  .k-views {
+    width: 0.7rem;
+    height: 0.7rem;
+    background: var(--sky);
+    opacity: 0.55;
+  }
+
+  .k-visitors {
+    width: 1.1rem;
+    height: 2px;
+    background: var(--ink);
+  }
+
+  .chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.75rem;
+  }
+
+  .chart .grid {
+    stroke: var(--rule);
+    stroke-width: 1;
+  }
+
+  .chart .axis {
+    fill: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+  }
+
+  .chart .bar {
+    fill: var(--sky);
+    opacity: 0.55;
+    transition: opacity 0.15s;
+  }
+
+  .chart .hover {
+    fill: transparent;
+  }
+
+  .chart g:hover .bar {
+    opacity: 1;
+  }
+
+  .chart .line {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+
+  .chart .dot {
+    fill: var(--paper);
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    pointer-events: none;
+  }
+
+  .note {
+    margin: 0.75rem 0 0;
+    color: var(--ink-3);
+    font-size: 0.85rem;
+  }
+
+  .rank {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .rank li {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .rank li::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--w);
+    background: var(--sky-soft);
+    opacity: 0.6;
+    z-index: -1;
+  }
+
+  .rank li > :first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rank a:hover {
+    color: var(--sky-ink);
+  }
+
+  .rank .v {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+  }
+
+  .rank .v small {
+    color: var(--ink-3);
+  }
+</style>
