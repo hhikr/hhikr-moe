@@ -133,4 +133,50 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX comments_user ON comments(user_id);
     `,
   },
+  {
+    id: '004_stats',
+    sql: `
+      -- Page views, counted per day (Asia/Shanghai) and address. No row here
+      -- or below can be traced back to a visitor.
+      CREATE TABLE stats_daily (
+        day TEXT NOT NULL,
+        path TEXT NOT NULL,
+        views INTEGER NOT NULL DEFAULT 0,
+        visitors INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, path)
+      );
+      CREATE INDEX stats_daily_path ON stats_daily(path);
+
+      -- Whole-site totals; visitors are distinct across all pages of the day.
+      CREATE TABLE stats_days (
+        day TEXT PRIMARY KEY,
+        views INTEGER NOT NULL DEFAULT 0,
+        visitors INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE stats_referrers (
+        day TEXT NOT NULL,
+        host TEXT NOT NULL,
+        views INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, host)
+      );
+
+      CREATE TABLE stats_agents (
+        day TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('browser','device')),
+        name TEXT NOT NULL,
+        views INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, kind, name)
+      );
+
+      -- Who has been counted today, as keyed hashes that change every day.
+      -- Emptied when the day changes. The path '' stands for the whole site.
+      CREATE TABLE stats_seen (
+        day TEXT NOT NULL,
+        path TEXT NOT NULL,
+        visitor_hash TEXT NOT NULL,
+        PRIMARY KEY (day, path, visitor_hash)
+      ) WITHOUT ROWID;
+    `,
+  },
 ];

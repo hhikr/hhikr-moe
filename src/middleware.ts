@@ -65,6 +65,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const asGuest = session?.user.role === 'endmin' && !isManagement(pathname) && context.cookies.get('view_as')?.value === 'guest';
   context.locals.user = asGuest ? undefined : session?.user;
   context.locals.viewer = { role: asGuest ? 'guest' : (session?.user.role ?? 'guest') };
+  context.locals.endmin = session?.user.role === 'endmin';
 
   // The management area does not exist as far as anyone else can tell.
   if (isManagement(pathname) && session?.user.role !== 'endmin') return notFound();

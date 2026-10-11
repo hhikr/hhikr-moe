@@ -270,3 +270,28 @@ if (tocLinks.length) {
   addEventListener('scroll', () => requestAnimationFrame(spy), { passive: true });
   spy();
 }
+
+/* ---------- visit count ---------- */
+// One anonymous count per page view (see /privacy/). Only the host name of the
+// referring site is sent. For a post the reply says how often it has been read.
+{
+  let referrer = '';
+  try {
+    const from = new URL(document.referrer);
+    if (from.host !== location.host) referrer = from.hostname;
+  } catch {}
+  fetch('/api/hit', {
+    method: 'POST',
+    keepalive: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: location.pathname, referrer }),
+  })
+    .then((res) => (res.status === 200 ? res.json() : undefined))
+    .then((data) => {
+      const slot = $('[data-views]');
+      if (!slot || typeof data?.views !== 'number') return;
+      $('[data-views-n]', slot)!.textContent = data.views.toLocaleString('zh-CN');
+      slot.hidden = false;
+    })
+    .catch(() => {});
+}

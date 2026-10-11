@@ -3,6 +3,7 @@ import Endmin from '@/layouts/Endmin.astro';
 import { fmtDate } from '@/lib/posts';
 import { commentCounts, listAllComments } from '@/server/comments.ts';
 import { listAllPosts } from '@/server/posts.ts';
+import { statsReport } from '@/server/stats.ts';
 import { formatBytes, systemStatus } from '@/server/system.ts';
 import { listUsers } from '@/server/users.ts';
 
@@ -16,6 +17,12 @@ const comments = commentCounts();
 const recent = listAllComments(5);
 const users = listUsers().filter((u) => u.role !== 'endmin');
 const sys = systemStatus();
+const visits = statsReport(30);
+const lastWeek = visits.series.slice(-7);
+const today = visits.series[visits.series.length - 1];
+const sum = (list: typeof lastWeek, key: 'views' | 'visitors') => list.reduce((total, d) => total + d[key], 0);
+const peak = Math.max(1, ...visits.series.map((d) => d.views));
+const count = (views: number, visitors: number) => `${views.toLocaleString('zh-CN')} 次 · ${visitors.toLocaleString('zh-CN')} 人`;
 
 const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
 const duration = (s: number) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} 分钟` : s < 86400 ? `${Math.round(s / 3600)} 小时` : `${Math.round(s / 86400)} 天`);
@@ -101,6 +108,28 @@ const tiles = [
       </section>
     </div>
 
+    <div>
+    <section class="em-panel">
+      <h2>访问 <a href="/endmin/stats/">详情 →</a></h2>
+      <svg class="spark" viewBox="0 0 300 48" preserveAspectRatio="none" role="img" aria-label="最近 30 天每天的浏览次数">
+        {visits.series.map((d, i) => <rect x={i * 10 + 1} y={48 - Math.max(1, (d.views / peak) * 46)} width="8" height={Math.max(1, (d.views / peak) * 46)}><title>{`${d.day}：${d.views} 次`}</title></rect>)}
+      </svg>
+      <dl class="em-facts">
+        <div>
+          <dt>今天</dt>
+          <dd>{count(today.views, today.visitors)}</dd>
+        </div>
+        <div>
+          <dt>最近 7 天</dt>
+          <dd>{count(sum(lastWeek, 'views'), sum(lastWeek, 'visitors'))}</dd>
+        </div>
+        <div>
+          <dt>最近 30 天</dt>
+          <dd>{count(visits.views, visits.visitors)}</dd>
+        </div>
+      </dl>
+    </section>
+
     <section class="em-panel">
       <h2>服务器</h2>
       <dl class="em-facts">
@@ -133,5 +162,17 @@ const tiles = [
         </div>
       </dl>
     </section>
+    </div>
   </div>
 </Endmin>
+
+<style>
+  .spark {
+    display: block;
+    width: 100%;
+    height: 3rem;
+    margin-bottom: 0.6rem;
+    fill: var(--sky);
+    opacity: 0.7;
+  }
+</style>
