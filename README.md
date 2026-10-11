@@ -11,7 +11,7 @@ npm install
 npm run dev          # http://localhost:4321
 npm run build        # 类型检查 + 构建 + 生成搜索索引
 npm run preview      # 预览构建结果（搜索只在构建后可用）
-npm run test:server  # 服务端逻辑的测试
+npm run test:server  # 服务端逻辑的测试（账号、评论、文章、备份、Markdown 渲染等）
 npm run import:posts # 把 src/content/posts 导入本机数据库（.data/），供开发使用
 ```
 
@@ -21,7 +21,7 @@ npm run import:posts # 把 src/content/posts 导入本机数据库（.data/）�
 
 导航中的“算法”进入 `/hot100/`。100 道题按 17 个分类组织，每题提供 Java 解法、输入输出说明、自定义输入动画和编程练习。动画支持 `A` 后退、`D` 前进；主题切换支持匀速扩散和中途反向。
 
-编译运行和类型提示通过本机 Java 服务提供。练习页可下载服务包，连接说明见 [本机 Java 服务](tools/hot100-java/README.md)，方法式练习与标准输入说明见 [Java 练习输入输出](tools/hot100-java/practice-guide.md)。网站保持静态部署，Java 程序在用户自己的电脑上执行。
+编译运行和类型提示通过本机 Java 服务提供。练习页可下载服务包，连接说明见 [本机 Java 服务](tools/hot100-java/README.md)，方法式练习与标准输入说明见 [Java 练习输入输出](tools/hot100-java/practice-guide.md)。Java 程序只在用户自己的电脑上执行，服务器不提供代码执行接口。
 
 ```bash
 npm run test:hot100   # 课程、算法、动画与结果比对验证
@@ -57,7 +57,9 @@ Markdown 扩展语法（与 Obsidian 兼容）：
 - Pagefind 全文搜索（支持中文），`Ctrl/⌘ K` 或 `/` 唤起
 - 写作日历、按分类筛选的归档页，合订本进度
 - 文章页：目录高亮、阅读进度条、代码复制、图片放大、系列导航、相关文章
-- 自建评论（BBCode，发送时才需要登录）和头像
+- 自建评论（BBCode，发送时才需要登录）和头像；用户可以自己修改密码、退出其他设备、删除账号
+- 管理面板：文章编辑器带修订记录和版本对比；用户管理可以查找、改名、重置密码、强制下线、封禁和删除
+- 内容安全策略：页面只运行本站自己的脚本（`src/lib/csp.ts`）
 - 作品（`/works/`）：发布 mod 等可下载的文件，每个作品有介绍、图库、链接、相关文章和按版本整理的文件，下载支持断点续传
 - 每天自动备份到 GitHub 私有仓库，大文件走 Release 附件，见 [部署与维护](tools/deploy/README.md) 8a 节
 - 自建访问统计：不保存 IP 地址，文章页显示阅读数，管理面板里有趋势、页面、来源和设备的统计
@@ -66,5 +68,5 @@ Markdown 扩展语法（与 Obsidian 兼容）：
 
 ## 从 Hugo 迁移
 
-旧的 Hugo + Blowfish 版本在 git 历史中。迁移脚本 `scripts/migrate-hugo.mjs` 已经把短代码（`figure` / `alert` / `mask` / `katex`）
+旧的 Hugo + Blowfish 版本在 git 历史中。迁移时已经把短代码（`figure` / `alert` / `mask` / `katex`）
 和 `\\( \\)` 公式转换成了上面的标准写法；文章 URL（`/posts/<slug>/`、`/tags/…`、`/categories/…`、`/series/…`）保持不变。
