@@ -6,10 +6,15 @@
   "description": "hhikr 的个人网站 — https://hhikr.moe",
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node scripts/package-hot100-java.mjs",
     "build": "astro check && astro build && pagefind --site dist",
     "preview": "astro preview",
     "new": "node scripts/new-post.mjs",
-    "astro": "astro"
+    "astro": "astro",
+    "test:hot100": "node tests/hot100/verify.mjs && node tests/hot100/verify-algorithms.mjs && node tests/hot100/verify-structures.mjs && node tests/hot100/verify-demo-input.mjs && node tests/hot100/verify-judge.mjs && node tests/hot100/verify-theme-transition.mjs && node tests/hot100/verify-reveal-motion.mjs",
+    "java:serve": "node tools/hot100-java/server.mjs --site https://hhikr.moe",
+    "java:package": "node scripts/package-hot100-java.mjs",
+    "test:hot100:java": "node tests/hot100/verify-java.mjs && node tests/hot100/verify-java-boundaries.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",

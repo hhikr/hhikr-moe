@@ -8,13 +8,6 @@ const year = new Date().getFullYear();
 
 <footer class="site-footer">
   <div class="wrap">
-    <div class="sign">
-      <p class="dont-panic display" aria-label="Don't Panic.">
-        Don’t <em>Panic.</em>
-      </p>
-      <p class="tagline">{AUTHOR.headline}</p>
-    </div>
-
     <div class="cols">
       <div>
         <p class="label">Index</p>
@@ -63,34 +56,9 @@ const year = new Date().getFullYear();
     background: var(--paper-2);
   }
 
-  .sign {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem 2rem;
-    padding-bottom: 2.5rem;
-    border-bottom: 1px solid var(--rule);
-  }
 
-  .dont-panic {
-    margin: 0;
-    font-size: clamp(3.5rem, 11vw, 8.5rem);
-    line-height: 0.9;
-    letter-spacing: -0.03em;
-  }
 
-  .dont-panic em {
-    color: var(--sky);
-  }
 
-  .tagline {
-    margin: 0;
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 1.25rem;
-    color: var(--ink-2);
-  }
 
   .cols {
     display: grid;
