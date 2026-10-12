@@ -5,6 +5,9 @@
 // interface. The backend's session token is fetched and attached here, after
 // the caller's session has been checked; it is never sent to a browser.
 //
+// Under /admin/ it also passes on the backend's own dashboard, the management
+// pages Hermes serves on its loopback port, behind the same sign-in.
+//
 // Configuration (environment):
 //   COSMO_LISTEN         host:port to listen on            (127.0.0.1:4410)
 //   COSMO_PUBLIC_ORIGIN  origin browsers use               (https://cosmo.hhikr.moe)
@@ -136,7 +139,7 @@ function send(res, status, body = '', headers = {}) {
 const sendJson = (res, status, body, headers = {}) =>
   send(res, status, JSON.stringify(body), { 'Content-Type': 'application/json; charset=utf-8', ...headers });
 
-async function serveStatic(req, res, pathname) {
+async function serveStatic(req, res, pathname, missing) {
   let relative;
   try {
     relative = decodeURIComponent(pathname).replace(/^\/+/, '') || 'index.html';
@@ -150,7 +153,7 @@ async function serveStatic(req, res, pathname) {
   try {
     stat = await fs.promises.stat(file);
   } catch {
-    return send(res, 404);
+    return missing ? missing() : send(res, 404);
   }
   if (!stat.isFile()) return send(res, 404);
 
@@ -181,13 +184,37 @@ async function serveStatic(req, res, pathname) {
 const NOT_FORWARDED = new Set([
   'host', 'origin', 'referer', 'cookie', 'authorization', 'connection', 'keep-alive', 'proxy-authorization',
   'proxy-connection', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'x-hermes-session-token',
-  'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-real-ip', 'forwarded',
+  'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-prefix', 'x-real-ip', 'forwarded',
 ]);
 
-function upstreamHeaders(req, token) {
+// ── The dashboard ───────────────────────────────────────────────────────────
+// Hermes can serve its dashboard under a path: told the prefix, it writes its
+// asset and API addresses with it. The page it sends carries the session token
+// in a script, for use on the loopback interface it was meant for; here the
+// token is taken out again before the page leaves (dashboardPage).
+const ADMIN = '/admin';
+const PLACEHOLDER_TOKEN = 'cosmo';
+// The dashboard opens in English until told otherwise; this one's reader would
+// rather have Chinese. Only when no language has been chosen in this browser.
+const DASHBOARD_LOCALE = "<script>try{localStorage.getItem('hermes-locale')||localStorage.setItem('hermes-locale','zh')}catch{}</script>";
+
+/** The path the backend knows a request under /admin/ by, or null for any other request. */
+const dashboardPath = (pathname) => (pathname.startsWith(`${ADMIN}/`) ? pathname.slice(ADMIN.length) : null);
+
+function dashboardPage(html, token) {
+  const page = html.replaceAll(token, PLACEHOLDER_TOKEN);
+  return page.includes('<head>') ? page.replace('<head>', `<head>${DASHBOARD_LOCALE}`) : page;
+}
+
+function upstreamHeaders(req, token, dashboard = false) {
   const headers = {};
   for (const [name, value] of Object.entries(req.headers)) {
     if (!NOT_FORWARDED.has(name) && !name.startsWith('sec-fetch-')) headers[name] = value;
+  }
+  if (dashboard) {
+    headers['x-forwarded-prefix'] = ADMIN;
+    // Pages are read here before they are passed on, so they must arrive as text.
+    delete headers['accept-encoding'];
   }
   headers.host = config.hermes.host;
   // The backend accepts requests from its own origin only.
@@ -202,14 +229,20 @@ function upstreamTarget(url, token) {
   return url.pathname + url.search;
 }
 
-function forward(req, res, url, token, attempt = 0) {
+// One connection per request. The backend closes a connection that has been
+// idle for five seconds, and a request sent down one it was just closing is
+// lost: a kept-alive pool turned that into a 502 now and then.
+const oneShot = new http.Agent({ keepAlive: false });
+
+function forward(req, res, url, token, { attempt = 0, dashboard = false } = {}) {
   const upstream = http.request(
     {
+      agent: oneShot,
       hostname: config.hermes.hostname,
       port: config.hermes.port,
       method: req.method,
       path: upstreamTarget(url, token),
-      headers: upstreamHeaders(req, token),
+      headers: upstreamHeaders(req, token, dashboard),
     },
     async (reply) => {
       // The token is no longer accepted: the backend restarted. Fetch the new
@@ -219,7 +252,7 @@ function forward(req, res, url, token, attempt = 0) {
         if (attempt === 0 && (req.method === 'GET' || req.method === 'HEAD')) {
           reply.resume();
           try {
-            return forward(req, res, url, await currentToken(), 1);
+            return forward(req, res, url, await currentToken(), { attempt: 1, dashboard });
           } catch {
             return sendJson(res, 502, { detail: 'Hermes is not reachable.' });
           }
@@ -229,11 +262,28 @@ function forward(req, res, url, token, attempt = 0) {
       delete headers['set-cookie'];
       delete headers.connection;
       delete headers['keep-alive'];
+      if (dashboard && String(headers['content-type']).startsWith('text/html')) {
+        // A page that cannot be read cannot be shown to be free of the token.
+        if (headers['content-encoding']) {
+          reply.resume();
+          return sendJson(res, 502, { detail: 'Hermes sent a page the gate cannot read.' });
+        }
+        const chunks = [];
+        for await (const chunk of reply) chunks.push(chunk);
+        delete headers['content-length'];
+        delete headers['transfer-encoding'];
+        return send(res, reply.statusCode ?? 502, dashboardPage(Buffer.concat(chunks).toString('utf8'), token), {
+          ...headers,
+          'Cache-Control': 'no-store',
+          'Content-Security-Policy': CONTENT_SECURITY_POLICY,
+        });
+      }
       res.writeHead(reply.statusCode ?? 502, { ...headers, 'X-Content-Type-Options': 'nosniff' });
       reply.pipe(res);
     },
   );
-  upstream.on('error', () => {
+  upstream.on('error', (error) => {
+    console.error(`Hermes did not answer ${req.method} ${url.pathname}: ${error.code ?? error.message}`);
     if (!res.headersSent) sendJson(res, 502, { detail: 'Hermes is not reachable.' });
     else res.destroy();
   });
@@ -259,6 +309,25 @@ const server = http.createServer(async (req, res) => {
 
     const session = await auth.session(req);
 
+    const inDashboard = dashboardPath(url.pathname);
+    if (inDashboard !== null && !inDashboard.startsWith('/api/')) {
+      if (!session) {
+        const navigating = (req.headers['sec-fetch-mode'] ?? 'navigate') === 'navigate';
+        return reading && navigating ? auth.begin(res) : send(res, 401);
+      }
+      if (!reading && !fromOwnPage(req)) return send(res, 403);
+      url.pathname = inDashboard;
+      let token;
+      try {
+        token = await currentToken();
+      } catch {
+        return send(res, 502, 'Hermes is not reachable.', { 'Content-Type': 'text/plain; charset=utf-8' });
+      }
+      return forward(req, res, url, token, { dashboard: true });
+    }
+    // The dashboard's own API calls are the same API under its prefix.
+    if (inDashboard !== null) url.pathname = inDashboard;
+
     if (url.pathname.startsWith('/api/')) {
       if (!session) return sendJson(res, 401, { detail: 'Sign in to Cosmo first.' }, { 'X-Cosmo-Auth': 'required' });
       if (!reading && !fromOwnPage(req)) return sendJson(res, 403, { detail: 'Request origin not accepted.' });
@@ -268,16 +337,29 @@ const server = http.createServer(async (req, res) => {
       } catch {
         return sendJson(res, 502, { detail: 'Hermes is not reachable.' });
       }
-      return forward(req, res, url, token);
+      return forward(req, res, url, token, { dashboard: inDashboard !== null });
     }
 
     if (!reading) return send(res, 405);
+    if (url.pathname === ADMIN) return send(res, 308, '', { Location: `${ADMIN}/${url.search}` });
     if (!session) {
       // Only a page load starts a sign-in; a script or image request is just refused.
       const navigating = (req.headers['sec-fetch-mode'] ?? 'navigate') === 'navigate';
       return navigating ? auth.begin(res) : send(res, 401);
     }
-    return serveStatic(req, res, url.pathname);
+    // The dashboard's pages that load on demand ask for their stylesheets at
+    // /assets/, whatever prefix they were served under. Build output is named
+    // by its content, so a name that is not ours can only be the dashboard's.
+    const fromDashboard = url.pathname.startsWith('/assets/')
+      ? async () => {
+          try {
+            forward(req, res, url, await currentToken(), { dashboard: true });
+          } catch {
+            send(res, 404);
+          }
+        }
+      : undefined;
+    return serveStatic(req, res, url.pathname, fromDashboard);
   } catch (error) {
     console.error(error);
     if (!res.headersSent) send(res, 500);
@@ -291,6 +373,7 @@ server.on('upgrade', async (req, socket, head) => {
   try {
     if (req.headers.host !== publicHost) return refuse('421 Misdirected Request');
     const url = new URL(req.url, config.publicOrigin);
+    url.pathname = dashboardPath(url.pathname) ?? url.pathname;
     if (!url.pathname.startsWith('/api/')) return refuse('404 Not Found');
     // A page on another site can open a socket here with the visitor's cookie; only ours may.
     if (req.headers.origin !== config.publicOrigin) return refuse('403 Forbidden');

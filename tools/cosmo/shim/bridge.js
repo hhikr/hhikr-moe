@@ -780,6 +780,27 @@
     quickEntry: undefined
   }
 
+  // The status bar can show what the terminal's does: context used, cache hit
+  // rate, tokens per second and the two timers. The renderer ships them hidden
+  // ("diagnostics most users don't watch"); this site's one user asked for
+  // them. Seeded once per browser, before the renderer reads the key, so that
+  // hiding an item again from the bar's own menu sticks.
+  try {
+    const SEEDED = 'cosmo.statusbarSeeded.v1'
+    // The latency and idle readouts (patches.mjs) are never in the hidden set,
+    // so they show for everyone, seeded or not.
+
+    if (!localStorage.getItem(SEEDED)) {
+      localStorage.setItem(
+        'hermes.desktop.statusbarHidden.v2',
+        JSON.stringify(['agents', 'cron', 'system-resources', 'terminal', 'webhooks'])
+      )
+      localStorage.setItem(SEEDED, '1')
+    }
+  } catch {
+    // Storage is unavailable (private mode): the renderer's defaults apply.
+  }
+
   // Report reads of members this bridge does not provide, once each, so a gap
   // shows up in the console as a name instead of as a blank feature.
   const reported = new Set()

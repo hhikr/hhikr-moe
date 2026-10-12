@@ -1,0 +1,166 @@
+/* Cosmo's own layer over the Hermes Desktop renderer. The renderer is built
+   unmodified; what a browser, and a phone in particular, needs differently is
+   said here, against the renderer's data attributes rather than its classes
+   wherever one exists. Loaded after the renderer's stylesheet. */
+
+/* A phone's address bar comes and goes: 100vh is the height without it, so the
+   title bar and the composer ended up under the browser's own chrome. */
+.h-screen {
+  height: 100dvh;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────
+   The renderer lays the close button over the end of the label and fades the
+   label under it on hover. On the session tabs that fade never applies (its
+   rule is keyed on a data-slot those tabs overwrite), so the cross is drawn
+   straight over the title; and a touch screen has no hover at all. Give the
+   button its own room, and show it on the tab that is open. */
+[data-closeable] {
+  --pane-tab-close-width: 1.5rem;
+}
+
+[data-closeable] > .pane-tab-content {
+  padding-right: calc(var(--pane-tab-close-width) - 0.375rem);
+  mask-image: none !important;
+}
+
+[data-closeable] > .pane-tab-content span {
+  text-overflow: ellipsis;
+}
+
+[data-closeable][data-active='true'] > span:last-child {
+  pointer-events: auto;
+  opacity: 0.7;
+}
+
+[data-closeable] > span:last-child:hover {
+  opacity: 1;
+}
+
+[data-closeable] > span:last-child > button {
+  border-radius: 0.25rem;
+  margin: 0.4375rem 0.125rem;
+  width: calc(var(--pane-tab-close-width) - 0.25rem);
+}
+
+[data-closeable] > span:last-child > button:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* ── Phone ────────────────────────────────────────────────────────────── */
+@media (max-width: 40rem) {
+  /* No rubber-banding or pull-to-refresh behind an app that fills the screen. */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  /* Tools for arranging a desktop window: the layout editor, the floating HUD
+     and the mirror. None of them has anything to arrange here. */
+  [data-titlebar-cluster='right'] > button:has(.codicon-arrow-swap),
+  [data-titlebar-cluster='right'] > button:has(.codicon-comment-discussion),
+  [data-titlebar-cluster='right'] > button:has(> span.inline-flex) {
+    display: none;
+  }
+
+  /* Fingers, not a pointer: the title bar buttons keep their size on screen
+     and take a 40px touch area around it. */
+  [data-titlebar-cluster] > button {
+    position: relative;
+  }
+
+  [data-titlebar-cluster] > button::after {
+    position: absolute;
+    inset: -8px -4px;
+    content: '';
+  }
+
+  [data-titlebar-cluster='right'] {
+    gap: 0.5rem;
+  }
+
+  /* A zone folded down to its 28px rail (the terminal, which the web version
+     does not have) costs a phone 7% of its width and shows nothing. */
+  [data-tree-split='spl-root'] > div[style*='1.75rem'] {
+    display: none !important;
+  }
+
+  /* The session list slides over the conversation. Keep its tabs clear of the
+     button that opened it, and let it use the width a phone has. */
+  [data-narrow-overlay] {
+    width: min(20rem, 86vw) !important;
+    padding-bottom: env(safe-area-inset-bottom);
+    /* Dim what is left of the conversation: it is behind the sidebar now, and
+       a tap there closes it (touch.js). */
+    box-shadow: 0 0 0 100vmax rgb(0 0 0 / 45%);
+  }
+
+  [data-narrow-overlay] > .group\/pane-header {
+    height: 2.125rem;
+    padding-left: 2.75rem;
+  }
+
+  [data-narrow-overlay] [data-slot='context-menu-trigger']:has([data-slot='row-button']) {
+    min-height: 2.5rem;
+  }
+
+  [data-narrow-overlay] [data-slot='row-button'] > span {
+    font-size: 0.9375rem;
+  }
+
+  /* Rows a thumb can hit. */
+  [data-narrow-overlay] [data-sidebar='menu-button'],
+  [data-narrow-overlay] [data-slot='sidebar-menu-button'] {
+    min-height: 2.5rem;
+    font-size: 0.9375rem;
+  }
+
+  /* Keyboard shortcuts on a device without a keyboard. */
+  [data-narrow-overlay] kbd,
+  [data-slot='statusbar'] kbd {
+    display: none;
+  }
+
+  /* Anything below 16px makes iOS zoom the page when the field takes focus. */
+  input,
+  textarea,
+  [contenteditable='true'],
+  [data-slot='composer-rich-input'] {
+    font-size: max(16px, 1em);
+  }
+
+  /* The status bar is one 20px line of 11px text against the bottom edge of
+     the window: on a phone that is under the thumb and the gesture bar, and
+     too narrow for the readouts bridge.js turns on. Here it becomes two lines
+     that stand clear of the edge. The session's readouts (context, cache,
+     latency, timers) go on top, and scroll sideways when they do not fit; the
+     backend and the working directory go underneath. */
+  [data-slot='statusbar'] {
+    box-sizing: content-box;
+    flex-wrap: wrap;
+    row-gap: 0;
+    height: auto;
+    padding: 0.125rem 0.375rem max(env(safe-area-inset-bottom), 0.5rem);
+    border-top: 1px solid var(--ui-stroke-tertiary);
+  }
+
+  [data-slot='statusbar'] > div {
+    flex: 0 0 100%;
+    height: 1.625rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  [data-slot='statusbar'] > div::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-slot='statusbar'] > div:last-child {
+    order: -1;
+  }
+
+  [data-slot='statusbar'] > div > * {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+  }
+}

@@ -25,7 +25,12 @@ const body = async (req) => {
 const hermesSeen = [];
 const hermes = http.createServer(async (req, res) => {
   hermesSeen.push({ method: req.method, url: req.url, headers: req.headers, body: await body(req) });
-  if (req.url === '/') return res.end(`<script>window.__HERMES_SESSION_TOKEN__="${HERMES_TOKEN}";</script>`);
+  // Its dashboard: any path that is not the API is the page, with the token and the prefix it was told written in.
+  if (req.url.startsWith('/assets/')) return res.writeHead(200, { 'Content-Type': 'text/css' }).end('.dashboard{}');
+  if (!req.url.startsWith('/api/')) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(`<!doctype html><html><head><script>window.__HERMES_SESSION_TOKEN__="${HERMES_TOKEN}";window.__HERMES_BASE_PATH__="${req.headers['x-forwarded-prefix'] ?? ''}";</script></head></html>`);
+  }
   if (req.headers['x-hermes-session-token'] !== HERMES_TOKEN) return res.writeHead(401).end('{"detail":"Unauthorized"}');
   res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'backend=1' });
   res.end(JSON.stringify({ ok: true }));
@@ -184,6 +189,9 @@ test('signed in, pages are served with a content security policy and assets are 
   assert.match(asset.headers['cache-control'], /immutable/);
   assert.equal((await ask('/..%2f..%2fsecret', { headers: { cookie } })).status, 403);
   assert.equal((await ask('/missing.js', { headers: { cookie } })).status, 404);
+  const theirs = await ask('/assets/xterm-def456.css', { headers: { cookie } });
+  assert.equal(theirs.text, '.dashboard{}', 'build output that is not ours is the dashboard’s');
+  assert.equal(hermesSeen.at(-1).headers['x-forwarded-prefix'], '/admin');
 });
 
 test('requests to Hermes carry the backend token and never the browser’s credentials', async () => {
@@ -230,6 +238,51 @@ test('sockets open for Cosmo’s own pages and close when the site withdraws the
   assert.equal((await ask('/api/status', { headers: { cookie } })).status, 401, 'the next request finds the grant gone');
   await closed;
   assert.equal((await ask('/', { headers: { cookie, 'sec-fetch-mode': 'navigate' } })).status, 302, 'and the session with it');
+});
+
+test('the dashboard is served under /admin/ to a signed-in browser, without the backend token', async () => {
+  const before = hermesSeen.length;
+  assert.equal((await ask('/admin/sessions', { headers: { 'sec-fetch-mode': 'navigate' } })).status, 302);
+  assert.equal((await ask('/admin/assets/app.js', { headers: { 'sec-fetch-mode': 'no-cors' } })).status, 401);
+  assert.equal((await ask('/admin/api/status')).status, 401);
+  assert.equal((await upgrade('/admin/api/pty?token=cosmo', { origin: PUBLIC })).status, 401);
+  assert.equal(hermesSeen.length, before, 'signed out, nothing reaches Hermes');
+
+  const { cookie } = await signIn();
+  const bare = await ask('/admin?profile=a', { headers: { cookie } });
+  assert.equal(bare.status, 308);
+  assert.equal(bare.headers.location, '/admin/?profile=a');
+
+  const page = await ask('/admin/sessions?profile=a', { headers: { cookie, 'accept-encoding': 'gzip', 'x-forwarded-prefix': '/elsewhere' } });
+  assert.equal(page.status, 200);
+  assert.doesNotMatch(page.text, new RegExp(HERMES_TOKEN));
+  assert.match(page.text, /__HERMES_SESSION_TOKEN__="cosmo"/);
+  assert.match(page.text, /__HERMES_BASE_PATH__="\/admin"/);
+  assert.match(page.text, /<head><script>[^<]*'hermes-locale','zh'/, 'Chinese unless a language was chosen');
+  assert.equal(page.headers['cache-control'], 'no-store');
+  assert.match(page.headers['content-security-policy'], /frame-ancestors 'none'/);
+  assert.equal(page.headers['x-frame-options'], 'DENY');
+  assert.equal(hermesSeen.at(-1).url, '/sessions?profile=a');
+  assert.equal(hermesSeen.at(-1).headers['accept-encoding'], undefined, 'pages are asked for uncompressed');
+  assert.equal(hermesSeen.at(-1).headers.cookie, undefined);
+
+  await ask('/api/status', { headers: { cookie, 'x-forwarded-prefix': '/elsewhere' } });
+  assert.equal(hermesSeen.at(-1).headers['x-forwarded-prefix'], undefined, 'a browser cannot name a prefix');
+
+  const api = await ask('/admin/api/status?token=cosmo', { headers: { cookie } });
+  assert.equal(api.status, 200);
+  assert.equal(hermesSeen.at(-1).url, `/api/status?token=${HERMES_TOKEN}`);
+  assert.equal(hermesSeen.at(-1).headers['x-hermes-session-token'], HERMES_TOKEN);
+
+  const json = { 'content-type': 'application/json' };
+  assert.equal((await ask('/admin/api/config', { method: 'PUT', headers: { cookie, origin: 'https://evil.test', ...json }, payload: '{}' })).status, 403);
+  assert.equal((await ask('/admin/auth/logout', { method: 'POST', headers: { cookie, origin: 'https://evil.test' } })).status, 403);
+
+  const open = await upgrade('/admin/api/pty?token=cosmo', { cookie, origin: PUBLIC });
+  assert.equal(open.status, 101);
+  assert.equal(hermesSeen.at(-1).url, `/api/pty?token=${HERMES_TOKEN}`);
+  open.socket.on('error', () => {});
+  open.socket.destroy();
 });
 
 test('signing out revokes the grant at the site', async () => {
