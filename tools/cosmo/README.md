@@ -17,7 +17,7 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 
 ## 登录
 
-主站的登录 Cookie 以 `__Host-` 开头，子域名收不到，所以分两步交接：
+主站的登录 Cookie 以 `__Host-` 开头，子域名收不到，所以登录状态要从主站交接过来：
 
 1. 未登录的浏览器打开 Cosmo，网关生成一个 `state`，把浏览器送到主站的 `/api/auth/cosmo`。
 2. 主站确认当前会话属于 endministrator，生成一个一分钟内有效、只能用一次的授权码，带着它回到 Cosmo 的 `/auth/callback`。没登录的先去登录页，登录后回到这一步；其他账号得到 404。
@@ -39,6 +39,7 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 | 页面内查找 | 用浏览器自己的 Ctrl/Cmd+F |
 | 终端面板 | 没有。桌面版的终端是本机的 shell，网页没有对应物 |
 | 内置浏览器预览、技能中心的嵌入页 | 多数网站禁止被嵌入，显示为空白；文件和产物预览正常 |
+| 预览随文件变化自动刷新 | 没有，需要手动刷新 |
 | HUD 悬浮条、Quick Entry 全局热键、托盘、窗口置顶、读取其他窗口、防休眠、桌宠浮窗 | 没有，依赖操作系统 |
 | 添加/切换网关、SSH 与云端连接、本地模型、自动更新、卸载 | 没有。网页版只连接提供它的那一个后端 |
 | 导入 VS Code 主题 | 没有 |
@@ -46,6 +47,8 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 桌面版的功能大多用 `window.hermesDesktop?.x` 的方式探测，所以桥接里不提供的成员对应的入口会自动隐藏或失效。桥接在控制台用 `debug` 级别记录每一个被读取但没有提供的成员，用来发现上游新增的接口。
 
 ## 构建
+
+上游源码和构建产物都放在 `.deployment/` 下，这个目录不进仓库。
 
 渲染层的版本必须和后端一致。先确认后端运行的提交（在服务器上对 Hermes 的源码目录执行 `git rev-parse HEAD`），再准备同一提交的源码：
 
@@ -59,7 +62,13 @@ npm run cosmo:build
 
 `--ignore-scripts` 跳过 Electron 和原生模块的安装，网页构建用不到它们。产物在 `.deployment/hermes/cosmo-web/dist`，约 41 MB，其中 `cosmo/build.json` 记录了所用的 Hermes 提交。
 
+只改了桥接时，`npm run cosmo:build -- --skip-build` 把新的桥接放进已有的产物，不重新构建渲染层。
+
 Hermes 后端升级后，按新的提交重复上面的步骤并重新发布。升级后先看一遍控制台里“bridge member not provided”的记录，再决定是否要给桥接补成员。
+
+## 发布
+
+产物和 `gate/` 目录一起打包，上传到服务器，由常驻的网关服务提供，前面是 Caddy。服务器上的脚本、服务单元、检查和回滚步骤在 `tools/deploy/`（第 8b 节）；那个目录写有服务器的地址，不进仓库。
 
 ## 本机调试
 
@@ -90,10 +99,15 @@ npm run test:server   # 其中 tests/server/cosmo.test.mjs 覆盖主站的授权
 | `COSMO_HERMES` | Hermes 后端，必须是回环地址（`http://127.0.0.1:9119`） |
 | `COSMO_AUTH` | `site`（默认）或 `none` |
 | `COSMO_SITE_PUBLIC`、`COSMO_SITE_INTERNAL` | 主站的公开地址，以及从本机访问它的地址 |
-| `COSMO_GATE_SECRET` | 与主站共享的密钥，至少 32 个字符。主站一侧用同名变量，另有 `COSMO_ORIGIN` 指定 Cosmo 的地址 |
+| `COSMO_GATE_SECRET` | 与主站共享的密钥，至少 32 个字符 |
+| `COSMO_RECHECK_MS` | 向主站重新确认许可的间隔，毫秒（`30000`）。测试用 |
+
+主站一侧有两个变量：`COSMO_ORIGIN` 是 Cosmo 的地址，授权码只会送到这里；`COSMO_GATE_SECRET` 与网关的相同。没有前者，`/api/auth/cosmo` 返回 404；没有后者，授权码无处兑换。
 
 ## 需要知道的风险
 
 网页版开放的是完整的管理界面：模型密钥、配置、技能、定时任务，以及通过助手在服务器上执行命令。能拿到 endministrator 会话的人就能做这些事，所以主站账号的安全等同于这台服务器上 Hermes 的安全。
 
 页面的内容安全策略允许内联脚本。渲染层用沙箱化的 `srcdoc` 框架显示助手生成的 HTML，这类框架继承页面的策略，禁止内联脚本会让产物预览失效。保留下来的限制是：脚本文件只能来自本站，页面不能被其他网站嵌入。
+
+策略还放行了 Google Fonts（上游界面的一种字体从那里加载），以及页面到任意 HTTPS 地址的请求（语音服务和插件目录由页面直接访问）。主站不依赖 Google Fonts，Cosmo 是例外。
