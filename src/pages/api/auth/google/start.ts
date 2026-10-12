@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { clientAddress, PENDING_COOKIE, pendingCookieOptions, publicOrigin, safeReturnPath } from '@/lib/http';
 import { googleConfig } from '@/server/config.ts';
 import { beginSignIn } from '@/server/google.ts';
+import { isNavigation } from '@/server/prefetch.ts';
 import { addressKey, allow, LIMITS } from '@/server/ratelimit.ts';
 
 export const prerender = false;
@@ -9,6 +10,10 @@ export const prerender = false;
 export const GET: APIRoute = (context) => {
   const config = googleConfig();
   if (!config) return new Response('Google sign-in is not configured.', { status: 503 });
+  // Each start replaces the pending cookie. A prefetch of this address that
+  // lands after the visitor's own click would leave a cookie that no longer
+  // matches the state Google sends back, and the sign-in would fail as expired.
+  if (!isNavigation(context.request.headers)) return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
   if (!allow(`login:${addressKey(clientAddress(context))}`, LIMITS.loginByAddress)) {
     return new Response('操作太频繁了，请稍后再试', { status: 429 });
   }

@@ -32,7 +32,7 @@ const google = !!googleConfig();
 
     {
       google && (
-        <a class="google" href={`/api/auth/google/start?return=${encodeURIComponent(returnTo)}`}>
+        <a class="google" data-astro-prefetch="false" href={`/api/auth/google/start?return=${encodeURIComponent(returnTo)}`}>
           使用 Google 登录
         </a>
       )

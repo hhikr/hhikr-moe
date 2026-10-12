@@ -65,7 +65,7 @@ const tools: [string, string, string][] = [
     <p class="c-hint">写好的内容会保留，登录后自动发出。</p>
     {
       googleConfig() && (
-        <a class="c-google" data-google href={`/api/auth/google/start?return=${returnTo}`}>
+        <a class="c-google" data-google data-astro-prefetch="false" href={`/api/auth/google/start?return=${returnTo}`}>
           使用 Google 登录
         </a>
       )

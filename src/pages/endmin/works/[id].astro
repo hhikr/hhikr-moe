@@ -123,7 +123,7 @@ const data = {
                     </div>
                   </div>
                   <div class="em-acts">
-                    <a class="em-btn" href={f.url}>下载</a>
+                    <a class="em-btn" href={f.url} data-astro-prefetch="false">下载</a>
                     <button type="button" class="em-btn danger" data-api={`/api/endmin/assets/${f.id}`} data-method="DELETE" data-confirm={`删除 ${f.filename}？无法恢复。`}>
                       删除
                     </button>

@@ -68,7 +68,7 @@ const filesOf = (release: ProjectRelease) => release.files;
         <div class="actions" data-pagefind-ignore>
           {
             latest && latest.files.length === 1 ? (
-              <a class="primary" href={latest.files[0].url} download>
+              <a class="primary" href={latest.files[0].url} download data-astro-prefetch="false">
                 下载 {latest.version}
                 <small>{formatBytes(latest.files[0].size)}</small>
               </a>
@@ -144,7 +144,7 @@ const filesOf = (release: ProjectRelease) => release.files;
                           <span title={`SHA-256: ${f.sha256}`}>SHA-256 {f.sha256.slice(0, 12)}…</span>
                         </p>
                       </div>
-                      <a class="get" href={f.url} download>下载</a>
+                      <a class="get" href={f.url} download data-astro-prefetch="false">下载</a>
                     </li>
                   ))}
                 </ul>
@@ -174,7 +174,7 @@ const filesOf = (release: ProjectRelease) => release.files;
                                 <span title={`SHA-256: ${f.sha256}`}>SHA-256 {f.sha256.slice(0, 12)}…</span>
                               </p>
                             </div>
-                            <a class="get" href={f.url} download>下载</a>
+                            <a class="get" href={f.url} download data-astro-prefetch="false">下载</a>
                           </li>
                         ))}
                       </ul>
