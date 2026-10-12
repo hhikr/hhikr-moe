@@ -5,14 +5,17 @@
 import Base from './Base.astro';
 import { backupStatus } from '@/server/backup.ts';
 import { commentCounts } from '@/server/comments.ts';
+import { cosmoOrigin } from '@/server/cosmo.ts';
 
 interface Props {
   title: string;
   en: string;
   /** Short line under the title saying what this screen is for. */
   lead?: string;
+  /** The page draws its own title: leave the heading out. */
+  plain?: boolean;
 }
-const { title, en, lead } = Astro.props;
+const { title, en, lead, plain } = Astro.props;
 const user = Astro.locals.user!;
 const path = Astro.url.pathname;
 const pending = commentCounts().hidden;
@@ -28,48 +31,62 @@ const sections = [
   { href: '/endmin/stats/', label: '统计', en: 'Stats' },
   { href: '/endmin/backup/', label: '备份', en: 'Backup', badge: backupProblems },
 ];
-const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
+// Hermes has its own two front ends on the Cosmo subdomain; both take the same sign-in.
+const cosmo = cosmoOrigin();
+const hermes = cosmo
+  ? [
+      { href: `${cosmo}/`, label: '对话', en: 'Cosmo' },
+      { href: `${cosmo}/admin/`, label: '管理页', en: 'Dashboard' },
+    ]
+  : [];
+// The sections stand in two equal groups either side of the seal.
+const halves = [sections.slice(0, sections.length / 2), sections.slice(sections.length / 2)];
+const isCurrent =(href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
 ---
 
 <Base title={`${title} · 管理`} noindex>
   <div class="wrap em">
-    <aside class="em-rail">
-      <div class="em-who">
-        <span class="em-seal display" aria-hidden="true">E</span>
-        <div>
-          <p class="label">Endministrator</p>
-          <p class="em-name">{user.nickname}</p>
+    <header class="em-top">
+      <nav class="em-nav" aria-label="管理">
+        {
+          halves.map((half, n) => (
+            <ul class={n === 0 ? 'before' : 'after'}>
+              {half.map((s) => (
+                <li>
+                  <a href={s.href} aria-current={isCurrent(s.href) ? 'page' : undefined}>
+                    <span class="cjk">{s.label}</span>
+                    <span class="label">{s.en}</span>
+                    {!!s.badge && <span class="em-count">{s.badge}</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ))
+        }
+        <div class="em-who">
+          <span class="em-seal display" aria-hidden="true">E</span>
+          <p class="label">Endministrator · {user.nickname}</p>
         </div>
-      </div>
-
-      <nav aria-label="管理">
-        <ul>
-          {
-            sections.map((s) => (
-              <li>
-                <a href={s.href} aria-current={isCurrent(s.href) ? 'page' : undefined}>
-                  <span class="cjk">{s.label}</span>
-                  <span class="label">{s.en}</span>
-                  {!!s.badge && <span class="em-count">{s.badge}</span>}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
       </nav>
 
-      <div class="em-foot">
+      <div class="em-util">
+        {hermes.map((s) => <a href={s.href} target="_blank" rel="noopener">Hermes {s.label} ↗</a>)}
+        {hermes.length > 0 && <span class="sep" aria-hidden="true"></span>}
         <a href="/">查看网站 →</a>
         <button type="button" data-view-as>以游客视角浏览</button>
         <button type="button" data-logout>退出登录</button>
       </div>
-    </aside>
+    </header>
 
     <section class="em-main">
-      <header class="em-head">
-        <h1 class="cjk">{title}<span class="display">{en}</span></h1>
-        {lead && <p>{lead}</p>}
-      </header>
+      {
+        !plain && (
+          <header class="em-head">
+            <h1 class="cjk">{title}<span class="display">{en}</span></h1>
+            {lead && <p>{lead}</p>}
+          </header>
+        )
+      }
       <p class="em-flash" data-flash role="status" hidden></p>
       <slot />
     </section>
@@ -123,88 +140,90 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
 
 <style is:global>
   .em {
-    display: grid;
-    grid-template-columns: 13.5rem minmax(0, 1fr);
-    gap: clamp(1.5rem, 4vw, 3.5rem);
-    align-items: start;
-    padding-block: clamp(1.5rem, 4vw, 3rem) 5rem;
+    padding-block: clamp(1.5rem, 4vw, 2.75rem) 5rem;
   }
 
-  /* ---------- rail ---------- */
-  .em-rail {
-    position: sticky;
-    top: 5.5rem;
+  /* ---------- head: the sections either side of the seal ---------- */
+  .em-nav {
     display: grid;
-    gap: 1.75rem;
-  }
-
-  .em-who {
-    display: flex;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    gap: 0.8rem;
-    padding-bottom: 1.25rem;
-    border-bottom: 1.5px solid var(--rule-strong);
+    gap: clamp(1rem, 3vw, 2.25rem);
   }
 
-  .em-who p {
-    margin: 0;
-  }
-
-  .em-seal {
-    display: grid;
-    place-items: center;
-    width: 2.6rem;
-    height: 2.6rem;
-    border-radius: 50%;
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 1.6rem;
-    font-style: italic;
-    line-height: 1;
-  }
-
-  .em-name {
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    line-height: 1.1;
-  }
-
-  .em-rail ul {
+  .em-nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem clamp(0.9rem, 2.2vw, 1.9rem);
     list-style: none;
     margin: 0;
     padding: 0;
   }
 
-  .em-rail nav a {
+  .em-nav .before {
+    grid-column: 1;
+    grid-row: 1;
+    justify-content: flex-end;
+  }
+
+  .em-nav .after {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .em-nav a {
     display: flex;
     align-items: baseline;
-    gap: 0.6rem;
-    padding: 0.55rem 0.75rem;
-    border-left: 2px solid transparent;
+    gap: 0.5rem;
+    padding: 0.6rem 0 0.5rem;
+    border-bottom: 2px solid transparent;
     color: var(--ink-2);
     transition:
-      background 0.2s,
       color 0.2s,
       border-color 0.2s;
   }
 
-  .em-rail nav a .cjk {
-    font-size: 1.12rem;
+  .em-nav a .cjk {
+    font-size: 1.16rem;
   }
 
-  .em-rail nav a:hover {
-    background: var(--paper-2);
+  .em-nav a:hover {
+    color: var(--ink);
+    border-bottom-color: var(--rule);
+  }
+
+  .em-nav a[aria-current='page'] {
+    border-bottom-color: var(--sky);
     color: var(--ink);
   }
 
-  .em-rail nav a[aria-current='page'] {
-    border-left-color: var(--sky);
-    background: var(--paper-2);
-    color: var(--ink);
+  .em-who {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid;
+    justify-items: center;
+    gap: 0.4rem;
+  }
+
+  .em-who p {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .em-seal {
+    display: grid;
+    place-items: center;
+    width: 3.6rem;
+    height: 3.6rem;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 2.3rem;
+    font-style: italic;
+    line-height: 1;
   }
 
   .em-count {
-    margin-left: auto;
     min-width: 1.5em;
     padding: 0 0.4em;
     border-radius: 999px;
@@ -216,52 +235,70 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     text-align: center;
   }
 
-  .em-later {
-    margin: 1.5rem 0 0.4rem;
-    padding-left: 0.75rem;
+  .em-util {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.2rem 1.4rem;
+    margin-top: 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
   }
 
-  .em-soon li {
-    padding: 0.3rem 0.75rem;
-    border-left: 2px solid transparent;
-    color: var(--ink-3);
-    opacity: 0.7;
-  }
-
-  .em-foot {
-    display: grid;
-    gap: 0.5rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--rule);
-    font-size: 0.88rem;
-  }
-
-  .em-foot a,
-  .em-foot button {
-    padding: 0;
+  .em-util a,
+  .em-util button {
+    padding: 0.35rem 0;
     border: 0;
     background: none;
     color: var(--ink-2);
     font: inherit;
-    text-align: left;
     cursor: pointer;
   }
 
-  .em-foot a:hover,
-  .em-foot button:hover {
+  .em-util a:hover,
+  .em-util button:hover {
     color: var(--sky-ink);
   }
 
+  .em-util .sep {
+    width: 1px;
+    height: 0.9rem;
+    background: var(--rule);
+  }
+
   /* ---------- work surface ---------- */
+  .em-main {
+    margin-top: clamp(1.75rem, 4vw, 2.75rem);
+  }
+
   .em-head {
-    padding-bottom: 1.5rem;
-    border-bottom: 1.5px solid var(--rule-strong);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem clamp(1rem, 3vw, 1.75rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .em-head::before,
+  .em-head::after {
+    content: '';
+    grid-row: 1;
+    height: 1.5px;
+    background: var(--rule-strong);
+  }
+
+  .em-head::after {
+    grid-column: 3;
   }
 
   .em-head h1 {
+    grid-column: 2;
+    grid-row: 1;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
+    justify-content: center;
     gap: 0.25rem 1rem;
     margin: 0;
     font-size: clamp(2rem, 4vw, 2.9rem);
@@ -275,8 +312,11 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
   }
 
   .em-head p {
-    margin: 0.6rem 0 0;
+    grid-column: 1 / -1;
+    margin: 0;
     color: var(--ink-2);
+    text-align: center;
+    text-wrap: balance;
   }
 
   .em-flash {
@@ -588,32 +628,26 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
   }
 
   @media (max-width: 860px) {
-    .em {
+    .em-nav {
       grid-template-columns: 1fr;
+      gap: 0.5rem;
     }
-    .em-rail {
-      position: static;
-      gap: 1rem;
+    .em-nav .before,
+    .em-nav .after,
+    .em-who {
+      grid-column: 1;
+      grid-row: auto;
+      justify-content: center;
     }
-    .em-rail nav ul {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.25rem;
+    .em-who {
+      order: -1;
     }
-    .em-rail nav a {
-      border-left: 0;
-      border-bottom: 2px solid transparent;
+    /* four names to a line: the English ones give way */
+    .em-nav ul {
+      gap: 0 1.5rem;
     }
-    .em-rail nav a[aria-current='page'] {
-      border-bottom-color: var(--sky);
-    }
-    .em-later,
-    .em-soon {
+    .em-nav a .label {
       display: none;
-    }
-    .em-foot {
-      display: flex;
-      gap: 1.5rem;
     }
     .em-cols {
       grid-template-columns: 1fr;

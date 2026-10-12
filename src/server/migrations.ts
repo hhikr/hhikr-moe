@@ -275,4 +275,38 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX cosmo_grants_session ON cosmo_grants(session_hash);
     `,
   },
+  {
+    id: '008_monitor',
+    sql: `
+      -- A reading of the machine a minute, kept for a week. cpu and the two
+      -- rates are differences from the reading before, so they can be absent.
+      CREATE TABLE vps_samples (
+        at INTEGER PRIMARY KEY,
+        cpu REAL,
+        load1 REAL NOT NULL,
+        mem_used INTEGER NOT NULL,
+        mem_total INTEGER NOT NULL,
+        rx_rate REAL,
+        tx_rate REAL
+      );
+
+      -- Hermes's scheduled jobs and when each has run, copied from Hermes so
+      -- the history outlives what it keeps itself.
+      CREATE TABLE hermes_cron_jobs (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        schedule TEXT NOT NULL DEFAULT '',
+        enabled INTEGER NOT NULL DEFAULT 1,
+        removed INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE hermes_cron_runs (
+        job_id TEXT NOT NULL,
+        started_at INTEGER NOT NULL,
+        ended_at INTEGER,
+        failed INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (job_id, started_at)
+      ) WITHOUT ROWID;
+    `,
+  },
 ];

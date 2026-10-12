@@ -3,10 +3,13 @@ import Endmin from '@/layouts/Endmin.astro';
 import { fmtDate } from '@/lib/posts';
 import { backupStatus } from '@/server/backup.ts';
 import { commentCounts, listAllComments } from '@/server/comments.ts';
+import { cosmoOrigin } from '@/server/cosmo.ts';
+import { cronCalendars, hermesInternal, hermesStatus } from '@/server/hermes.ts';
 import { listAllPosts } from '@/server/posts.ts';
 import { statsReport } from '@/server/stats.ts';
 import { formatBytes, systemStatus } from '@/server/system.ts';
 import { listUsers } from '@/server/users.ts';
+import { vpsReport } from '@/server/vps.ts';
 
 export const prerender = false;
 
@@ -28,157 +31,939 @@ const peak = Math.max(1, ...visits.series.map((d) => d.views));
 const count = (views: number, visitors: number) => `${views.toLocaleString('zh-CN')} 次 · ${visitors.toLocaleString('zh-CN')} 人`;
 
 const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-const duration = (s: number) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} 分钟` : s < 86400 ? `${Math.round(s / 3600)} 小时` : `${Math.round(s / 86400)} 天`);
+const hour = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hour12: false });
+const span = (s: number): [number, string] => (s < 3600 ? [Math.max(1, Math.round(s / 60)), '分钟'] : s < 86400 ? [Math.round(s / 3600), '小时'] : [Math.round(s / 86400), '天']);
+const duration = (s: number) => span(s).join(' ');
 const diskUsed = sys.diskTotalBytes && sys.diskFreeBytes !== null ? 1 - sys.diskFreeBytes / sys.diskTotalBytes : null;
 
-const tiles = [
-  { n: published.length, label: '已发布', href: '/endmin/posts/' },
-  { n: hidden.length, label: '隐藏', href: '/endmin/posts/' },
-  { n: drafts.length, label: '草稿', href: '/endmin/posts/' },
-  { n: comments.total, label: '评论', href: '/endmin/comments/', note: comments.hidden ? `${comments.hidden} 待审` : '' },
-  { n: users.length, label: '用户', href: '/endmin/users/' },
+// ── The machine, as a dial ───────────────────────────────────────────────
+// Three arcs for what is in use right now, inside a 24-hour clock face whose
+// ticks are the last day: outwards the processor, inwards the memory.
+const vps = vpsReport(24, 96);
+const now = vps.latest;
+const percent = (share: number | null | undefined) => (share === null || share === undefined ? '—' : `${Math.round(share * 100)}%`);
+const rate = (bytes: number | null) => (bytes === null ? '—' : `${formatBytes(Math.round(bytes))}/s`);
+const memoryShare = now && now.memTotal ? now.memUsed / now.memTotal : null;
+const rings = [
+  { label: '处理器', tone: 'cpu', share: now?.cpu ?? null, r: 126 },
+  { label: '内存', tone: 'mem', share: memoryShare, r: 108 },
+  { label: '磁盘', tone: 'disk', share: diskUsed, r: 90 },
 ];
+const C = 200;
+const FACE = 160;
+const SWEEP = 75; // the arcs run three quarters of the way round; their names sit in the open quarter
+const at = (r: number, turn: number) => {
+  const a = turn * 2 * Math.PI;
+  return { x: +(C + r * Math.sin(a)).toFixed(1), y: +(C - r * Math.cos(a)).toFixed(1) };
+};
+/** Where a moment falls on a 24-hour face with midnight (Beijing) at the top. */
+const turnOf = (seconds: number) => (((seconds + 8 * 3600) % 86400) + 86400) % 86400 / 86400;
+// The processor idles most of the day: a full-length tick is the smallest of 25%, 50% and 100% that holds the day's peak.
+const cpuTop = vps.cpuPeak === null || vps.cpuPeak <= 0.25 ? 0.25 : vps.cpuPeak <= 0.5 ? 0.5 : 1;
+const slot = vps.series.length > 1 ? vps.series[1].at - vps.series[0].at : 900;
+const ticks = vps.series.map((p) => {
+  const turn = turnOf(p.at + slot / 2);
+  return {
+    turn,
+    read: p.memory !== null,
+    cpu: p.cpu === null ? null : [at(FACE + 3, turn), at(FACE + 3 + Math.max(1, 21 * Math.min(1, p.cpu / cpuTop)), turn)],
+    mem: p.memory === null ? null : [at(FACE - 3, turn), at(FACE - 3 - Math.max(1, 17 * p.memory), turn)],
+    hit: [at(FACE - 21, turn), at(FACE + 25, turn)],
+    dot: at(FACE, turn),
+    title: `${hour.format(new Date(p.at * 1000))}–${hour.format(new Date((p.at + slot) * 1000))}：${p.memory === null ? '没有读数' : `处理器 ${percent(p.cpu)}，内存 ${percent(p.memory)}`}`,
+  };
+});
+const readings = ticks.filter((t) => t.read).length;
+const nowTurn = turnOf(Date.now() / 1000);
+const hand = [at(FACE - 22, nowTurn), at(FACE + 27, nowTurn)];
+// The hand is named, except where the name would sit on one of the four hour marks.
+const handName = Math.abs(((nowTurn * 4 + 0.5) % 1) - 0.5) > 0.12 ? at(FACE + 36, nowTurn) : null;
+const up = span(vps.uptimeSeconds);
+const dialLabel = `处理器 ${percent(now?.cpu)}，内存 ${percent(memoryShare)}，磁盘 ${percent(diskUsed)}，系统已运行 ${up.join(' ')}`;
+
+// ── Hermes ───────────────────────────────────────────────────────────────
+const cosmo = cosmoOrigin();
+const watched = !!hermesInternal();
+const hermes = hermesStatus();
+const WEEKS = 26;
+const calendars = watched ? cronCalendars(WEEKS) : [];
+const CELL = 11;
+const STEP = 14;
+const GRID_LEFT = 18;
+const GRID_TOP = 14;
+const level = (runs: number, busiest: number) => (runs === 0 ? 0 : Math.max(1, Math.ceil((runs / busiest) * 3)));
+const monthMarks = (weeks: (typeof calendars)[number]['weeks']) =>
+  weeks.flatMap((week, w) => {
+    const month = week[0]?.day.slice(5, 7);
+    const before = w > 0 ? weeks[w - 1][0]?.day.slice(5, 7) : undefined;
+    return month && month !== before && w < weeks.length - 1 ? [{ w, text: `${Number(month)}月` }] : [];
+  })
+    // The period rarely starts on the first of a month: a label a week or two before the next one would run into it.
+    .filter((mark, n, marks) => !marks[n + 1] || marks[n + 1].w - mark.w >= 3);
+const dayTitle = (d: { day: string; runs: number; failed: number }) =>
+  `${Number(d.day.slice(5, 7))}月${Number(d.day.slice(8))}日：${d.runs === 0 ? '没有运行' : `运行 ${d.runs} 次${d.failed ? `，其中 ${d.failed} 次失败` : ''}`}`;
+const liveJobs = calendars.filter((job) => !job.removed).length;
+const showHermes = !!cosmo || watched;
 ---
 
-<Endmin title="概览" en="Overview">
-  <div class="em-tiles">
-    {
-      tiles.map((t) => (
-        <a class="em-tile" href={t.href}>
-          <span class="n">
-            {t.n}
-            {t.note && <small>{t.note}</small>}
-          </span>
-          <span class="cjk">{t.label}</span>
-        </a>
-      ))
-    }
+<Endmin title="概览" en="Overview" plain>
+  <div class="board">
+    <div class="orbit">
+      <figure class="hub">
+        <h1 class="cjk">概览<span class="display">Overview</span></h1>
+        <svg viewBox="0 0 400 400" role="img" aria-label={dialLabel}>
+          <circle class="face" cx={C} cy={C} r={FACE} />
+          {
+            [0, 6, 12, 18].map((h) => (
+              <text class="axis" x={at(FACE + 33, h / 24).x} y={at(FACE + 33, h / 24).y} text-anchor="middle" dominant-baseline="central">
+                {String(h).padStart(2, '0')}
+              </text>
+            ))
+          }
+          {
+            ticks.map((t) => (
+              <g class="tick">
+                {!t.read && <circle class="blank" cx={t.dot.x} cy={t.dot.y} r="1.3" />}
+                {t.cpu && <line class="t-cpu" x1={t.cpu[0].x} y1={t.cpu[0].y} x2={t.cpu[1].x} y2={t.cpu[1].y} />}
+                {t.mem && <line class="t-mem" x1={t.mem[0].x} y1={t.mem[0].y} x2={t.mem[1].x} y2={t.mem[1].y} />}
+                <line class="hit" x1={t.hit[0].x} y1={t.hit[0].y} x2={t.hit[1].x} y2={t.hit[1].y}>
+                  <title>{t.title}</title>
+                </line>
+              </g>
+            ))
+          }
+          <line class="hand" x1={hand[0].x} y1={hand[0].y} x2={hand[1].x} y2={hand[1].y} />
+          {handName && <text class="hand-name" x={handName.x} y={handName.y} text-anchor="middle" dominant-baseline="central">现在</text>}
+
+          {
+            rings.map((ring) => (
+              <g class:list={['ring', ring.tone, { warn: (ring.share ?? 0) > 0.85 }]}>
+                <circle class="track" cx={C} cy={C} r={ring.r} pathLength="100" stroke-dasharray={`${SWEEP} 100`} transform={`rotate(-90 ${C} ${C})`} />
+                {ring.share !== null && (
+                  <circle
+                    class="arc"
+                    cx={C}
+                    cy={C}
+                    r={ring.r}
+                    pathLength="100"
+                    stroke-dasharray={`${(SWEEP * Math.max(0.004, Math.min(1, ring.share))).toFixed(2)} 100`}
+                    transform={`rotate(-90 ${C} ${C})`}
+                  />
+                )}
+                <text x={C - 10} y={C - ring.r} text-anchor="end" dominant-baseline="central">
+                  {ring.label} <tspan class="v">{percent(ring.share)}</tspan>
+                </text>
+              </g>
+            ))
+          }
+
+          <text class="core-label" x={C} y={C - 16} text-anchor="middle">系统已运行</text>
+          <text class="core" x={C} y={C + 28} text-anchor="middle">
+            {up[0]}<tspan class="unit" dx="5">{up[1]}</tspan>
+          </text>
+          <text class="core-label" x={C} y={C + 50} text-anchor="middle">{now ? `读数 ${hour.format(new Date(now.at * 1000))}` : '还没有读数'}</text>
+        </svg>
+        <figcaption>
+          <span><i class="k-cpu"></i>外圈向外 处理器（满格 {cpuTop * 100}%{vps.cpuPeak !== null && `，24 小时峰值 ${percent(vps.cpuPeak)}`}）</span>
+          <span><i class="k-mem"></i>向内 内存</span>
+          <span><i class="k-now"></i>现在</span>
+          <span class="wide">外圈是 24 小时钟面，每 15 分钟一格；空点是还没有读数的时段{readings < 90 && '，读数是从上线那一刻开始记的'}。</span>
+        </figcaption>
+      </figure>
+
+      <section class="sat l1">
+        <h2>文章 <a href="/endmin/posts/">全部 →</a></h2>
+        <div class="figs">
+          <a href="/endmin/posts/"><b>{published.length}</b><span class="cjk">已发布</span></a>
+          <a href="/endmin/posts/"><b>{hidden.length}</b><span class="cjk">隐藏</span></a>
+          <a href="/endmin/posts/"><b>{drafts.length}</b><span class="cjk">草稿</span></a>
+        </div>
+      </section>
+
+      <section class="sat r1">
+        <h2>访问 <a href="/endmin/stats/">详情 →</a></h2>
+        <div class="figs">
+          <a href="/endmin/stats/"><b>{today.views.toLocaleString('zh-CN')}</b><span class="cjk">今天</span><small>{today.visitors.toLocaleString('zh-CN')} 人</small></a>
+          <a href="/endmin/stats/"><b>{sum(lastWeek, 'views').toLocaleString('zh-CN')}</b><span class="cjk">7 天</span><small>{sum(lastWeek, 'visitors').toLocaleString('zh-CN')} 人</small></a>
+          <a href="/endmin/stats/"><b>{visits.views.toLocaleString('zh-CN')}</b><span class="cjk">30 天</span><small>{visits.visitors.toLocaleString('zh-CN')} 人</small></a>
+        </div>
+        <svg class="spark" viewBox="0 0 300 48" preserveAspectRatio="none" role="img" aria-label="最近 30 天每天的浏览次数">
+          {visits.series.map((d, i) => <rect x={i * 10 + 1} y={48 - Math.max(1, (d.views / peak) * 46)} width="8" height={Math.max(1, (d.views / peak) * 46)}><title>{`${d.day}：${d.views} 次`}</title></rect>)}
+        </svg>
+      </section>
+
+      <section class="sat l2">
+        <h2>互动 <a href="/endmin/comments/">评论 →</a></h2>
+        <div class="figs">
+          <a href="/endmin/comments/"><b>{comments.total}</b><span class="cjk">评论</span></a>
+          <a href="/endmin/comments/" class:list={{ bad: comments.hidden > 0 }}><b>{comments.hidden}</b><span class="cjk">待审</span></a>
+          <a href="/endmin/users/"><b>{users.length}</b><span class="cjk">用户</span></a>
+        </div>
+      </section>
+
+      {
+        showHermes && (
+          <section class="sat r2">
+            <h2>
+              Hermes
+              {watched && (
+                <span class:list={['state', { off: hermes.checkedAt !== null && !hermes.online, idle: hermes.checkedAt === null }]}>
+                  {hermes.checkedAt === null ? '还没有问过' : hermes.online ? `在线${hermes.version ? ` · v${hermes.version}` : ''}` : '没有应答'}
+                </span>
+              )}
+            </h2>
+            <div class="figs">
+              {watched && <a href={cosmo ? `${cosmo}/` : '#cron'}><b>{hermes.online ? (hermes.activeSessions ?? 0) : '—'}</b><span class="cjk">会话</span></a>}
+              {watched && <a href="#cron"><b>{liveJobs}</b><span class="cjk">定时任务</span></a>}
+              {cosmo && (
+                <p class="doors">
+                  <a class="em-btn go" href={`${cosmo}/`} target="_blank" rel="noopener">对话 ↗</a>
+                  <a class="em-btn" href={`${cosmo}/admin/`} target="_blank" rel="noopener">管理页 ↗</a>
+                </p>
+              )}
+            </div>
+          </section>
+        )
+      }
+
+      <section class="sat l3">
+        <h2>网站 <a href="/endmin/backup/">备份 →</a></h2>
+        <dl class="em-facts">
+          <div>
+            <dt>数据库</dt>
+            <dd>{formatBytes(sys.databaseBytes)}</dd>
+          </div>
+          <div>
+            <dt>媒体</dt>
+            <dd>{sys.mediaFiles} 个 · {formatBytes(sys.mediaBytes)}</dd>
+          </div>
+          <div>
+            <dt>搜索索引</dt>
+            <dd class:list={{ warn: !sys.searchIndexedAt }}>{sys.searchIndexedAt ? when.format(sys.searchIndexedAt) : '尚未建立'}</dd>
+          </div>
+          <div>
+            <dt>备份</dt>
+            <dd class:list={{ warn: backupRed > 0 || !backup.lastOk }}>
+              {!backup.configured ? '尚未配置' : backup.running ? '正在备份…' : backup.lastOk ? when.format(new Date(backup.lastOk.startedAt)) : '还没有成功过'}
+              {backupRed > 0 && ` · ${backupRed} 个问题`}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class:list={['sat', showHermes ? 'r3' : 'r2']}>
+        <h2>机器 <span class="state idle">每分钟一次</span></h2>
+        <dl class="em-facts">
+          <div>
+            <dt>负载</dt>
+            <dd>{now ? `${now.load1.toFixed(2)} · ${vps.cores} 核` : '—'}</dd>
+          </div>
+          <div>
+            <dt>内存</dt>
+            <dd>{now ? `${formatBytes(now.memUsed)} / ${formatBytes(now.memTotal)}` : '—'}</dd>
+          </div>
+          <div>
+            <dt>磁盘</dt>
+            <dd class:list={{ warn: (diskUsed ?? 0) > 0.85 }}>{sys.diskFreeBytes === null ? '—' : `剩余 ${formatBytes(sys.diskFreeBytes)}`}</dd>
+          </div>
+          <div>
+            <dt>网络</dt>
+            <dd>↓ {rate(now?.rxRate ?? null)} ↑ {rate(now?.txRate ?? null)}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
   </div>
 
+  {
+    watched && (
+      <section class="em-panel wide" id="cron">
+        <h2 class="mid">定时任务</h2>
+        {cosmo && <p class="mid-link"><a href={`${cosmo}/admin/cron`} target="_blank" rel="noopener">在 Hermes 里管理 ↗</a></p>}
+        {calendars.length === 0 ? (
+          <p class="em-empty mid-empty">Hermes 里还没有定时任务。建一个之后，它每运行一次，这里就点亮一格。</p>
+        ) : (
+          <>
+            <ul class="habits">
+              {calendars.map((job) => (
+                <li>
+                  <div class="habit-head">
+                    <span class="t">{job.name}</span>
+                    {job.removed ? <span class="em-state draft">已删除</span> : !job.enabled && <span class="em-state draft">已暂停</span>}
+                    <span class="em-meta">
+                      {job.schedule && <span>{job.schedule}</span>}
+                      <span>{job.activeDays} 天 · {job.runs} 次</span>
+                      {job.failed > 0 && <span class="bad">失败 {job.failed} 次</span>}
+                      {job.lastRunAt && <span>上次 {when.format(new Date(job.lastRunAt * 1000))}</span>}
+                    </span>
+                  </div>
+                  <svg class="heat" viewBox={`0 0 ${GRID_LEFT + WEEKS * STEP} ${GRID_TOP + 7 * STEP}`} role="img" aria-label={`${job.name}：最近 ${WEEKS} 周每天的运行次数`}>
+                    {monthMarks(job.weeks).map((m) => <text class="axis" x={GRID_LEFT + m.w * STEP} y="9">{m.text}</text>)}
+                    {['一', '三', '五'].map((name, n) => <text class="axis" x="0" y={GRID_TOP + n * 2 * STEP + 9}>{name}</text>)}
+                    {job.weeks.map((week, w) =>
+                      week.map(
+                        (d, n) =>
+                          d && (
+                            <rect class:list={[`l${level(d.runs, job.busiest)}`, { bad: d.failed > 0 }]} x={GRID_LEFT + w * STEP} y={GRID_TOP + n * STEP} width={CELL} height={CELL} rx="2">
+                              <title>{dayTitle(d)}</title>
+                            </rect>
+                          ),
+                      ),
+                    )}
+                  </svg>
+                </li>
+              ))}
+            </ul>
+            <p class="heat-key">
+              <i class="l0"></i>没有运行 <i class="l1"></i><i class="l2"></i><i class="l3"></i>运行，越深次数越多 <i class="l3 bad"></i>当天有失败
+            </p>
+          </>
+        )}
+      </section>
+    )
+  }
+
   <div class="em-cols">
-    <div>
-      <section class="em-panel">
-        <h2>最新评论 <a href="/endmin/comments/">全部 →</a></h2>
-        {
-          recent.length === 0 ? (
-            <p class="em-empty">还没有评论。</p>
-          ) : (
-            <ul class="em-rows">
-              {recent.map((c) => (
-                <li>
+    <section class="em-panel">
+      <h2>最新评论 <a href="/endmin/comments/">全部 →</a></h2>
+      {
+        recent.length === 0 ? (
+          <p class="em-empty">还没有评论。</p>
+        ) : (
+          <ul class="em-rows">
+            {recent.map((c) => (
+              <li>
+                <div class="em-meta">
+                  <span>{c.author?.handle ?? '已删除的用户'}</span>
+                  <span>{when.format(new Date(c.createdAt))}</span>
+                  <a href={`/posts/${c.postSlug}/#comment-${c.id}`}>{c.postTitle}</a>
+                </div>
+                {c.status === 'hidden' && <span class="em-state hidden">待审</span>}
+                <div class="em-quote clip" set:html={c.html} />
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+
+    <section class="em-panel">
+      <h2>草稿 <a href="/endmin/posts/">全部文章 →</a></h2>
+      {
+        drafts.length === 0 ? (
+          <p class="em-empty">没有草稿。</p>
+        ) : (
+          <ul class="em-rows">
+            {drafts.map((p) => (
+              <li>
+                <div>
+                  <div class="t"><a href={`/endmin/posts/${p.id}/`}>{p.title}</a></div>
                   <div class="em-meta">
-                    <span>{c.author?.handle ?? '已删除的用户'}</span>
-                    <span>{when.format(new Date(c.createdAt))}</span>
-                    <a href={`/posts/${c.postSlug}/#comment-${c.id}`}>{c.postTitle}</a>
+                    <span>{p.slug}</span>
+                    <span>{p.words.toLocaleString('zh-CN')} 字</span>
+                    <span>{fmtDate(p.publishedAt)}</span>
                   </div>
-                  {c.status === 'hidden' && <span class="em-state hidden">待审</span>}
-                  <div class="em-quote clip" set:html={c.html} />
-                </li>
-              ))}
-            </ul>
-          )
-        }
-      </section>
-
-      <section class="em-panel">
-        <h2>草稿 <a href="/endmin/posts/">全部文章 →</a></h2>
-        {
-          drafts.length === 0 ? (
-            <p class="em-empty">没有草稿。</p>
-          ) : (
-            <ul class="em-rows">
-              {drafts.map((p) => (
-                <li>
-                  <div>
-                    <div class="t"><a href={`/endmin/posts/${p.id}/`}>{p.title}</a></div>
-                    <div class="em-meta">
-                      <span>{p.slug}</span>
-                      <span>{p.words.toLocaleString('zh-CN')} 字</span>
-                      <span>{fmtDate(p.publishedAt)}</span>
-                    </div>
-                  </div>
-                  <div class="em-acts">
-                    <a class="em-btn" href={`/endmin/posts/${p.id}/`}>编辑</a>
-                    <button class="em-btn go" data-api={`/api/endmin/posts/${p.id}`} data-body='{"status":"published"}' data-confirm={`发布「${p.title}」？所有人都能看到它。`}>
-                      发布
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-      </section>
-    </div>
-
-    <div>
-    <section class="em-panel">
-      <h2>访问 <a href="/endmin/stats/">详情 →</a></h2>
-      <svg class="spark" viewBox="0 0 300 48" preserveAspectRatio="none" role="img" aria-label="最近 30 天每天的浏览次数">
-        {visits.series.map((d, i) => <rect x={i * 10 + 1} y={48 - Math.max(1, (d.views / peak) * 46)} width="8" height={Math.max(1, (d.views / peak) * 46)}><title>{`${d.day}：${d.views} 次`}</title></rect>)}
-      </svg>
-      <dl class="em-facts">
-        <div>
-          <dt>今天</dt>
-          <dd>{count(today.views, today.visitors)}</dd>
-        </div>
-        <div>
-          <dt>最近 7 天</dt>
-          <dd>{count(sum(lastWeek, 'views'), sum(lastWeek, 'visitors'))}</dd>
-        </div>
-        <div>
-          <dt>最近 30 天</dt>
-          <dd>{count(visits.views, visits.visitors)}</dd>
-        </div>
-      </dl>
+                </div>
+                <div class="em-acts">
+                  <a class="em-btn" href={`/endmin/posts/${p.id}/`}>编辑</a>
+                  <button class="em-btn go" data-api={`/api/endmin/posts/${p.id}`} data-body='{"status":"published"}' data-confirm={`发布「${p.title}」？所有人都能看到它。`}>
+                    发布
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      }
     </section>
-
-    <section class="em-panel">
-      <h2>服务器</h2>
-      <dl class="em-facts">
-        <div>
-          <dt>磁盘</dt>
-          <dd class:list={{ warn: diskUsed !== null && diskUsed > 0.85 }}>
-            {sys.diskFreeBytes === null ? '未知' : `剩余 ${formatBytes(sys.diskFreeBytes)}`}
-            {diskUsed !== null && ` · 已用 ${Math.round(diskUsed * 100)}%`}
-          </dd>
-        </div>
-        <div>
-          <dt>数据库</dt>
-          <dd>{formatBytes(sys.databaseBytes)}</dd>
-        </div>
-        <div>
-          <dt>图片与头像</dt>
-          <dd>{sys.mediaFiles} 个文件 · {formatBytes(sys.mediaBytes)}</dd>
-        </div>
-        <div>
-          <dt>搜索索引</dt>
-          <dd class:list={{ warn: !sys.searchIndexedAt }}>{sys.searchIndexedAt ? `更新于 ${when.format(sys.searchIndexedAt)}` : '尚未建立'}</dd>
-        </div>
-        <div>
-          <dt><a href="/endmin/backup/">备份</a></dt>
-          <dd class:list={{ warn: backupRed > 0 || !backup.lastOk }}>
-            {!backup.configured ? '尚未配置' : backup.running ? '正在备份…' : backup.lastOk ? `上次成功 ${when.format(new Date(backup.lastOk.startedAt))}` : '还没有成功过'}
-            {backupRed > 0 && ` · ${backupRed} 个问题`}
-          </dd>
-        </div>
-        <div>
-          <dt>已运行</dt>
-          <dd>{duration(sys.uptimeSeconds)} · Node {sys.node}</dd>
-        </div>
-      </dl>
-    </section>
-    </div>
   </div>
 </Endmin>
 
 <style>
+  /* ---------- the board: a dial with six panels around it ---------- */
+  .board {
+    container: board / inline-size;
+  }
+
+  .orbit {
+    --gap: 1.75rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: 2rem var(--gap);
+  }
+
+  .hub {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: min(100%, 26rem);
+    margin: 0;
+  }
+
+  .hub h1 {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.9rem;
+    margin: 0 0 0.25rem;
+    font-size: clamp(2rem, 4vw, 2.9rem);
+    line-height: 1.1;
+  }
+
+  .hub h1 .display {
+    font-size: 0.55em;
+    font-style: italic;
+    color: var(--ink-3);
+  }
+
+  .hub svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .face {
+    fill: none;
+    stroke: var(--rule);
+    stroke-width: 1;
+  }
+
+  .axis {
+    fill: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .t-cpu,
+  .t-mem {
+    stroke-width: 4;
+  }
+
+  .t-cpu {
+    stroke: var(--sky);
+  }
+
+  .t-mem {
+    stroke: var(--ink);
+    opacity: 0.55;
+  }
+
+  .blank {
+    fill: var(--ink-3);
+    opacity: 0.6;
+  }
+
+  .hand-name {
+    fill: var(--signal);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .hit {
+    stroke: var(--ink);
+    stroke-width: 10;
+    opacity: 0;
+  }
+
+  .tick:hover .hit {
+    opacity: 0.08;
+  }
+
+  .hand {
+    stroke: var(--signal);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+
+  .ring circle {
+    fill: none;
+    stroke-width: 11;
+    stroke-linecap: round;
+  }
+
+  .ring .track {
+    stroke: var(--paper-3);
+  }
+
+  .ring .arc {
+    animation: sweep 0.9s var(--ease) backwards;
+  }
+
+  .ring.cpu .arc {
+    stroke: var(--sky);
+  }
+
+  .ring.mem .arc {
+    stroke: var(--ink);
+    animation-delay: 0.08s;
+  }
+
+  .ring.disk .arc {
+    stroke: var(--ink-3);
+    animation-delay: 0.16s;
+  }
+
+  .ring.warn .arc {
+    stroke: var(--signal);
+  }
+
+  .ring text {
+    fill: var(--ink-2);
+    font-family: var(--font-cjk);
+    font-size: 13px;
+  }
+
+  .ring .v {
+    fill: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ring.warn text,
+  .ring.warn .v {
+    fill: var(--signal);
+  }
+
+  .core-label {
+    fill: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .core {
+    fill: var(--ink);
+    font-family: var(--font-display);
+    font-size: 56px;
+  }
+
+  .core .unit {
+    fill: var(--ink-2);
+    font-family: var(--font-cjk);
+    font-size: 17px;
+  }
+
+  @keyframes sweep {
+    from {
+      stroke-dasharray: 0 100;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ring .arc {
+      animation: none;
+    }
+  }
+
+  .hub figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem 1rem;
+    margin-top: 0.75rem;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+
+  .hub figcaption .wide {
+    flex-basis: 100%;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .hub figcaption i {
+    display: inline-block;
+    width: 4px;
+    height: 0.75rem;
+    margin-right: 0.4rem;
+    vertical-align: -0.1rem;
+  }
+
+  .k-cpu {
+    background: var(--sky);
+  }
+
+  .k-mem {
+    background: var(--ink);
+    opacity: 0.55;
+  }
+
+  .hub figcaption .k-now {
+    width: 0.75rem;
+    height: 2px;
+    vertical-align: 0.2rem;
+    background: var(--signal);
+  }
+
+  /* ---------- the panels ---------- */
+  .sat {
+    position: relative;
+    min-width: 0;
+    padding-top: 0.7rem;
+    border-top: 1.5px solid var(--rule-strong);
+  }
+
+  .sat h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 0 0 0.5rem;
+    font-family: var(--font-cjk);
+    font-size: 1.2rem;
+    font-weight: 400;
+  }
+
+  .sat h2 a,
+  .state {
+    margin-left: auto;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .sat h2 a:hover,
+  .sat dt a:hover {
+    color: var(--sky-ink);
+  }
+
+  .state::before {
+    content: '';
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-right: 0.4rem;
+    border-radius: 50%;
+    background: var(--sky);
+  }
+
+  .state.idle::before {
+    background: var(--ink-3);
+  }
+
+  .state.off {
+    color: var(--signal);
+  }
+
+  .state.off::before {
+    background: var(--signal);
+  }
+
+  .sat dt a {
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 0.2em;
+  }
+
+  .sat .em-facts dd {
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .figs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0.5rem 0 0.25rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .figs a {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .figs b {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .figs .cjk {
+    color: var(--ink-2);
+    font-size: 0.92rem;
+  }
+
+  .figs small {
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+  }
+
+  .figs a:hover .cjk {
+    color: var(--sky-ink);
+  }
+
+  .figs .bad b,
+  .bad {
+    color: var(--signal);
+  }
+
   .spark {
     display: block;
     width: 100%;
-    height: 3rem;
-    margin-bottom: 0.6rem;
+    height: 1.6rem;
+    margin-top: 0.5rem;
+    border-bottom: 1px solid var(--rule);
     fill: var(--sky);
     opacity: 0.7;
+  }
+
+  .doors {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    margin: 0;
+  }
+
+  /* Wide enough for the panels to stand around the dial: three on each side in
+     shared rows, so the two sides mirror each other. */
+  @container board (min-width: 56rem) {
+    .orbit {
+      --gap: 2rem;
+      grid-template-columns: minmax(0, 1fr) clamp(22rem, 41cqi, 31rem) minmax(0, 1fr);
+      grid-template-rows: repeat(3, auto);
+      align-items: start;
+      row-gap: 1.9rem;
+    }
+
+    .hub {
+      grid-column: 2;
+      grid-row: 1 / 4;
+      align-self: center;
+      width: 100%;
+    }
+
+    .l1,
+    .l2,
+    .l3 {
+      grid-column: 1;
+    }
+
+    .r1,
+    .r2,
+    .r3 {
+      grid-column: 3;
+    }
+
+    .l1,
+    .r1 {
+      grid-row: 1;
+    }
+
+    .l2,
+    .r2 {
+      grid-row: 2;
+    }
+
+    .l3,
+    .r3 {
+      grid-row: 3;
+    }
+
+    /* The top rule of the lower four panels is carried on to the dial and ends in a dot. */
+    .sat {
+      --reach: calc(var(--gap) + 1.25rem);
+    }
+
+    .sat:not(.l1, .r1)::before,
+    .sat:not(.l1, .r1)::after {
+      content: '';
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .sat::before {
+      top: -1.5px;
+      width: var(--reach);
+      height: 1.5px;
+      background: var(--rule-strong);
+    }
+
+    .sat::after {
+      top: -4.25px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ink);
+    }
+
+    .l2::before,
+    .l3::before {
+      left: 100%;
+    }
+
+    .l2::after,
+    .l3::after {
+      left: calc(100% + var(--reach) - 4.25px);
+    }
+
+    .r2::before,
+    .r3::before {
+      right: 100%;
+    }
+
+    .r2::after,
+    .r3::after {
+      right: calc(100% + var(--reach) - 4.25px);
+    }
+  }
+
+  /* ---------- the scheduled jobs ---------- */
+  .em-panel.wide {
+    margin-top: 3.5rem;
+  }
+
+  /* a heading set in the middle of its own rule */
+  .em-panel h2.mid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .em-panel h2.mid::before,
+  .em-panel h2.mid::after {
+    content: '';
+    height: 1.5px;
+    background: var(--rule-strong);
+  }
+
+  .mid-link {
+    margin: 0 0 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-align: center;
+  }
+
+  .mid-link a {
+    color: var(--ink-3);
+  }
+
+  .mid-link a:hover {
+    color: var(--sky-ink);
+  }
+
+  .mid-empty {
+    border-top: 0;
+    text-align: center;
+  }
+
+  .habits {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+    gap: 1.5rem 2.5rem;
+    margin: 0;
+    padding: 0.6rem 0 0;
+    list-style: none;
+  }
+
+  .habit-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2rem 0.6rem;
+  }
+
+  .habit-head .t {
+    font-family: var(--font-cjk);
+    font-size: 1.08rem;
+  }
+
+  .habit-head .em-state {
+    margin-left: 0;
+  }
+
+  .habit-head .em-meta {
+    flex-basis: 100%;
+  }
+
+  .heat {
+    display: block;
+    width: 100%;
+    max-width: 27rem;
+    height: auto;
+    margin-top: 0.5rem;
+  }
+
+  .heat .axis {
+    font-size: 10px;
+  }
+
+  .heat rect,
+  .heat-key i {
+    fill: var(--sky);
+    background: var(--sky);
+  }
+
+  .heat .l0,
+  .heat-key .l0 {
+    fill: var(--paper-3);
+    background: var(--paper-3);
+  }
+
+  .heat .l1,
+  .heat-key .l1 {
+    opacity: 0.35;
+  }
+
+  .heat .l2,
+  .heat-key .l2 {
+    opacity: 0.65;
+  }
+
+  .heat .bad,
+  .heat-key .bad {
+    fill: var(--signal);
+    background: var(--signal);
+  }
+
+  .heat-key {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0.8rem 0 0;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .heat-key i {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-left: 0.7rem;
+    border-radius: 2px;
+  }
+
+  .heat-key i + i {
+    margin-left: 0;
+  }
+
+  .em-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 1.5rem;
+  }
+
+  .em-cols .em-panel {
+    padding-top: 0.7rem;
+    border-top: 1.5px solid var(--rule-strong);
+  }
+
+  .em-cols .em-panel + .em-panel {
+    margin-top: 0;
+  }
+
+  @media (max-width: 860px) {
+    .em-cols {
+      grid-template-columns: 1fr;
+      gap: 2.25rem;
+    }
   }
 </style>

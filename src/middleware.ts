@@ -1,6 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { CSP_HEADER } from '@/lib/csp';
 import { siteOrigin } from '@/server/config.ts';
+import { startMonitor } from '@/server/monitor.ts';
 import { readSession, sessionCookieName, sessionCookieOptions } from '@/server/sessions.ts';
 
 // Pages live at addresses ending in "/". Routing itself accepts both forms
@@ -41,6 +42,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.viewer = { role: 'guest' };
     return next();
   }
+  startMonitor();
 
   if (reading && !pathname.endsWith('/') && isPage(pathname)) {
     return context.redirect(`${pathname}/${search}`, 301);
