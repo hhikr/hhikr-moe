@@ -10,6 +10,8 @@
     "predev": "node scripts/build-static-images.mjs",
     "import:posts": "node scripts/import-posts.mjs",
     "test:server": "node --test \"tests/server/*.test.mjs\"",
+    "test:cosmo": "node --test \"tests/cosmo/*.test.mjs\"",
+    "cosmo:build": "node tools/cosmo/build.mjs",
     "build": "astro check && astro build && pagefind --site dist/client",
     "preview": "astro preview",
     "astro": "astro",

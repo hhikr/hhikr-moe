@@ -255,4 +255,24 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       CREATE INDEX assets_sha ON assets(sha256);
     `,
   },
+  {
+    id: '007_cosmo',
+    sql: `
+      -- One-time codes that hand the endministrator over to Cosmo.
+      CREATE TABLE cosmo_codes (
+        code_hash TEXT PRIMARY KEY,
+        session_hash TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      );
+
+      -- What the Cosmo gate holds after redeeming a code. It ends with the
+      -- site session it came from.
+      CREATE TABLE cosmo_grants (
+        grant_hash TEXT PRIMARY KEY,
+        session_hash TEXT NOT NULL REFERENCES sessions(token_hash) ON DELETE CASCADE,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX cosmo_grants_session ON cosmo_grants(session_hash);
+    `,
+  },
 ];

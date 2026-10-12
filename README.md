@@ -63,6 +63,7 @@ Markdown 扩展语法（与 Obsidian 兼容）：
 - 作品（`/works/`）：发布 mod 等可下载的文件，每个作品有介绍、图库、链接、相关文章和按版本整理的文件，下载支持断点续传
 - 每天自动备份到 GitHub 私有仓库，大文件走 Release 附件，可以从备份恢复
 - 自建访问统计：不保存 IP 地址，文章页显示阅读数，管理面板里有趋势、页面、来源和设备的统计
+- Cosmo（`cosmo.hhikr.moe`）：站长的 Hermes 助手网页界面，复用 Hermes Desktop 的渲染层，凭本站的 endministrator 登录进入，见 [tools/cosmo/README.md](tools/cosmo/README.md)
 - RSS（`/rss.xml`，旧地址 `/index.xml` 仍可用）、sitemap、Open Graph
 - 中文标题使用霞鹜文楷，所有字体本地托管，不依赖 Google Fonts
 

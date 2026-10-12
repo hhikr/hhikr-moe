@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - name: Server tests
         run: npm run test:server
+      - name: Cosmo gate tests
+        run: npm run test:cosmo
       - name: Hot 100 tests
         run: npm run test:hot100
       # Type-checks every page, builds the site and the search index.

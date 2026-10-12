@@ -48,7 +48,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Anything that changes state must come from our own pages. JSON requests
   // are not covered by Astro's built-in form check, so this is done here.
-  if (!reading) {
+  // /api/internal/ is called by services on this machine, not by pages; those
+  // routes check a shared secret instead and use no cookies.
+  if (!reading && !pathname.startsWith('/api/internal/')) {
     if (!sameOrigin(context.request)) {
       return new Response(JSON.stringify({ error: { code: 'bad_origin', message: '请求来源不正确' } }), {
         status: 403,
