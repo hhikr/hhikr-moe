@@ -1,0 +1,520 @@
+/* ==========================================================================
+   Article typography
+   ========================================================================== */
+
+@import 'katex/dist/katex.min.css';
+
+.prose {
+  font-size: 1.0625rem;
+  line-height: 1.85;
+  color: var(--ink);
+  overflow-wrap: break-word;
+}
+
+.prose > * + * {
+  margin-top: 1.15em;
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose blockquote,
+.prose pre,
+.prose table,
+.prose figure {
+  margin-block: 0;
+}
+
+.prose :where(p, ul, ol, blockquote, pre, table, figure, .callout, .katex-display, hr) + * {
+  margin-top: 1.15em;
+}
+
+/* headings */
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5 {
+  position: relative;
+  font-family: var(--font-cjk);
+  color: var(--ink);
+  scroll-margin-top: 5.5rem;
+}
+
+.prose h1 {
+  font-family: var(--font-cjk);
+  font-size: 1.9rem;
+  margin: 2.6em 0 0.8em;
+}
+
+.prose h2 {
+  font-size: 1.7rem;
+  margin: 2.4em 0 0.7em;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--rule);
+}
+
+.prose h3 {
+  font-size: 1.32rem;
+  margin: 2em 0 0.6em;
+}
+
+.prose h4 {
+  font-size: 1.12rem;
+  margin: 1.8em 0 0.5em;
+}
+
+.prose h5,
+.prose h6 {
+  font-size: 1rem;
+  margin: 1.6em 0 0.4em;
+  color: var(--ink-2);
+}
+
+.prose .anchor {
+  margin-left: 0.4em;
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  color: var(--sky);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.prose .anchor::before {
+  content: '#';
+}
+
+.prose :is(h2, h3, h4):hover .anchor,
+.prose .anchor:focus-visible {
+  opacity: 1;
+}
+
+/* inline */
+.prose a {
+  color: var(--sky-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--sky) 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  transition: text-decoration-color 0.2s, color 0.2s;
+}
+
+.prose a:hover {
+  text-decoration-color: var(--sky);
+  text-decoration-thickness: 2px;
+}
+
+.prose a.external::after {
+  content: '↗';
+  display: inline-block;
+  margin-left: 0.1em;
+  font-size: 0.75em;
+  vertical-align: 0.15em;
+  text-decoration: none;
+}
+
+.prose strong {
+  font-weight: 650;
+  background: linear-gradient(transparent 62%, var(--mark) 62%);
+}
+
+.prose mark {
+  background: var(--mark);
+  color: inherit;
+  padding: 0 0.15em;
+}
+
+.prose :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 0.12em 0.38em;
+  border-radius: 3px;
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+}
+
+.prose kbd {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+/* lists */
+.prose ul,
+.prose ol {
+  padding-left: 1.5em;
+}
+
+.prose li + li,
+.prose li > ul,
+.prose li > ol {
+  margin-top: 0.35em;
+}
+
+.prose ul > li::marker {
+  color: var(--sky);
+}
+
+.prose ol > li::marker {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--ink-3);
+}
+
+.prose li > p {
+  margin: 0;
+}
+
+.prose .contains-task-list {
+  list-style: none;
+  padding-left: 0.4em;
+}
+
+.prose input[type='checkbox'] {
+  accent-color: var(--sky);
+  margin-right: 0.5em;
+}
+
+/* quotes */
+.prose blockquote {
+  padding: 0.2em 0 0.2em 1.2em;
+  border-left: 3px solid var(--ink);
+  color: var(--ink-2);
+  font-family: var(--font-cjk);
+  font-size: 1.05em;
+}
+
+.prose blockquote > * + * {
+  margin-top: 0.8em;
+}
+
+.prose hr {
+  border: 0;
+  height: 1.5rem;
+  margin-block: 2.5em;
+  background: radial-gradient(circle, var(--ink-3) 1.5px, transparent 2px) center / 1.5rem 1.5rem repeat-x;
+  max-width: 6rem;
+}
+
+/* code blocks */
+.prose pre {
+  position: relative;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--code-bg) !important;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  tab-size: 4;
+}
+
+.prose pre code {
+  font-family: inherit;
+}
+
+:root[data-theme='dark'] .prose pre.astro-code,
+:root[data-theme='dark'] .prose pre.astro-code span {
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+}
+
+.code-frame {
+  position: relative;
+}
+
+.code-frame .code-lang {
+  position: absolute;
+  top: 0;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  padding: 0 0.5em;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.code-frame .copy {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  padding: 0.25em 0.6em;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, border-color 0.2s;
+  z-index: 1;
+}
+
+.code-frame:hover .copy,
+.code-frame .copy:focus-visible {
+  opacity: 1;
+}
+
+.code-frame .copy:hover {
+  color: var(--sky);
+  border-color: var(--sky);
+}
+
+@media (hover: none) {
+  .code-frame .copy {
+    opacity: 1;
+  }
+}
+
+/* tables */
+.prose .table-wrap {
+  overflow-x: auto;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+  line-height: 1.6;
+}
+
+.prose th,
+.prose td {
+  padding: 0.55em 0.8em;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose thead th {
+  border-bottom: 1.5px solid var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.prose tbody tr:hover {
+  background: var(--paper-2);
+}
+
+/* images & figures */
+.prose img {
+  display: block;
+  margin-inline: auto;
+  border-radius: var(--radius);
+  cursor: zoom-in;
+  background: #fff;
+}
+
+.prose p > img:only-child {
+  margin-block: 0.4em;
+}
+
+.prose li img {
+  display: inline-block;
+}
+
+:root[data-theme='dark'] .prose img {
+  filter: brightness(0.92);
+}
+
+.prose figure {
+  margin-inline: 0;
+}
+
+.prose figcaption {
+  margin-top: 0.7em;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-3);
+}
+
+.prose figcaption::before {
+  content: 'FIG — ';
+  color: var(--sky);
+}
+
+.prose iframe {
+  max-width: 100%;
+  border: 0;
+}
+
+/* math */
+.prose .katex {
+  font-size: 1.06em;
+}
+
+.prose .katex-display {
+  margin-inline: 0;
+  padding: 0.4em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* footnotes */
+.prose .footnotes {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1.5px solid var(--ink);
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+.prose .footnotes h2 {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.prose .footnotes h2.sr-only {
+  position: static;
+  width: auto;
+  height: auto;
+  clip: auto;
+}
+
+.prose sup a[data-footnote-ref] {
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  text-decoration: none;
+  padding: 0 0.15em;
+}
+
+.prose sup a[data-footnote-ref]::before {
+  content: '[';
+}
+
+.prose sup a[data-footnote-ref]::after {
+  content: ']';
+}
+
+.prose .footnotes li:target {
+  background: var(--mark);
+}
+
+/* callouts */
+.prose .callout {
+  --c: var(--sky);
+  position: relative;
+  padding: 0.9rem 1.15rem 1rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--c) 35%, var(--rule));
+  border-left: 3px solid var(--c);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--c) 6%, var(--card));
+  font-family: var(--font-sans);
+  font-size: 0.97em;
+  color: var(--ink);
+}
+
+.prose .callout > * + * {
+  margin-top: 0.75em;
+}
+
+.prose .callout-title {
+  margin: 0 0 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c);
+}
+
+.prose details.callout > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.prose details.callout > summary::after {
+  content: ' +';
+}
+
+.prose details.callout[open] > summary::after {
+  content: ' –';
+}
+
+.prose details.callout:not([open]) > summary {
+  margin: 0;
+}
+
+.prose .callout[data-callout='tip'],
+.prose .callout[data-callout='hint'],
+.prose .callout[data-callout='success'],
+.prose .callout[data-callout='example'] {
+  --c: #2f8f6b;
+}
+
+.prose .callout[data-callout='warning'],
+.prose .callout[data-callout='caution'],
+.prose .callout[data-callout='question'],
+.prose .callout[data-callout='todo'] {
+  --c: #c47f0e;
+}
+
+.prose .callout[data-callout='danger'],
+.prose .callout[data-callout='bug'],
+.prose .callout[data-callout='important'] {
+  --c: var(--signal);
+}
+
+.prose .callout[data-callout='quote'],
+.prose .callout[data-callout='abstract'],
+.prose .callout[data-callout='summary'] {
+  --c: var(--ink-3);
+}
+
+:root[data-theme='dark'] .prose .callout[data-callout='tip'],
+:root[data-theme='dark'] .prose .callout[data-callout='hint'],
+:root[data-theme='dark'] .prose .callout[data-callout='success'],
+:root[data-theme='dark'] .prose .callout[data-callout='example'] {
+  --c: #5fd0a0;
+}
+
+:root[data-theme='dark'] .prose .callout[data-callout='warning'],
+:root[data-theme='dark'] .prose .callout[data-callout='caution'],
+:root[data-theme='dark'] .prose .callout[data-callout='question'],
+:root[data-theme='dark'] .prose .callout[data-callout='todo'] {
+  --c: #f0b44c;
+}
+
+/* spoilers */
+.spoiler {
+  font-style: normal;
+  padding: 0 0.25em;
+  border-radius: 2px;
+  background: var(--ink);
+  color: transparent;
+  cursor: pointer;
+  transition: background 0.35s, color 0.35s;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.spoiler:hover {
+  background: color-mix(in srgb, var(--ink) 85%, var(--sky));
+}
+
+.spoiler.revealed {
+  background: var(--mark);
+  color: inherit;
+  cursor: text;
+}

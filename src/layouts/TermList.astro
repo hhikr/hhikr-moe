@@ -1,0 +1,42 @@
+---
+import Base from './Base.astro';
+import PostRow from '@/components/PostRow.astro';
+import type { Post } from '@/lib/posts';
+
+interface Props {
+  kicker: string;
+  title: string;
+  en?: string;
+  description?: string;
+  posts: Post[];
+  back: { href: string; label: string };
+}
+
+const { kicker, title, en, description, posts, back } = Astro.props;
+---
+
+<Base title={title} description={description ?? `${title}：共 ${posts.length} 篇文章`}>
+  <div class="wrap">
+    <header class="page-head">
+      <p class="label kicker"><a href={back.href} class="back">← {back.label}</a> · {kicker}</p>
+      <h1>{title}{en && <span class="en">{en}</span>}</h1>
+      <slot name="head" />
+    </header>
+    <slot />
+    <ol class="rows">
+      {posts.map((p, i) => <PostRow post={p} index={i} />)}
+    </ol>
+  </div>
+</Base>
+
+<style>
+  .back:hover {
+    color: var(--sky);
+  }
+
+  .rows {
+    margin: 0;
+    padding: 0;
+    border-top: 1.5px solid var(--rule-strong);
+  }
+</style>

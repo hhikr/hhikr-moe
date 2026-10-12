@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {createRevealMotion,revealSpeed} from '../../src/scripts/reveal-motion.mjs';
+let options,created=0;
+const animation={currentTime:0,playbackRate:1,updatePlaybackRate(rate){this.playbackRate=rate;},cancel(){this.cancelled=true;}};
+const element={animate(_frames,settings){options=settings;created++;return animation;}};
+const motion=createRevealMotion(element,{x:200,y:30,radius:2000});
+assert.equal(options.easing,'linear');assert.equal(options.duration,2000/revealSpeed*1000);
+const move=ms=>{animation.currentTime+=ms*animation.playbackRate;return animation.currentTime/options.duration*2000;};
+assert.equal(move(500),1500);
+const before=animation.currentTime;motion.turn();assert.equal(animation.currentTime,before);assert.equal(animation.playbackRate,-1);
+assert.equal(move(200),900);
+motion.turn();assert.equal(animation.currentTime,300);assert.equal(move(200),1500);
+motion.turn();motion.turn();assert.equal(animation.currentTime,500);assert.equal(animation.playbackRate,1);
+assert.equal(created,1);motion.cancel();assert.equal(animation.cancelled,true);
+console.log('通过：固定 3000 像素/秒、正反方向等速、转向保留进度、快速连续转向及动画释放。');

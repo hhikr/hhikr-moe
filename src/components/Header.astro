@@ -1,0 +1,302 @@
+---
+import Icon from './Icon.astro';
+import { NAV, SITE } from '@/site.config';
+
+const path = Astro.url.pathname;
+const isActive = (href: string) => path === href || (href !== '/' && path.startsWith(href));
+// Only the endministrator's own (uncached) pages carry this link.
+const endmin = Astro.locals.viewer?.role === 'endmin';
+---
+
+<header class="site-header" data-header>
+  <div class="wrap bar">
+    <a href="/" class="brand" aria-label={`${SITE.title} — 首页`}>
+      <span class="mark" aria-hidden="true"></span>
+      <span class="word">
+        <span class="display">{SITE.shortTitle}</span><span class="dot">.moe</span>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="主导航">
+      {
+        NAV.map((item) => (
+          <a href={item.href} class:list={['nav-link', { active: isActive(item.href) }]} aria-current={isActive(item.href) ? 'page' : undefined}>
+            <span class="cjk">{item.label}</span>
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="tools">
+      {endmin && <a class="nav-link" href="/endmin/"><span class="cjk">管理</span></a>}
+      <button class="search-btn" type="button" data-search-open aria-label="搜索 (Ctrl K)">
+        <Icon name="search" size={16} />
+        <span class="hint">搜索</span>
+        <kbd data-kbd>Ctrl K</kbd>
+      </button>
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="切换主题">
+        <Icon name="sun" class="i-light" />
+        <Icon name="moon" class="i-dark" />
+        <Icon name="auto" class="i-auto" />
+      </button>
+      <button class="icon-btn menu-btn" type="button" data-menu-toggle aria-label="菜单" aria-expanded="false" aria-controls="mobile-menu">
+        <Icon name="menu" />
+      </button>
+    </div>
+  </div>
+  <div class="progress" aria-hidden="true"><span data-progress></span></div>
+
+  <div class="mobile-menu" id="mobile-menu" hidden>
+    <nav class="wrap" aria-label="移动端导航">
+      {
+        NAV.map((item, i) => (
+          <a href={item.href} class:list={['m-link', { active: isActive(item.href) }]} style={`--i:${i}`}>
+            <span class="cjk">{item.label}</span>
+            <span class="display">{item.en}</span>
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+    backdrop-filter: saturate(1.4) blur(10px);
+    -webkit-backdrop-filter: saturate(1.4) blur(10px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s;
+  }
+
+  .site-header.scrolled {
+    border-bottom-color: var(--rule);
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    height: 3.75rem;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-right: auto;
+  }
+
+  .mark {
+    width: 30px;
+    height: 28px;
+    background: var(--ink);
+    -webkit-mask: url('/mark.png') center / contain no-repeat;
+    mask: url('/mark.png') center / contain no-repeat;
+    transition: background 0.3s, transform 0.4s var(--ease);
+  }
+
+  .brand:hover .mark {
+    background: var(--sky);
+    transform: translateY(-2px) rotate(-4deg);
+  }
+
+  .word {
+    font-size: 1.45rem;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  .word .dot {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+    margin-left: 0.1rem;
+  }
+
+  .nav {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .nav-link {
+    position: relative;
+    padding: 0.35rem 0.7rem;
+    font-size: 1.02rem;
+    color: var(--ink-2);
+    transition: color 0.2s;
+  }
+
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0.7rem;
+    right: 0.7rem;
+    bottom: 0.15rem;
+    height: 1.5px;
+    background: var(--sky);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s var(--ease);
+  }
+
+  .nav-link:hover,
+  .nav-link.active {
+    color: var(--ink);
+  }
+
+  .nav-link:hover::after,
+  .nav-link.active::after {
+    transform: scaleX(1);
+  }
+
+  .tools {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .search-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.1rem;
+    padding: 0 0.5rem 0 0.7rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--ink-3);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .search-btn:hover {
+    border-color: var(--sky);
+    color: var(--ink);
+  }
+
+  .search-btn kbd {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    padding: 0.05rem 0.4rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    color: var(--ink-3);
+  }
+
+  .icon-btn {
+    display: grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: none;
+    cursor: pointer;
+    color: var(--ink-2);
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .icon-btn:hover {
+    color: var(--sky);
+    border-color: var(--rule);
+  }
+
+  .icon-btn :global(svg) {
+    grid-area: 1 / 1;
+  }
+
+  [data-theme-toggle] :global(.i-light),
+  [data-theme-toggle] :global(.i-dark),
+  [data-theme-toggle] :global(.i-auto) {
+    display: none;
+  }
+
+  :global(:root[data-theme-pref='light']) [data-theme-toggle] :global(.i-light),
+  :global(:root[data-theme-pref='dark']) [data-theme-toggle] :global(.i-dark),
+  :global(:root[data-theme-pref='auto']) [data-theme-toggle] :global(.i-auto) {
+    display: block;
+  }
+
+  .menu-btn {
+    display: none;
+  }
+
+  .progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    pointer-events: none;
+  }
+
+  .progress span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: var(--sky);
+    transform: scaleX(var(--p, 0));
+    transform-origin: left;
+  }
+
+  .mobile-menu {
+    position: fixed;
+    inset: 3.75rem 0 0 0;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    overflow-y: auto;
+  }
+
+  .mobile-menu nav {
+    display: flex;
+    flex-direction: column;
+    padding-block: 1.5rem;
+  }
+
+  .m-link {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 2rem;
+    animation: rise 0.5s var(--ease) both;
+    animation-delay: calc(var(--i) * 50ms);
+  }
+
+  .m-link .display {
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--ink-3);
+  }
+
+  .m-link.active .cjk {
+    color: var(--sky);
+  }
+
+  @media (max-width: 860px) {
+    .nav {
+      display: none;
+    }
+    .menu-btn {
+      display: grid;
+    }
+    .search-btn {
+      padding: 0;
+      width: 2.1rem;
+      justify-content: center;
+      border-color: transparent;
+      background: none;
+    }
+    .search-btn .hint,
+    .search-btn kbd {
+      display: none;
+    }
+  }
+</style>

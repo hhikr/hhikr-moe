@@ -1,0 +1,19 @@
+---
+import TermList from '@/layouts/TermList.astro';
+import { categoryOf, getPosts, viewerOf } from '@/lib/posts';
+
+export const prerender = false;
+
+const posts = getPosts(viewerOf(Astro.locals)).filter((p) => categoryOf(p)?.slug === Astro.params.cat);
+const cat = posts[0] && categoryOf(posts[0]);
+if (!cat) return new Response(null, { status: 404 });
+---
+
+<TermList
+  kicker={`Section · ${posts.length} entries`}
+  title={cat.name}
+  en={cat.en}
+  description={cat.description}
+  posts={posts}
+  back={{ href: '/categories/', label: '全部分类' }}
+/>

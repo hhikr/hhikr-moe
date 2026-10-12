@@ -1,0 +1,13 @@
+---
+import TermList from '@/layouts/TermList.astro';
+import { getPosts, groupBy, slugify, viewerOf } from '@/lib/posts';
+
+export const prerender = false;
+
+const groups = groupBy(getPosts(viewerOf(Astro.locals)), (p) => p.data.tags);
+const found = [...groups].find(([tag]) => slugify(tag) === Astro.params.tag);
+if (!found) return new Response(null, { status: 404 });
+const [tag, posts] = found;
+---
+
+<TermList kicker={`Tag · ${posts.length} entries`} title={`# ${tag}`} posts={posts} back={{ href: '/tags/', label: '全部标签' }} />

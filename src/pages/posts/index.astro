@@ -1,0 +1,138 @@
+---
+import Base from '@/layouts/Base.astro';
+import PostRow from '@/components/PostRow.astro';
+import Heatmap from '@/components/Heatmap.astro';
+import { CATEGORIES } from '@/site.config';
+import { getPosts, groupBy, viewerOf, yearOf } from '@/lib/posts';
+
+export const prerender = false;
+
+const posts = getPosts(viewerOf(Astro.locals));
+const years = [...groupBy(posts, (p) => yearOf(p.data.date))];
+const counts = groupBy(posts, (p) => p.data.category);
+---
+
+<Base title="文章" description="全部文章归档，按年份排列。">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="label kicker">Archive · {posts.length} entries</p>
+      <h1>文章<span class="en">Posts</span></h1>
+    </header>
+
+    <Heatmap posts={posts} />
+
+    <div class="filters" role="toolbar" aria-label="按分类筛选" data-filters>
+      <button type="button" class="chip" aria-pressed="true" data-filter="all">全部 <span class="n">{posts.length}</span></button>
+      {
+        Object.entries(CATEGORIES).map(([key, c]) => (
+          <button type="button" class="chip" aria-pressed="false" data-filter={key}>
+            {c.name} <span class="n">{counts.get(key)?.length ?? 0}</span>
+          </button>
+        ))
+      }
+    </div>
+
+    {
+      years.map(([year, list]) => (
+        <section class="year" data-year>
+          <h2 class="y display">{year}</h2>
+          <ol class="rows">
+            {list.map((p) => (
+              <PostRow post={p} data-item="" data-cat={p.data.category ?? ''} />
+            ))}
+          </ol>
+        </section>
+      ))
+    }
+  </div>
+</Base>
+
+<script>
+  const bar = document.querySelector('[data-filters]');
+  const items = [...document.querySelectorAll<HTMLElement>('[data-item]')];
+  const years = [...document.querySelectorAll<HTMLElement>('[data-year]')];
+  let cat = new URLSearchParams(location.search).get('c') ?? 'all';
+
+  function apply() {
+    bar?.querySelectorAll<HTMLElement>('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === cat)));
+    for (const it of items) {
+      it.hidden = cat !== 'all' && it.dataset.cat !== cat;
+    }
+    for (const y of years) y.hidden = !y.querySelector('[data-item]:not([hidden])');
+  }
+
+  bar?.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-filter]');
+    if (!b) return;
+    cat = b.dataset.filter!;
+    const url = new URL(location.href);
+    cat === 'all' ? url.searchParams.delete('c') : url.searchParams.set('c', cat);
+    history.replaceState(null, '', url);
+    apply();
+  });
+  apply();
+</script>
+
+<style>
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 3rem 0 1rem;
+  }
+
+  .filters .chip {
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0.25em 0.85em;
+  }
+
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+    cursor: pointer;
+    text-transform: none;
+  }
+
+  .toggle input {
+    accent-color: var(--sky);
+  }
+
+  .year {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: 1rem;
+    padding-top: 2rem;
+    border-top: 1.5px solid var(--rule-strong);
+    margin-top: 2rem;
+  }
+
+  .y {
+    margin: 0;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    line-height: 0.9;
+    font-style: italic;
+    color: var(--ink);
+    position: sticky;
+    top: 5rem;
+    align-self: start;
+  }
+
+  .rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (max-width: 720px) {
+    .year {
+      grid-template-columns: 1fr;
+    }
+    .y {
+      position: static;
+    }
+  }
+</style>

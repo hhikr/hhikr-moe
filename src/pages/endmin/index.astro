@@ -1,0 +1,184 @@
+---
+import Endmin from '@/layouts/Endmin.astro';
+import { fmtDate } from '@/lib/posts';
+import { backupStatus } from '@/server/backup.ts';
+import { commentCounts, listAllComments } from '@/server/comments.ts';
+import { listAllPosts } from '@/server/posts.ts';
+import { statsReport } from '@/server/stats.ts';
+import { formatBytes, systemStatus } from '@/server/system.ts';
+import { listUsers } from '@/server/users.ts';
+
+export const prerender = false;
+
+const posts = listAllPosts();
+const published = posts.filter((p) => p.status === 'published' && !p.hidden);
+const hidden = posts.filter((p) => p.status === 'published' && p.hidden);
+const drafts = posts.filter((p) => p.status === 'draft');
+const comments = commentCounts();
+const recent = listAllComments(5);
+const users = listUsers().filter((u) => u.role !== 'endmin');
+const sys = systemStatus();
+const backup = backupStatus();
+const backupRed = backup.warnings.filter((w) => w.level === 'red').length;
+const visits = statsReport(30);
+const lastWeek = visits.series.slice(-7);
+const today = visits.series[visits.series.length - 1];
+const sum = (list: typeof lastWeek, key: 'views' | 'visitors') => list.reduce((total, d) => total + d[key], 0);
+const peak = Math.max(1, ...visits.series.map((d) => d.views));
+const count = (views: number, visitors: number) => `${views.toLocaleString('zh-CN')} 次 · ${visitors.toLocaleString('zh-CN')} 人`;
+
+const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+const duration = (s: number) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} 分钟` : s < 86400 ? `${Math.round(s / 3600)} 小时` : `${Math.round(s / 86400)} 天`);
+const diskUsed = sys.diskTotalBytes && sys.diskFreeBytes !== null ? 1 - sys.diskFreeBytes / sys.diskTotalBytes : null;
+
+const tiles = [
+  { n: published.length, label: '已发布', href: '/endmin/posts/' },
+  { n: hidden.length, label: '隐藏', href: '/endmin/posts/' },
+  { n: drafts.length, label: '草稿', href: '/endmin/posts/' },
+  { n: comments.total, label: '评论', href: '/endmin/comments/', note: comments.hidden ? `${comments.hidden} 待审` : '' },
+  { n: users.length, label: '用户', href: '/endmin/users/' },
+];
+---
+
+<Endmin title="概览" en="Overview">
+  <div class="em-tiles">
+    {
+      tiles.map((t) => (
+        <a class="em-tile" href={t.href}>
+          <span class="n">
+            {t.n}
+            {t.note && <small>{t.note}</small>}
+          </span>
+          <span class="cjk">{t.label}</span>
+        </a>
+      ))
+    }
+  </div>
+
+  <div class="em-cols">
+    <div>
+      <section class="em-panel">
+        <h2>最新评论 <a href="/endmin/comments/">全部 →</a></h2>
+        {
+          recent.length === 0 ? (
+            <p class="em-empty">还没有评论。</p>
+          ) : (
+            <ul class="em-rows">
+              {recent.map((c) => (
+                <li>
+                  <div class="em-meta">
+                    <span>{c.author?.handle ?? '已删除的用户'}</span>
+                    <span>{when.format(new Date(c.createdAt))}</span>
+                    <a href={`/posts/${c.postSlug}/#comment-${c.id}`}>{c.postTitle}</a>
+                  </div>
+                  {c.status === 'hidden' && <span class="em-state hidden">待审</span>}
+                  <div class="em-quote clip" set:html={c.html} />
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+
+      <section class="em-panel">
+        <h2>草稿 <a href="/endmin/posts/">全部文章 →</a></h2>
+        {
+          drafts.length === 0 ? (
+            <p class="em-empty">没有草稿。</p>
+          ) : (
+            <ul class="em-rows">
+              {drafts.map((p) => (
+                <li>
+                  <div>
+                    <div class="t"><a href={`/endmin/posts/${p.id}/`}>{p.title}</a></div>
+                    <div class="em-meta">
+                      <span>{p.slug}</span>
+                      <span>{p.words.toLocaleString('zh-CN')} 字</span>
+                      <span>{fmtDate(p.publishedAt)}</span>
+                    </div>
+                  </div>
+                  <div class="em-acts">
+                    <a class="em-btn" href={`/endmin/posts/${p.id}/`}>编辑</a>
+                    <button class="em-btn go" data-api={`/api/endmin/posts/${p.id}`} data-body='{"status":"published"}' data-confirm={`发布「${p.title}」？所有人都能看到它。`}>
+                      发布
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+    </div>
+
+    <div>
+    <section class="em-panel">
+      <h2>访问 <a href="/endmin/stats/">详情 →</a></h2>
+      <svg class="spark" viewBox="0 0 300 48" preserveAspectRatio="none" role="img" aria-label="最近 30 天每天的浏览次数">
+        {visits.series.map((d, i) => <rect x={i * 10 + 1} y={48 - Math.max(1, (d.views / peak) * 46)} width="8" height={Math.max(1, (d.views / peak) * 46)}><title>{`${d.day}：${d.views} 次`}</title></rect>)}
+      </svg>
+      <dl class="em-facts">
+        <div>
+          <dt>今天</dt>
+          <dd>{count(today.views, today.visitors)}</dd>
+        </div>
+        <div>
+          <dt>最近 7 天</dt>
+          <dd>{count(sum(lastWeek, 'views'), sum(lastWeek, 'visitors'))}</dd>
+        </div>
+        <div>
+          <dt>最近 30 天</dt>
+          <dd>{count(visits.views, visits.visitors)}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="em-panel">
+      <h2>服务器</h2>
+      <dl class="em-facts">
+        <div>
+          <dt>磁盘</dt>
+          <dd class:list={{ warn: diskUsed !== null && diskUsed > 0.85 }}>
+            {sys.diskFreeBytes === null ? '未知' : `剩余 ${formatBytes(sys.diskFreeBytes)}`}
+            {diskUsed !== null && ` · 已用 ${Math.round(diskUsed * 100)}%`}
+          </dd>
+        </div>
+        <div>
+          <dt>数据库</dt>
+          <dd>{formatBytes(sys.databaseBytes)}</dd>
+        </div>
+        <div>
+          <dt>图片与头像</dt>
+          <dd>{sys.mediaFiles} 个文件 · {formatBytes(sys.mediaBytes)}</dd>
+        </div>
+        <div>
+          <dt>搜索索引</dt>
+          <dd class:list={{ warn: !sys.searchIndexedAt }}>{sys.searchIndexedAt ? `更新于 ${when.format(sys.searchIndexedAt)}` : '尚未建立'}</dd>
+        </div>
+        <div>
+          <dt><a href="/endmin/backup/">备份</a></dt>
+          <dd class:list={{ warn: backupRed > 0 || !backup.lastOk }}>
+            {!backup.configured ? '尚未配置' : backup.running ? '正在备份…' : backup.lastOk ? `上次成功 ${when.format(new Date(backup.lastOk.startedAt))}` : '还没有成功过'}
+            {backupRed > 0 && ` · ${backupRed} 个问题`}
+          </dd>
+        </div>
+        <div>
+          <dt>已运行</dt>
+          <dd>{duration(sys.uptimeSeconds)} · Node {sys.node}</dd>
+        </div>
+      </dl>
+    </section>
+    </div>
+  </div>
+</Endmin>
+
+<style>
+  .spark {
+    display: block;
+    width: 100%;
+    height: 3rem;
+    margin-bottom: 0.6rem;
+    fill: var(--sky);
+    opacity: 0.7;
+  }
+</style>

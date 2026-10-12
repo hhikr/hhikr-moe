@@ -1,0 +1,131 @@
+---
+import Endmin from '@/layouts/Endmin.astro';
+import { isRaster, listMedia } from '@/server/media.ts';
+import { formatBytes } from '@/server/system.ts';
+
+export const prerender = false;
+
+const media = listMedia();
+const unused = media.filter((m) => m.usedBy.length === 0).length;
+---
+
+<Endmin title="媒体" en="Media" lead="文章里用到的图片和附件。在编辑器里粘贴或拖入图片会自动上传到这里。">
+  <div class="em-filters" data-filters role="toolbar" aria-label="筛选">
+    <button type="button" class="chip" data-filter="all" aria-pressed="true">全部 {media.length}</button>
+    <button type="button" class="chip" data-filter="used" aria-pressed="false">使用中 {media.length - unused}</button>
+    <button type="button" class="chip" data-filter="unused" aria-pressed="false">未使用 {unused}</button>
+    <button type="button" class="em-btn go md-upload" data-upload>上传</button>
+    <input type="file" data-upload-input multiple hidden />
+  </div>
+
+  {
+    media.length === 0 ? (
+      <p class="em-empty">还没有文件。</p>
+    ) : (
+      <ul class="md-grid">
+        {media.map((m) => (
+          <li data-group={m.usedBy.length ? 'used' : 'unused'}>
+            <a class="md-thumb" href={m.url} target="_blank">
+              {isRaster(m) ? <img src={m.url} alt="" loading="lazy" /> : <span class="label">.{m.ext}</span>}
+            </a>
+            <p class="md-name" title={m.filename}>{m.filename}</p>
+            <p class="em-meta">
+              {m.width && <span>{m.width}×{m.height}</span>}
+              <span>{formatBytes(m.size)}</span>
+            </p>
+            <p class="em-meta">
+              {m.usedBy.length === 0 ? <span>未使用</span> : m.usedBy.slice(0, 2).map((p) => <a href={p.href}>{p.title}</a>)}
+              {m.usedBy.length > 2 && <span>等 {m.usedBy.length} 处</span>}
+            </p>
+            <div class="em-acts">
+              <button type="button" class="em-btn" data-copy={isRaster(m) ? `![](${m.url})` : `[${m.filename}](${m.url})`}>复制引用</button>
+              {m.usedBy.length === 0 && (
+                <button type="button" class="em-btn danger" data-api={`/api/endmin/media/${m.id}`} data-method="DELETE" data-confirm={`删除 ${m.filename}？无法恢复。`}>
+                  删除
+                </button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</Endmin>
+
+<script>
+  import { api } from '@/scripts/account';
+
+  const input = document.querySelector<HTMLInputElement>('[data-upload-input]')!;
+  const flash = document.querySelector<HTMLElement>('[data-flash]')!;
+  document.querySelector('[data-upload]')?.addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const failures: string[] = [];
+    for (const file of input.files ?? []) {
+      const res = await api(`/api/endmin/media?name=${encodeURIComponent(file.name)}`, file, 'POST');
+      if (!res.ok) failures.push(`${file.name}：${res.error.message}`);
+    }
+    if (failures.length === 0) return location.reload();
+    flash.textContent = failures.join('；');
+    flash.hidden = false;
+  });
+
+  document.addEventListener('click', async (e) => {
+    const button = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-copy]');
+    if (!button) return;
+    await navigator.clipboard.writeText(button.dataset.copy!);
+    const label = button.textContent;
+    button.textContent = '已复制 ✓';
+    setTimeout(() => (button.textContent = label), 1400);
+  });
+</script>
+
+<style is:global>
+  .md-upload {
+    margin-left: auto;
+  }
+
+  .md-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 1.25rem 1rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .md-grid > li[hidden] {
+    display: none;
+  }
+
+  .md-grid p {
+    margin: 0.3rem 0 0;
+  }
+
+  .md-thumb {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--paper-2);
+    overflow: hidden;
+  }
+
+  .md-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .md-name {
+    overflow: hidden;
+    font-size: 0.86rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .md-grid .em-acts {
+    justify-content: flex-start;
+    margin-top: 0.4rem;
+  }
+</style>

@@ -1,0 +1,117 @@
+---
+import { postUrl, seriesName, seriesUrl, sortSeries, type Post } from '@/lib/posts';
+
+interface Props {
+  series: string;
+  posts: Post[];
+  current: Post;
+}
+
+const { series, current } = Astro.props;
+const posts = sortSeries(Astro.props.posts);
+const pos = posts.findIndex((p) => p.id === current.id);
+---
+
+<details class="series" open={posts.length <= 8}>
+  <summary>
+    <span class="label">合订本 · Vol.</span>
+    <span class="name cjk">{seriesName(series)}</span>
+    <span class="count label">{pos + 1} / {posts.length}</span>
+  </summary>
+  <ol>
+    {
+      posts.map((p, i) => (
+        <li class:list={[{ current: p.id === current.id }]}>
+          <span class="i">{String(i + 1).padStart(2, '0')}</span>
+          {p.id === current.id ? (
+            <span aria-current="page">{p.data.title}</span>
+          ) : (
+            <a href={postUrl(p)}>{p.data.title}</a>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+  <a class="all link-arrow" href={seriesUrl(series)}>查看整本 →</a>
+</details>
+
+<style>
+  .series {
+    margin: 2.5rem 0;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid var(--rule);
+    border-left: 5px solid var(--ink);
+    background: var(--card);
+    border-radius: var(--radius);
+  }
+
+  summary {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .name {
+    font-size: 1.2rem;
+  }
+
+  .count {
+    margin-left: auto;
+    color: var(--sky);
+  }
+
+  ol {
+    list-style: none;
+    margin: 0.9rem 0 0;
+    padding: 0.6rem 0 0;
+    border-top: 1px dashed var(--rule);
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  li {
+    display: flex;
+    gap: 0.8rem;
+    font-size: 0.94rem;
+    line-height: 1.6;
+  }
+
+  .i {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-3);
+    padding-top: 0.15rem;
+  }
+
+  li a {
+    color: var(--ink-2);
+  }
+
+  li a:hover {
+    color: var(--sky);
+  }
+
+  li.current span[aria-current] {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  li.current .i {
+    color: var(--sky);
+  }
+
+  li.draft a {
+    color: var(--ink-3);
+  }
+
+  .all {
+    display: inline-block;
+    margin-top: 0.8rem;
+  }
+</style>

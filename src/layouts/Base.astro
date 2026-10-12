@@ -1,0 +1,165 @@
+---
+import '@/styles/global.css';
+import Header from '@/components/Header.astro';
+import Footer from '@/components/Footer.astro';
+import Search from '@/components/Search.astro';
+import { CSP_META, THEME_SCRIPT } from '@/lib/csp';
+import { AUTHOR, SITE } from '@/site.config';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Site-relative address of a 1200×630 link-preview image. */
+  image?: string;
+  type?: 'website' | 'article';
+  published?: Date;
+  modified?: Date;
+  tags?: string[];
+  noindex?: boolean;
+}
+
+const { title, description = SITE.description, image, type = 'website', published, modified, tags = [], noindex } = Astro.props;
+
+const fullTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${AUTHOR.name} 的个人网站`;
+const canonical = new URL(Astro.url.pathname, SITE.url);
+const ogUrl = new URL(image ?? '/img/og-default.jpg', SITE.url);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': type === 'article' ? 'BlogPosting' : 'WebSite',
+  headline: title ?? SITE.title,
+  name: title ?? SITE.title,
+  url: canonical.href,
+  description,
+  image: ogUrl.href,
+  author: { '@type': 'Person', name: AUTHOR.name, url: SITE.url },
+  ...(published && { datePublished: published.toISOString() }),
+  ...(modified && { dateModified: modified.toISOString() }),
+  inLanguage: SITE.lang,
+};
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-theme-pref="auto">
+  <head>
+    <meta charset="utf-8" />
+    {import.meta.env.PROD && <meta http-equiv="Content-Security-Policy" content={CSP_META} />}
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="author" content={AUTHOR.name} />
+    <meta name="generator" content={Astro.generator} />
+
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="alternate" type="application/rss+xml" title={SITE.title} href="/rss.xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="theme-color" content="#f4f0e6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e1117" media="(prefers-color-scheme: dark)" />
+
+    <meta property="og:site_name" content={SITE.title} />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title ?? SITE.title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogUrl} />
+    <meta property="og:locale" content="zh_CN" />
+    {published && <meta property="article:published_time" content={published.toISOString()} />}
+    {modified && <meta property="article:modified_time" content={modified.toISOString()} />}
+    {tags.map((t) => <meta property="article:tag" content={t} />)}
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+    <script is:inline set:html={THEME_SCRIPT} />
+
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到正文</a>
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <Search />
+    <script>
+      import '@/scripts/site.ts';
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  .view-as-bar {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 300;
+    padding: 0.55rem 1rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    box-shadow: 4px 4px 0 var(--sky-soft);
+    cursor: pointer;
+  }
+
+  .view-as-bar:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .skip {
+    position: absolute;
+    left: 1rem;
+    top: -3rem;
+    z-index: 200;
+    padding: 0.5rem 1rem;
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .skip:focus {
+    top: 1rem;
+  }
+
+  .lightbox {
+    max-width: 96vw;
+    max-height: 96vh;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-out;
+    overflow: visible;
+  }
+  .lightbox[open] {
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    animation: pop 0.25s var(--ease);
+  }
+  .lightbox::backdrop {
+    background: rgb(10 12 18 / 0.86);
+  }
+  .lightbox img {
+    max-width: 94vw;
+    max-height: 88vh;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 3px;
+  }
+  .lightbox p {
+    margin: 0;
+    color: #e9e3d3;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+  }
+</style>

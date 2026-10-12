@@ -1,0 +1,21 @@
+---
+import PostArticle from '@/components/PostArticle.astro';
+import { getPost, getPosts, viewerOf } from '@/lib/posts';
+import { postIdBySlug, resolveRedirect } from '@/server/posts.ts';
+
+export const prerender = false;
+
+const viewer = viewerOf(Astro.locals);
+const slug = Astro.params.slug ?? '';
+const post = getPost(slug, viewer);
+if (!post) {
+  const moved = resolveRedirect(slug, viewer);
+  return moved ? Astro.redirect(`/posts/${moved}/`, 301) : new Response(null, { status: 404 });
+}
+
+// Hidden posts must never be stored by a shared cache.
+Astro.response.headers.set('Cache-Control', post.data.hidden ? 'private, no-store' : 'no-cache');
+const editHref = viewer.role === 'endmin' ? `/endmin/posts/${postIdBySlug(slug, viewer)}/` : undefined;
+---
+
+<PostArticle post={post} all={getPosts(viewer)} editHref={editHref} />

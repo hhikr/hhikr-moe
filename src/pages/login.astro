@@ -1,0 +1,232 @@
+---
+// Not linked from anywhere: readers are only asked to sign in when they post
+// a comment. This page is the direct entrance, mainly for the endministrator.
+import Base from '@/layouts/Base.astro';
+import { landingFor, safeReturnPath } from '@/lib/http';
+import { googleConfig } from '@/server/config.ts';
+
+export const prerender = false;
+
+const returnTo = safeReturnPath(Astro.url.searchParams.get('return'));
+if (Astro.locals.user) return Astro.redirect(landingFor(Astro.locals.user, returnTo), 302);
+
+const ERRORS: Record<string, string> = {
+  expired: '登录过程超时了，请再试一次。',
+  cancelled: '已取消 Google 登录。',
+  google: 'Google 登录没有成功，请稍后再试。',
+  banned: '这个账号已被停用。',
+  link: '登录链接无效或已过期。',
+};
+const error = ERRORS[Astro.url.searchParams.get('error') ?? ''];
+const google = !!googleConfig();
+---
+
+<Base title="登录" noindex>
+  <div class="wrap box">
+    <header class="page-head">
+      <p class="label kicker">Sign in</p>
+      <h1>登录</h1>
+    </header>
+
+    {error && <p class="notice" role="alert">{error}</p>}
+
+    {
+      google && (
+        <a class="google" href={`/api/auth/google/start?return=${encodeURIComponent(returnTo)}`}>
+          使用 Google 登录
+        </a>
+      )
+    }
+
+    <form data-account data-return={returnTo} novalidate>
+      <label>
+        <span class="label">名字</span>
+        <input name="name" autocomplete="username" required maxlength="40" />
+        <small>注册时填昵称；登录时填完整的名字，例如 narrator#1145。</small>
+      </label>
+      <label>
+        <span class="label">密码</span>
+        <input name="password" type="password" autocomplete="current-password" required minlength="10" maxlength="200" />
+        <small>至少 10 个字符。没有绑定邮箱，忘记后无法找回。</small>
+      </label>
+      <!-- Hidden from people; bots that fill it in are turned away. -->
+      <input class="trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+      <p class="message" data-message role="status"></p>
+      <div class="actions">
+        <button class="chip" type="submit" data-action="login">登录</button>
+        <button class="chip" type="button" data-action="register">注册新账号</button>
+      </div>
+    </form>
+
+    <div class="welcome" data-welcome hidden>
+      <p>注册好了。你的完整名字是</p>
+      <p class="handle" data-handle></p>
+      <p>昵称可以和别人重名，后面的四位数字用来区分。<strong>以后登录需要输入这个完整的名字</strong>，请记下来。</p>
+      <a class="chip" data-continue href={returnTo}>知道了</a>
+    </div>
+
+    <p class="fine"><a href="/privacy/">隐私说明</a></p>
+  </div>
+</Base>
+
+<script>
+  import { api, solveChallenge } from '@/scripts/account';
+
+  const form = document.querySelector<HTMLFormElement>('[data-account]');
+  const message = document.querySelector<HTMLElement>('[data-message]')!;
+  const welcome = document.querySelector<HTMLElement>('[data-welcome]')!;
+
+  function say(text: string) {
+    message.textContent = text;
+  }
+
+  async function submit(action: 'login' | 'register') {
+    if (!form) return;
+    const data = new FormData(form);
+    const name = String(data.get('name') ?? '').trim();
+    const password = String(data.get('password') ?? '');
+    if (!name || !password) return say('请填写名字和密码。');
+    const buttons = form.querySelectorAll<HTMLButtonElement>('button');
+    buttons.forEach((b) => (b.disabled = true));
+    try {
+      if (action === 'login') {
+        if (!name.includes('#')) return say('登录时请填写完整的名字，例如 narrator#1145。');
+        const res = await api('/api/auth/login', { handle: name, password });
+        if (!res.ok) return say(res.error.message);
+        location.assign(form.dataset.return || '/');
+        return;
+      }
+      say('正在验证…');
+      const challenge = await solveChallenge();
+      const res = await api('/api/auth/register', { nickname: name, password, website: data.get('website'), challenge });
+      if (!res.ok) return say(res.error.message);
+      say('');
+      form.hidden = true;
+      document.querySelector<HTMLElement>('.google')?.setAttribute('hidden', '');
+      welcome.querySelector<HTMLElement>('[data-handle]')!.textContent = res.data.user.handle;
+      welcome.hidden = false;
+    } finally {
+      buttons.forEach((b) => (b.disabled = false));
+    }
+  }
+
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    submit('login');
+  });
+  form?.querySelector('[data-action="register"]')?.addEventListener('click', () => submit('register'));
+</script>
+
+<style>
+  .box {
+    max-width: 30rem;
+    padding-bottom: 4rem;
+  }
+
+  .notice {
+    margin: 0 0 1.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--signal);
+    border-radius: var(--radius);
+    color: var(--signal);
+  }
+
+  .google {
+    display: block;
+    padding: 0.8rem 1rem;
+    border: 1.5px solid var(--rule-strong);
+    border-radius: var(--radius);
+    background: var(--card);
+    text-align: center;
+    transition:
+      background 0.2s,
+      color 0.2s;
+  }
+
+  .google:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  form {
+    display: grid;
+    gap: 1.1rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  label {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  input {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+  }
+
+  input:focus-visible {
+    border-color: var(--sky);
+  }
+
+  small,
+  .fine {
+    color: var(--ink-3);
+    font-size: 0.82rem;
+  }
+
+  .trap {
+    position: absolute;
+    left: -100vw;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .message {
+    min-height: 1.5em;
+    margin: 0;
+    color: var(--signal);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .chip {
+    padding: 0.45em 1.2em;
+    cursor: pointer;
+  }
+
+  form[hidden],
+  .google[hidden] {
+    display: none;
+  }
+
+  .welcome {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .handle {
+    font-family: var(--font-mono);
+    font-size: 1.6rem;
+    color: var(--sky-ink);
+  }
+
+  .fine {
+    margin-top: 2.5rem;
+  }
+
+  .fine a {
+    text-decoration: underline;
+  }
+</style>

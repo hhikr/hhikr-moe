@@ -1,0 +1,625 @@
+---
+// Shell of the management area: a side rail with the sections and a work
+// surface beside it. The middleware has already made sure the visitor is the
+// endministrator before any page using this layout renders.
+import Base from './Base.astro';
+import { backupStatus } from '@/server/backup.ts';
+import { commentCounts } from '@/server/comments.ts';
+
+interface Props {
+  title: string;
+  en: string;
+  /** Short line under the title saying what this screen is for. */
+  lead?: string;
+}
+const { title, en, lead } = Astro.props;
+const user = Astro.locals.user!;
+const path = Astro.url.pathname;
+const pending = commentCounts().hidden;
+const backupProblems = backupStatus().warnings.filter((w) => w.level === 'red').length;
+
+const sections = [
+  { href: '/endmin/', label: '概览', en: 'Overview' },
+  { href: '/endmin/posts/', label: '文章', en: 'Posts' },
+  { href: '/endmin/works/', label: '作品', en: 'Works' },
+  { href: '/endmin/media/', label: '媒体', en: 'Media' },
+  { href: '/endmin/comments/', label: '评论', en: 'Comments', badge: pending },
+  { href: '/endmin/users/', label: '用户', en: 'Users' },
+  { href: '/endmin/stats/', label: '统计', en: 'Stats' },
+  { href: '/endmin/backup/', label: '备份', en: 'Backup', badge: backupProblems },
+];
+const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
+---
+
+<Base title={`${title} · 管理`} noindex>
+  <div class="wrap em">
+    <aside class="em-rail">
+      <div class="em-who">
+        <span class="em-seal display" aria-hidden="true">E</span>
+        <div>
+          <p class="label">Endministrator</p>
+          <p class="em-name">{user.nickname}</p>
+        </div>
+      </div>
+
+      <nav aria-label="管理">
+        <ul>
+          {
+            sections.map((s) => (
+              <li>
+                <a href={s.href} aria-current={isCurrent(s.href) ? 'page' : undefined}>
+                  <span class="cjk">{s.label}</span>
+                  <span class="label">{s.en}</span>
+                  {!!s.badge && <span class="em-count">{s.badge}</span>}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <div class="em-foot">
+        <a href="/">查看网站 →</a>
+        <button type="button" data-view-as>以游客视角浏览</button>
+        <button type="button" data-logout>退出登录</button>
+      </div>
+    </aside>
+
+    <section class="em-main">
+      <header class="em-head">
+        <h1 class="cjk">{title}<span class="display">{en}</span></h1>
+        {lead && <p>{lead}</p>}
+      </header>
+      <p class="em-flash" data-flash role="status" hidden></p>
+      <slot />
+    </section>
+  </div>
+</Base>
+
+<script>
+  import { api } from '@/scripts/account';
+
+  const flash = document.querySelector<HTMLElement>('[data-flash]');
+
+  // Browse the site exactly as someone who is not signed in would see it.
+  document.querySelector('[data-view-as]')?.addEventListener('click', async () => {
+    await api('/api/endmin/view-as', { guest: true });
+    location.assign('/');
+  });
+
+  document.querySelector('[data-logout]')?.addEventListener('click', async () => {
+    await api('/api/auth/logout', {});
+    location.assign('/');
+  });
+
+  // Any button carrying data-api performs that request and reloads the page:
+  //   <button data-api="/api/endmin/…" data-method="PATCH" data-body='{"…"}' data-confirm="…">
+  document.addEventListener('click', async (e) => {
+    const button = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-api]');
+    if (!button) return;
+    if (button.dataset.confirm && !confirm(button.dataset.confirm)) return;
+    button.disabled = true;
+    const method = (button.dataset.method ?? 'PATCH') as 'PATCH' | 'DELETE' | 'POST';
+    const res = await api(button.dataset.api!, method === 'DELETE' ? undefined : JSON.parse(button.dataset.body ?? '{}'), method);
+    if (res.ok) return location.reload();
+    button.disabled = false;
+    if (flash) {
+      flash.textContent = res.error.message;
+      flash.hidden = false;
+    }
+  });
+
+  // Filter chips: <button data-filter="…"> shows rows whose data-group matches.
+  const filters = document.querySelector('[data-filters]');
+  filters?.addEventListener('click', (e) => {
+    const chip = (e.target as HTMLElement).closest<HTMLElement>('[data-filter]');
+    if (!chip) return;
+    filters.querySelectorAll('[data-filter]').forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+    document.querySelectorAll<HTMLElement>('[data-group]').forEach((row) => {
+      row.hidden = chip.dataset.filter !== 'all' && row.dataset.group !== chip.dataset.filter;
+    });
+  });
+</script>
+
+<style is:global>
+  .em {
+    display: grid;
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    align-items: start;
+    padding-block: clamp(1.5rem, 4vw, 3rem) 5rem;
+  }
+
+  /* ---------- rail ---------- */
+  .em-rail {
+    position: sticky;
+    top: 5.5rem;
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  .em-who {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1.5px solid var(--rule-strong);
+  }
+
+  .em-who p {
+    margin: 0;
+  }
+
+  .em-seal {
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 1.6rem;
+    font-style: italic;
+    line-height: 1;
+  }
+
+  .em-name {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    line-height: 1.1;
+  }
+
+  .em-rail ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .em-rail nav a {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    border-left: 2px solid transparent;
+    color: var(--ink-2);
+    transition:
+      background 0.2s,
+      color 0.2s,
+      border-color 0.2s;
+  }
+
+  .em-rail nav a .cjk {
+    font-size: 1.12rem;
+  }
+
+  .em-rail nav a:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+
+  .em-rail nav a[aria-current='page'] {
+    border-left-color: var(--sky);
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+
+  .em-count {
+    margin-left: auto;
+    min-width: 1.5em;
+    padding: 0 0.4em;
+    border-radius: 999px;
+    background: var(--signal);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  .em-later {
+    margin: 1.5rem 0 0.4rem;
+    padding-left: 0.75rem;
+  }
+
+  .em-soon li {
+    padding: 0.3rem 0.75rem;
+    border-left: 2px solid transparent;
+    color: var(--ink-3);
+    opacity: 0.7;
+  }
+
+  .em-foot {
+    display: grid;
+    gap: 0.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.88rem;
+  }
+
+  .em-foot a,
+  .em-foot button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink-2);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .em-foot a:hover,
+  .em-foot button:hover {
+    color: var(--sky-ink);
+  }
+
+  /* ---------- work surface ---------- */
+  .em-head {
+    padding-bottom: 1.5rem;
+    border-bottom: 1.5px solid var(--rule-strong);
+  }
+
+  .em-head h1 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+    margin: 0;
+    font-size: clamp(2rem, 4vw, 2.9rem);
+    line-height: 1.1;
+  }
+
+  .em-head h1 .display {
+    font-size: 0.55em;
+    font-style: italic;
+    color: var(--ink-3);
+  }
+
+  .em-head p {
+    margin: 0.6rem 0 0;
+    color: var(--ink-2);
+  }
+
+  .em-flash {
+    margin: 1rem 0 0;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--signal);
+    border-radius: var(--radius);
+    color: var(--signal);
+  }
+
+  .em-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .em-tile {
+    display: grid;
+    gap: 0.2rem;
+    padding: 1.4rem 1rem 1.4rem 0;
+  }
+
+  .em-tile + .em-tile {
+    padding-left: 1.25rem;
+    border-left: 1px solid var(--rule);
+  }
+
+  .em-tile .n {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .em-tile .n small {
+    margin-left: 0.3em;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--signal);
+  }
+
+  .em-tile a:hover .cjk {
+    color: var(--sky-ink);
+  }
+
+  .em-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 2.5rem;
+    padding-top: 2rem;
+  }
+
+  .em-panel h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 0 0 0.5rem;
+    font-family: var(--font-cjk);
+    font-size: 1.3rem;
+    font-weight: 400;
+  }
+
+  .em-panel h2 a {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+  }
+
+  .em-panel h2 a:hover {
+    color: var(--sky-ink);
+  }
+
+  .em-panel + .em-panel {
+    margin-top: 2.25rem;
+  }
+
+  .em-empty {
+    margin: 0;
+    padding: 1rem 0;
+    border-top: 1px solid var(--rule);
+    color: var(--ink-3);
+  }
+
+  .em-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .em-rows > li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.25rem 1rem;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .em-rows > li[hidden] {
+    display: none;
+  }
+
+  .em-rows .t {
+    font-family: var(--font-cjk);
+    font-size: 1.08rem;
+  }
+
+  .em-rows .t a:hover {
+    color: var(--sky-ink);
+  }
+
+  .em-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+  }
+
+  .em-meta a:hover {
+    color: var(--sky-ink);
+  }
+
+  .em-acts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem;
+  }
+
+  .em-btn {
+    padding: 0.25em 0.8em;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1.7;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      border-color 0.2s,
+      color 0.2s,
+      background 0.2s;
+  }
+
+  .em-btn:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+
+  .em-btn.go {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .em-btn.go:hover {
+    border-color: var(--sky-ink);
+    background: var(--sky-ink);
+  }
+
+  .em-btn.danger:hover {
+    border-color: var(--signal);
+    color: var(--signal);
+  }
+
+  .em-btn:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
+
+  .em-state {
+    margin-left: 0.6em;
+    padding: 0 0.5em;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+    vertical-align: 0.15em;
+  }
+
+  .em-state.published {
+    color: var(--sky-ink);
+  }
+  .em-state.hidden,
+  .em-state.banned {
+    color: var(--signal);
+    border-style: dashed;
+  }
+  .em-state.draft {
+    color: var(--ink-3);
+    border-style: dashed;
+  }
+
+  .em-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1.25rem 0;
+  }
+
+  .em-filters .chip {
+    padding: 0.3em 0.9em;
+    cursor: pointer;
+  }
+
+  .em-filters .chip[aria-pressed='true'] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .em-facts {
+    margin: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .em-facts div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .em-facts dt {
+    color: var(--ink-2);
+  }
+
+  .em-facts dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    text-align: right;
+  }
+
+  .em-facts .warn {
+    color: var(--signal);
+  }
+
+  .em-quote {
+    grid-column: 1 / -1;
+    margin: 0.2rem 0 0;
+    padding-left: 0.8rem;
+    border-left: 2px solid var(--rule);
+    color: var(--ink-2);
+    font-size: 0.94rem;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+  }
+
+  .em-quote img {
+    max-width: 10rem;
+    max-height: 7rem;
+    border-radius: var(--radius);
+  }
+
+  .em-quote pre {
+    margin: 0.3rem 0;
+    padding: 0.5rem 0.7rem;
+    background: var(--code-bg);
+    font-size: 0.8rem;
+    overflow-x: auto;
+  }
+
+  .em-quote.clip {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .em-user {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .em-user img,
+  .em-user .ph {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--paper-3);
+  }
+
+  .em-user .tag {
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    color: var(--ink-3);
+  }
+
+  .em-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-left: auto;
+    color: var(--ink-2);
+    font-size: 0.88rem;
+  }
+
+  @media (max-width: 860px) {
+    .em {
+      grid-template-columns: 1fr;
+    }
+    .em-rail {
+      position: static;
+      gap: 1rem;
+    }
+    .em-rail nav ul {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+    .em-rail nav a {
+      border-left: 0;
+      border-bottom: 2px solid transparent;
+    }
+    .em-rail nav a[aria-current='page'] {
+      border-bottom-color: var(--sky);
+    }
+    .em-later,
+    .em-soon {
+      display: none;
+    }
+    .em-foot {
+      display: flex;
+      gap: 1.5rem;
+    }
+    .em-cols {
+      grid-template-columns: 1fr;
+    }
+    .em-tile + .em-tile {
+      padding-left: 1rem;
+    }
+  }
+</style>

@@ -1,0 +1,195 @@
+---
+import Endmin from '@/layouts/Endmin.astro';
+import { fmtDate } from '@/lib/posts';
+import { db } from '@/server/db.ts';
+import { handleOf, listUsers, userActivity } from '@/server/users.ts';
+
+export const prerender = false;
+
+const users = listUsers();
+const counts = new Map<number, number>(
+  db()
+    .prepare("SELECT user_id, count(*) AS n FROM comments WHERE status <> 'deleted' GROUP BY user_id")
+    .all()
+    .map((r: any) => [Number(r.user_id), Number(r.n)]),
+);
+const banned = users.filter((u) => u.status === 'banned').length;
+const activity = userActivity();
+---
+
+<Endmin title="用户" en="Users" lead="封禁后对方立即被退出登录，已有的评论保留。删除账号会连同其评论一并删除。用户也可以在评论区自己修改密码或删除账号。">
+  <div class="em-filters" data-filters role="toolbar" aria-label="按状态筛选">
+    <button type="button" class="chip" data-filter="all" aria-pressed="true">全部 {users.length}</button>
+    <button type="button" class="chip" data-filter="active" aria-pressed="false">正常 {users.length - banned}</button>
+    <button type="button" class="chip" data-filter="banned" aria-pressed="false">已封禁 {banned}</button>
+    <input class="em-search" type="search" data-user-search placeholder="按名字查找" aria-label="按名字查找" />
+  </div>
+
+  <div class="em-secret" data-secret hidden>
+    <p><strong data-secret-handle></strong> 的新密码，只显示这一次，请转交给对方并提醒对方登录后修改：</p>
+    <code data-secret-value></code>
+    <button type="button" class="em-btn" data-secret-copy>复制</button>
+  </div>
+
+  <ul class="em-rows">
+    {
+      users.map((u) => (
+        <li data-group={u.status} data-user={handleOf(u).toLowerCase()}>
+          <div class="em-user">
+            {u.avatarSha256 ? <img src={`/avatars/${u.avatarSha256}.webp`} alt="" width="32" height="32" /> : <span class="ph" />}
+            <div>
+              <div>
+                {u.nickname}
+                {u.role !== 'endmin' && <span class="tag">#{u.discriminator}</span>}
+                {u.role === 'endmin' && <span class="em-state published">Endministrator</span>}
+                {u.status === 'banned' && <span class="em-state banned">已封禁</span>}
+              </div>
+              <div class="em-meta">
+                <span>{u.googleSub ? 'Google 登录' : '密码登录'}</span>
+                <span>{fmtDate(u.createdAt)} 注册</span>
+                <span>{counts.get(u.id) ?? 0} 条评论</span>
+                {activity.has(u.id) ? (
+                  <span>
+                    {activity.get(u.id)!.sessions} 处登录 · 最近 {fmtDate(activity.get(u.id)!.lastSignIn)}
+                  </span>
+                ) : (
+                  <span>未登录</span>
+                )}
+              </div>
+            </div>
+          </div>
+          {
+            u.role !== 'endmin' && (
+              <div class="em-acts">
+                <button class="em-btn" data-rename={u.id} data-name={u.nickname}>
+                  改名
+                </button>
+                {u.passwordHash && (
+                  <button class="em-btn" data-reset={u.id} data-handle={handleOf(u)}>
+                    重置密码
+                  </button>
+                )}
+                {activity.has(u.id) && (
+                  <button class="em-btn" data-api={`/api/endmin/users/${u.id}`} data-body='{"signOut":true}' data-confirm={`让 ${handleOf(u)} 在所有设备上退出登录？`}>
+                    强制下线
+                  </button>
+                )}
+                {u.avatarSha256 && (
+                  <button class="em-btn" data-api={`/api/endmin/users/${u.id}`} data-body='{"removeAvatar":true}'>
+                    移除头像
+                  </button>
+                )}
+                {u.status === 'active' ? (
+                  <button class="em-btn danger" data-api={`/api/endmin/users/${u.id}`} data-body='{"status":"banned"}' data-confirm={`封禁 ${u.nickname}#${u.discriminator}？`}>
+                    封禁
+                  </button>
+                ) : (
+                  <button class="em-btn go" data-api={`/api/endmin/users/${u.id}`} data-body='{"status":"active"}'>
+                    解封
+                  </button>
+                )}
+                <button class="em-btn danger" data-api={`/api/endmin/users/${u.id}`} data-method="DELETE" data-confirm={`删除 ${u.nickname}#${u.discriminator} 和它的全部评论？此操作无法撤销。`}>
+                  删除
+                </button>
+              </div>
+            )
+          }
+        </li>
+      ))
+    }
+  </ul>
+</Endmin>
+
+<script>
+  import { api } from '@/scripts/account';
+
+  const flash = document.querySelector<HTMLElement>('[data-flash]')!;
+  const fail = (message: string) => {
+    flash.textContent = message;
+    flash.hidden = false;
+  };
+
+  // Find a user by name. Works together with the status chips: both must match.
+  const search = document.querySelector<HTMLInputElement>('[data-user-search]')!;
+  const rows = [...document.querySelectorAll<HTMLElement>('[data-user]')];
+  const filter = () => {
+    const wanted = search.value.trim().toLowerCase();
+    const group = document.querySelector<HTMLElement>('[data-filter][aria-pressed="true"]')?.dataset.filter ?? 'all';
+    for (const row of rows) row.hidden = !row.dataset.user!.includes(wanted) || (group !== 'all' && row.dataset.group !== group);
+  };
+  search.addEventListener('input', filter);
+  // Wait until the chips' own handler has marked which one is pressed.
+  document.querySelector('[data-filters]')!.addEventListener('click', () => setTimeout(filter));
+
+  const secret = document.querySelector<HTMLElement>('[data-secret]')!;
+  const secretValue = secret.querySelector<HTMLElement>('[data-secret-value]')!;
+  secret.querySelector('[data-secret-copy]')!.addEventListener('click', () => navigator.clipboard.writeText(secretValue.textContent ?? ''));
+
+  document.addEventListener('click', async (e) => {
+    const button = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-rename], [data-reset]');
+    if (!button) return;
+
+    if (button.dataset.rename) {
+      const next = prompt('新的昵称（2 到 20 个字符）。对方登录时要用新的完整名字。', button.dataset.name)?.trim();
+      if (!next || next === button.dataset.name) return;
+      const res = await api(`/api/endmin/users/${button.dataset.rename}`, { nickname: next }, 'PATCH');
+      return res.ok ? location.reload() : fail(res.error.message);
+    }
+
+    if (!confirm(`为 ${button.dataset.handle} 生成一个新密码？原来的密码立即失效，对方会在所有设备上退出登录。`)) return;
+    const res = await api(`/api/endmin/users/${button.dataset.reset}`, { resetPassword: true }, 'PATCH');
+    if (!res.ok) return fail(res.error.message);
+    secret.querySelector('[data-secret-handle]')!.textContent = res.data.handle;
+    secretValue.textContent = res.data.password;
+    secret.hidden = false;
+    secret.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+</script>
+
+<style>
+  .em-search {
+    margin-left: auto;
+    width: min(100%, 14rem);
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.88rem;
+  }
+
+  .em-search:focus-visible {
+    border-color: var(--sky);
+    outline: none;
+  }
+
+  .em-secret {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    margin-bottom: 1.25rem;
+    padding: 0.9rem 1.1rem;
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius);
+    box-shadow: 4px 4px 0 var(--sky-soft);
+  }
+
+  .em-secret[hidden] {
+    display: none;
+  }
+
+  .em-secret p {
+    flex: 1 1 100%;
+    margin: 0;
+    font-size: 0.92rem;
+  }
+
+  .em-secret code {
+    padding: 0.2em 0.6em;
+    background: var(--code-bg);
+    font-size: 1.05rem;
+    user-select: all;
+  }
+</style>

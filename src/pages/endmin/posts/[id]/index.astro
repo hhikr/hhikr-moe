@@ -1,0 +1,645 @@
+---
+// The editor. Wider than the other management screens, so it brings its own layout.
+import '@/styles/prose.css';
+import Base from '@/layouts/Base.astro';
+import { CATEGORIES } from '@/site.config';
+import { coverOf, mediaById } from '@/server/media.ts';
+import { getEditablePost, getWorkingCopy, listRevisions } from '@/server/posts.ts';
+
+export const prerender = false;
+
+const id = Number(Astro.params.id);
+const post = getEditablePost(id);
+if (!post) return new Response(null, { status: 404 });
+
+// Unsaved edits from last time take the place of the stored content.
+const copy = getWorkingCopy(id);
+const fields = copy?.fields ?? post.fields;
+const sourceMd = copy?.sourceMd ?? post.sourceMd;
+const revisions = listRevisions(id);
+const cover = fields.coverMediaId ? (coverOf(mediaById(fields.coverMediaId))?.src ?? null) : null;
+const published = post.status === 'published';
+const saved = Astro.url.searchParams.get('saved');
+const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+const data = { id, status: post.status, fields, sourceMd, cover };
+---
+
+<Base title={`${post.fields.title} · 编辑`} noindex>
+  <div class="ed">
+    <header class="ed-bar">
+      <a class="back label" href="/endmin/posts/">← 文章</a>
+      <span class={`ed-state ${published ? (post.fields.hidden ? 'hidden' : 'published') : 'draft'}`}>
+        {published ? (post.fields.hidden ? '隐藏' : '已发布') : '草稿'}
+      </span>
+      <p class="ed-status" data-save-state role="status">
+        {saved === 'published' ? '已发布到网站。' : saved === 'draft' ? '已保存为草稿。' : copy ? `已载入 ${when.format(new Date(copy.savedAt))} 自动保存的修改，尚未${published ? '更新到网站' : '存为草稿'}。` : ''}
+      </p>
+      <div class="ed-acts">
+        {copy && <button type="button" class="em-btn" data-do="discard">丢弃修改</button>}
+        <button type="button" class="em-btn" data-do="preview">预览</button>
+        {published && <a class="em-btn" href={`/posts/${post.fields.slug}/`} target="_blank">查看</a>}
+        {!published && <button type="button" class="em-btn" data-do="save-draft">保存草稿</button>}
+        {published && <button type="button" class="em-btn danger" data-do="withdraw">撤回为草稿</button>}
+        <button type="button" class="em-btn go" data-do="publish">{published ? '更新' : '发布'}</button>
+      </div>
+    </header>
+
+    <form class="ed-fields" data-fields data-scripted novalidate>
+      <input class="ed-title cjk" name="title" placeholder="标题" aria-label="标题" maxlength="200" />
+      <details open={!published}>
+        <summary class="label">文章属性</summary>
+        <div class="grid">
+          <label class="wide">
+            <span class="label">地址</span>
+            <span class="slug"><span>/posts/</span><input name="slug" maxlength="80" spellcheck="false" /><span>/</span></span>
+            {published && <small>修改后，旧地址会自动跳转到新地址。</small>}
+          </label>
+          <label class="wide">
+            <span class="label">摘要</span>
+            <textarea name="summary" rows="2" maxlength="500"></textarea>
+          </label>
+          <label>
+            <span class="label">分类</span>
+            <select name="category">
+              <option value="">无</option>
+              {Object.entries(CATEGORIES).map(([key, c]) => <option value={key}>{c.name}</option>)}
+            </select>
+          </label>
+          <label>
+            <span class="label">标签（用逗号分隔）</span>
+            <input name="tags" />
+          </label>
+          <label>
+            <span class="label">合订本</span>
+            <input name="series" maxlength="80" placeholder="例如 笔记-操作系统" />
+          </label>
+          <label>
+            <span class="label">在合订本中的顺序</span>
+            <input name="seriesOrder" type="number" step="any" />
+          </label>
+          <label>
+            <span class="label">发布时间</span>
+            <input name="publishedAt" type="datetime-local" />
+          </label>
+          <label>
+            <span class="label">更新时间（可选）</span>
+            <span class="row"><input name="updatedAt" type="datetime-local" /><button type="button" class="em-btn" data-do="today">现在</button></span>
+          </label>
+          <div class="checks wide">
+            <label><input name="hidden" type="checkbox" /> 隐藏（发布后只有你能看到）</label>
+            <label><input name="pinned" type="checkbox" /> 置顶</label>
+            <label><input name="commentsEnabled" type="checkbox" /> 允许评论</label>
+          </div>
+          <div class="wide cover">
+            <span class="label">封面</span>
+            <input name="coverMediaId" type="hidden" />
+            <div class="thumb" data-cover></div>
+            <button type="button" class="em-btn" data-do="cover">选择图片</button>
+            <button type="button" class="em-btn danger" data-do="cover-remove" hidden>移除</button>
+          </div>
+        </div>
+      </details>
+    </form>
+
+    <div class="ed-panes">
+      <section class="pane">
+        <header class="pane-head">
+          <span class="label">Markdown</span>
+          <button type="button" class="em-btn" data-do="upload">插入图片或附件</button>
+        </header>
+        <div class="editor" data-editor></div>
+      </section>
+      <section class="pane">
+        <header class="pane-head">
+          <span class="label">预览</span>
+          <span class="label" data-count></span>
+        </header>
+        <div class="prose result" data-preview></div>
+      </section>
+    </div>
+
+    <footer class="ed-foot">
+      <details>
+        <summary class="label">修订记录 · {revisions.length}</summary>
+        {
+          revisions.length === 0 ? (
+            <p class="none">每次发布或更新都会留下一个版本。</p>
+          ) : (
+            <ul>
+              {revisions.map((r) => (
+                <li data-revision={r.id} data-when={when.format(new Date(r.createdAt))}>
+                  <span>{when.format(new Date(r.createdAt))}</span>
+                  <span class="cjk">{r.title}</span>
+                  <span class="label">{r.characters.toLocaleString('zh-CN')} 字符</span>
+                  <button type="button" class="em-btn" data-do="compare" data-id={r.id}>对比</button>
+                  <button type="button" class="em-btn" data-do="revision" data-id={r.id}>载入</button>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </details>
+      <button type="button" class="em-btn danger" data-do="delete">删除这篇文章</button>
+    </footer>
+
+    <dialog class="ed-diff" data-diff aria-label="版本对比">
+      <header>
+        <h2 class="cjk">版本对比</h2>
+        <label>
+          <span class="label">把这个版本与</span>
+          <select data-diff-against>
+            <option value="current">编辑器里现在的内容</option>
+            <option value="previous">它的上一个版本</option>
+          </select>
+          <span class="label">比较</span>
+        </label>
+        <span class="ed-diff-stats" data-diff-stats></span>
+        <button type="button" class="em-btn" data-do="diff-close">关闭</button>
+      </header>
+      <p class="ed-diff-sides label" data-diff-sides></p>
+      <ul class="ed-diff-fields" data-diff-fields></ul>
+      <div class="ed-diff-body" data-diff-body></div>
+    </dialog>
+
+    <input type="file" data-file-input multiple hidden />
+    <input type="file" data-cover-input accept="image/*" hidden />
+    <script type="application/json" id="editor-data" set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+  </div>
+</Base>
+
+<script>
+  import '@/scripts/editor';
+</script>
+
+<style is:global>
+  .ed {
+    display: grid;
+    gap: 1rem;
+    width: min(100% - 2 * var(--gutter), 104rem);
+    margin-inline: auto;
+    padding-block: 1.25rem 3rem;
+  }
+
+  .ed-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1.5px solid var(--rule-strong);
+  }
+
+  .ed-bar .back:hover {
+    color: var(--sky-ink);
+  }
+
+  .ed-state {
+    padding: 0 0.55em;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.7;
+  }
+
+  .ed-state.published {
+    color: var(--sky-ink);
+  }
+  .ed-state.hidden,
+  .ed-state.draft {
+    border-style: dashed;
+    color: var(--signal);
+  }
+  .ed-state.draft {
+    color: var(--ink-3);
+  }
+
+  .ed-status {
+    flex: 1 1 12rem;
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 0.86rem;
+  }
+
+  .ed-acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .ed .em-btn {
+    padding: 0.3em 0.95em;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.7;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .ed .em-btn:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+
+  .ed .em-btn.go {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .ed .em-btn.go:hover {
+    border-color: var(--sky-ink);
+    background: var(--sky-ink);
+  }
+
+  .ed .em-btn.danger:hover {
+    border-color: var(--signal);
+    color: var(--signal);
+  }
+
+  .ed .em-btn[hidden] {
+    display: none;
+  }
+
+  .ed-title {
+    width: 100%;
+    padding: 0.2rem 0;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+    color: var(--ink);
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    line-height: 1.2;
+  }
+
+  .ed-title:focus-visible {
+    border-bottom-color: var(--rule);
+    outline: none;
+  }
+
+  .ed-fields summary,
+  .ed-foot summary {
+    padding: 0.4rem 0;
+    cursor: pointer;
+  }
+
+  .ed-fields .grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem 1.25rem;
+    padding: 0.75rem 0 0.5rem;
+  }
+
+  .ed-fields label {
+    display: grid;
+    gap: 0.3rem;
+    align-content: start;
+  }
+
+  .ed-fields .wide {
+    grid-column: span 2;
+  }
+
+  .ed-fields input:not([type='checkbox'], .ed-title),
+  .ed-fields select,
+  .ed-fields textarea {
+    width: 100%;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.92rem;
+  }
+
+  .ed-fields :is(input, select, textarea):focus-visible {
+    border-color: var(--sky);
+    outline: none;
+  }
+
+  .ed-fields small {
+    color: var(--ink-3);
+    font-size: 0.78rem;
+  }
+
+  .ed-fields .slug,
+  .ed-fields .row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    color: var(--ink-3);
+  }
+
+  .ed-fields .checks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    font-size: 0.92rem;
+  }
+
+  .ed-fields .checks label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .ed-fields .cover {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .ed-fields .thumb img {
+    display: block;
+    height: 3.5rem;
+    border-radius: var(--radius);
+  }
+
+  .ed-panes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    height: max(32rem, calc(100dvh - 9rem));
+  }
+
+  .pane {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--card);
+    overflow: hidden;
+  }
+
+  .pane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 2.6rem;
+    padding: 0.35rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-2);
+  }
+
+  .pane .editor {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .pane .editor .cm-editor {
+    height: 100%;
+  }
+
+  .pane .result {
+    padding: 1.25rem 1.5rem 3rem;
+    overflow-y: auto;
+    background: var(--paper);
+  }
+
+  .ed-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: 0.5rem;
+  }
+
+  .ed-foot details {
+    flex: 1 1 24rem;
+  }
+
+  .ed-foot ul {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .ed-foot li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.9rem;
+  }
+
+  .ed-foot li .em-btn {
+    margin-left: auto;
+  }
+
+  .ed-foot li .em-btn + .em-btn {
+    margin-left: 0;
+  }
+
+  /* ---------- comparing versions ---------- */
+  .ed-diff {
+    --diff-add-ink: #1a7f37;
+    --diff-del-ink: #cf222e;
+    --diff-add: color-mix(in srgb, #2da44e 16%, transparent);
+    --diff-add-strong: color-mix(in srgb, #2da44e 40%, transparent);
+    --diff-del: color-mix(in srgb, #cf222e 13%, transparent);
+    --diff-del-strong: color-mix(in srgb, #cf222e 36%, transparent);
+    width: min(100vw - 2rem, 72rem);
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    border: 1px solid var(--rule-strong);
+    border-radius: 6px;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow:
+      8px 8px 0 var(--sky-soft),
+      var(--shadow);
+  }
+
+  [data-theme='dark'] .ed-diff {
+    --diff-add-ink: #56d364;
+    --diff-del-ink: #ff7b72;
+  }
+
+  .ed-diff[open] {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+
+  .ed-diff::backdrop {
+    background: color-mix(in srgb, var(--paper) 40%, rgb(10 12 18 / 0.45));
+    backdrop-filter: blur(3px);
+  }
+
+  .ed-diff header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.25rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1.5px solid var(--rule-strong);
+  }
+
+  .ed-diff h2 {
+    margin: 0;
+    font-size: 1.4rem;
+  }
+
+  .ed-diff header label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ed-diff select {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.9rem;
+  }
+
+  .ed-diff-stats {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+  }
+
+  .ed-diff-stats .plus {
+    color: var(--diff-add-ink);
+  }
+
+  .ed-diff-stats .minus {
+    margin-left: 0.6em;
+    color: var(--diff-del-ink);
+  }
+
+  .ed-diff-sides {
+    margin: 0;
+    padding: 0.6rem 1.25rem;
+  }
+
+  .ed-diff-fields {
+    list-style: none;
+    margin: 0;
+    padding: 0 1.25rem 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .ed-diff-fields:empty {
+    display: none;
+  }
+
+  .ed-diff-fields li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.6rem;
+    padding: 0.2rem 0;
+  }
+
+  .ed-diff-fields del {
+    color: var(--diff-del-ink);
+  }
+
+  .ed-diff-fields ins {
+    color: var(--diff-add-ink);
+    text-decoration: none;
+  }
+
+  .ed-diff-body {
+    border-top: 1px solid var(--rule);
+    background: var(--card);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    overflow: auto;
+  }
+
+  .ed-diff-body .row {
+    display: grid;
+    grid-template-columns: 3.2rem 3.2rem 1.4rem minmax(0, 1fr);
+  }
+
+  .ed-diff-body .n {
+    padding-right: 0.6rem;
+    color: var(--ink-3);
+    text-align: right;
+    user-select: none;
+  }
+
+  .ed-diff-body .sign {
+    color: var(--ink-3);
+    text-align: center;
+    user-select: none;
+  }
+
+  .ed-diff-body .text {
+    padding-right: 1rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .ed-diff-body .add {
+    background: var(--diff-add);
+  }
+
+  .ed-diff-body .del {
+    background: var(--diff-del);
+  }
+
+  .ed-diff-body .add mark {
+    background: var(--diff-add-strong);
+    color: inherit;
+  }
+
+  .ed-diff-body .del mark {
+    background: var(--diff-del-strong);
+    color: inherit;
+  }
+
+  .ed-diff-body .gap,
+  .ed-diff-body .none {
+    margin: 0;
+    padding: 0.3rem 1rem;
+    background: var(--paper-2);
+    color: var(--ink-3);
+    text-align: center;
+  }
+
+  .ed-diff-body .none {
+    padding: 2rem 1rem;
+    background: none;
+    font-family: var(--font-cjk);
+    font-size: 1rem;
+  }
+
+  .ed-foot .none {
+    margin: 0.5rem 0 0;
+    color: var(--ink-3);
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 900px) {
+    .ed-fields .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .ed-panes {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+    .pane {
+      height: 70dvh;
+    }
+  }
+</style>
