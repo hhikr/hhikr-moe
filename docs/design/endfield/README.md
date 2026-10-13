@@ -63,6 +63,14 @@
 - 生产环境有内容安全策略：脚本只能来自本站，字体只能来自本站或 `data:`。开发服务器不发这条策略，要验证须 `npm run build` 后用 `npm run preview`。
 - 不使用任何游戏官方素材（字体、标志、图标、插画、截图、文案）。
 
+## 本地预览
+
+`.data/` 不进仓库。在空目录里建一个测试库（Node 24）：
+
+1. `node scripts/import-posts.mjs`：建库并导入 `src/content/posts/` 的文章和配图。
+2. 设环境变量 `ENDMIN_GOOGLE_EMAIL=owner@example.com`，用 `src/server/auth.ts` 的 `signInWithGoogle` 建一个管理员（写法同 `tests/server/auth.test.mjs`），再用 `node scripts/endmin-login-link.mjs` 取一次性登录链接。
+3. `node scripts/seed-sample-data.mjs --local`：加入假的用户、评论、作品和访问记录，用来看这些页面有内容时的样子。所有名字和文字都写明是示例数据。只对开发用的库运行。
+
 ## 还没做的事
 
 - 其余页面的改版（见上表）。

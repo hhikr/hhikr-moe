@@ -346,6 +346,7 @@ main {
 @media (max-width: 1099px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
   }
 }
 
@@ -563,6 +564,164 @@ a.kv:hover > :first-child {
   .record .tag {
     justify-self: start;
   }
+}
+
+/* ---------- the reading pages: a sheet with a head, lists, a margin ---------- */
+
+/* The way back up, above a page's name: 全部分类 / 学习. */
+.crumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.6em;
+  margin: 0 0 0.75rem;
+}
+
+.crumb a {
+  border-bottom: 1px solid var(--rule);
+}
+
+.crumb a:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.crumb > * + *::before {
+  content: '/';
+  margin-right: 0.6em;
+  color: var(--rule);
+}
+
+/* A page's name with its count on the right, ruled off in ink. */
+.sheet-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--ink);
+}
+
+.sheet-head h1 {
+  margin: 0;
+  font-size: var(--t-h1);
+  line-height: 1.25;
+}
+
+.sheet-head p {
+  margin: 0;
+}
+
+/* A sentence or two under the head saying what is here. */
+.lede {
+  max-width: var(--measure);
+  margin: 1.25rem 0 0;
+  font-size: var(--t-body);
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+/* Nothing to list yet. */
+.empty {
+  max-width: 30rem;
+  margin: 1.5rem 0 0;
+  font-size: var(--t-body);
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+/* A row of chips that narrows a list. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1.5rem 0 0;
+}
+
+button.chip {
+  cursor: pointer;
+}
+
+/* A heading inside a list: a year, a category. The count sits at the right. */
+.group-head {
+  display: flex;
+  border-bottom: 1px solid var(--ink);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 2.5rem 0 0;
+  padding-bottom: 0.5rem;
+  font-size: var(--t-h2);
+  line-height: 1.35;
+}
+
+.group-head a:hover {
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
+.group-head .mono {
+  white-space: nowrap;
+}
+
+/* A list straight under the head shares its rule; under a lede it brings its own. */
+.sheet-head + .records,
+.group-head + .records {
+  border-top: 0;
+}
+
+.lede + .records {
+  margin-top: 1.5rem;
+}
+
+/* "All of them", at the foot of a short list. */
+.more {
+  display: inline-block;
+  margin-top: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.more:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* In the margin: a small heading and a column of figures. */
+.margin-h {
+  margin: 0 0 0.5rem;
+}
+
+.margin-h:not(:first-child) {
+  margin-top: 2.5rem;
+}
+
+.ledger {
+  max-width: 20rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.ledger > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.ledger a:hover {
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
+.ledger .is-current {
+  padding-inline: 0.3em;
+  background: var(--signal);
+  color: var(--on-signal);
 }
 
 /* ---------- pieces the pages not yet redesigned still use ---------- */

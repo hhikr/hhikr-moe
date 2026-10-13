@@ -1,19 +1,16 @@
 ---
 import TermList from '@/layouts/TermList.astro';
-import { categoryOf, getPosts, viewerOf } from '@/lib/posts';
+import { CATEGORIES } from '@/site.config';
+import { categoryOf, categoryUrl, getPosts, groupBy, viewerOf } from '@/lib/posts';
 
 export const prerender = false;
 
-const posts = getPosts(viewerOf(Astro.locals)).filter((p) => categoryOf(p)?.slug === Astro.params.cat);
+const all = getPosts(viewerOf(Astro.locals));
+const posts = all.filter((p) => categoryOf(p)?.slug === Astro.params.cat);
 const cat = posts[0] && categoryOf(posts[0]);
 if (!cat) return new Response(null, { status: 404 });
+const counts = groupBy(all, (p) => p.data.category);
+const others = Object.entries(CATEGORIES).map(([key, c]) => ({ name: c.name, href: categoryUrl(c.slug), count: counts.get(key)?.length ?? 0, current: c.slug === cat.slug }));
 ---
 
-<TermList
-  kicker={`Section · ${posts.length} entries`}
-  title={cat.name}
-  en={cat.en}
-  description={cat.description}
-  posts={posts}
-  back={{ href: '/categories/', label: '全部分类' }}
-/>
+<TermList title={cat.name} description={cat.description} posts={posts} kind="分类" others={others} back={{ href: '/categories/', label: '全部分类' }} />

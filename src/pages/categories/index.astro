@@ -1,127 +1,117 @@
 ---
 import Base from '@/layouts/Base.astro';
+import PostRecord from '@/components/PostRecord.astro';
 import { CATEGORIES } from '@/site.config';
-import { categoryUrl, fmtDate, getPosts, groupBy, postUrl, viewerOf } from '@/lib/posts';
+import { categoryUrl, getPosts, groupBy, postNumbers, viewerOf } from '@/lib/posts';
 
 export const prerender = false;
 
-const groups = groupBy(getPosts(viewerOf(Astro.locals)), (p) => p.data.category);
+const posts = getPosts(viewerOf(Astro.locals));
+const groups = groupBy(posts, (p) => p.data.category);
+const numbers = postNumbers();
+const sections = Object.entries(CATEGORIES).map(([key, c]) => {
+  const list = groups.get(key) ?? [];
+  return { ...c, list, words: list.reduce((n, p) => n + p.words, 0) };
+});
 ---
 
 <Base title="分类" description="按分类浏览文章。">
-  <div class="wrap">
-    <header class="page-head">
-      <p class="label kicker">Sections · {Object.keys(CATEGORIES).length}</p>
-      <h1>分类<span class="en">Categories</span></h1>
-    </header>
+  <div class="spread">
+    <div class="sheet">
+      <header class="sheet-head">
+        <h1>分类</h1>
+        <p class="mono">共 {sections.length} 类</p>
+      </header>
 
-    {
-      Object.entries(CATEGORIES).map(([key, c], i) => {
-        const list = groups.get(key) ?? [];
-        return (
-          <section class="drawer">
-            <a class="head" href={categoryUrl(c.slug)}>
-              <span class="no display">0{i + 1}</span>
-              <span class="name cjk">{c.name}</span>
-              <span class="en display">{c.en}</span>
-              <span class="count label">{list.length} entries →</span>
-            </a>
-            <ul>
-              {list.slice(0, 5).map((p) => (
-                <li>
-                  <a href={postUrl(p)}>
-                    <span class="label">{fmtDate(p.data.date)}</span>
-                    <span class="cjk">{p.data.title}</span>
+      {
+        sections.map((c) => (
+          <section>
+            <h2 class="group-head">
+              {c.list.length > 0 ? <a href={categoryUrl(c.slug)}>{c.name}</a> : <span>{c.name}</span>}
+              <span class="mono">{c.list.length} 篇</span>
+            </h2>
+            <p class="about">{c.description}</p>
+            {c.list.length === 0 ? (
+              <p class="empty">这一类还没有文章。</p>
+            ) : (
+              <>
+                <ol class="records">
+                  {c.list.slice(0, 5).map((p) => (
+                    <PostRecord post={p} number={numbers.get(p.id)} />
+                  ))}
+                </ol>
+                {c.list.length > 5 && (
+                  <a class="more mono" href={categoryUrl(c.slug)}>
+                    全部 {c.list.length} 篇
                   </a>
-                </li>
-              ))}
-            </ul>
+                )}
+              </>
+            )}
           </section>
-        );
-      })
-    }
+        ))
+      }
+    </div>
+
+    <aside class="margin" aria-label="分类统计">
+      <h2 class="margin-h mono">各类篇数</h2>
+      <ul class="shares">
+        {
+          sections.map((c) => (
+            <li>
+              <span class="share-name">{c.name}</span>
+              <span class="mono">{c.list.length} 篇 | {c.words.toLocaleString('zh-CN')} 字</span>
+              <span class="bar" aria-hidden="true">
+                <i style={`width:${posts.length ? ((c.list.length / posts.length) * 100).toFixed(1) : 0}%`} />
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </aside>
   </div>
 </Base>
 
 <style>
-  .drawer {
-    display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 0.5rem 3rem;
-    padding: 2rem 0 2.5rem;
-    border-top: 1.5px solid var(--rule-strong);
+  .group-head {
+    margin-top: 3rem;
   }
 
-  .head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.25rem 1rem;
-  }
-
-  .no {
-    font-size: 3.5rem;
-    line-height: 1;
-    color: var(--sky);
-  }
-
-  .name {
-    font-size: 2.6rem;
-    line-height: 1;
-  }
-
-  .head:hover .name {
-    color: var(--sky-ink);
-  }
-
-  .en {
-    font-style: italic;
-    font-size: 1.3rem;
-    color: var(--ink-3);
-  }
-
-  .count {
-    flex-basis: 100%;
-  }
-
-  .desc {
-    grid-column: 1;
-    margin: 0;
+  .about {
+    margin: 0.75rem 0 0;
     color: var(--ink-2);
   }
 
-  ul {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  .about + .records {
+    margin-top: 0.75rem;
   }
 
-  li a {
-    display: flex;
-    gap: 1.25rem;
+  .shares {
+    max-width: 20rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--rule);
+  }
+
+  .shares li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.4rem 1rem;
     align-items: baseline;
-    padding: 0.6rem 0;
+    padding: 0.7rem 0 0.8rem;
     border-bottom: 1px solid var(--rule);
   }
 
-  li a .cjk {
-    font-size: 1.05rem;
+  /* each category's share of all posts, ink over hatching */
+  .bar {
+    grid-column: 1 / -1;
+    height: 0.5rem;
+    background: var(--hatch);
   }
 
-  li a:hover .cjk {
-    color: var(--sky-ink);
-  }
-
-  @media (max-width: 760px) {
-    .drawer {
-      grid-template-columns: 1fr;
-    }
-    ul,
-    .desc {
-      grid-column: 1;
-      grid-row: auto;
-    }
+  .bar i {
+    display: block;
+    height: 100%;
+    background: var(--ink);
   }
 </style>

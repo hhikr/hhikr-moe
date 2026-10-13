@@ -1,42 +1,86 @@
 ---
+// The posts under one category or one tag.
 import Base from './Base.astro';
-import PostRow from '@/components/PostRow.astro';
-import type { Post } from '@/lib/posts';
+import PostRecord from '@/components/PostRecord.astro';
+import { fmtDate, postNumbers, type Post } from '@/lib/posts';
 
 interface Props {
-  kicker: string;
   title: string;
-  en?: string;
   description?: string;
   posts: Post[];
   back: { href: string; label: string };
+  /** What this list is, for the margin: 分类, 标签. */
+  kind: string;
+  /** Neighbours of the same kind, for the margin. */
+  others?: { name: string; href: string; count: number; current?: boolean }[];
 }
 
-const { kicker, title, en, description, posts, back } = Astro.props;
+const { title, description, posts, back, kind, others = [] } = Astro.props;
+const numbers = postNumbers();
+const words = posts.reduce((n, p) => n + p.words, 0);
+const dates = posts.map((p) => p.data.date.valueOf());
 ---
 
 <Base title={title} description={description ?? `${title}：共 ${posts.length} 篇文章`}>
-  <div class="wrap">
-    <header class="page-head">
-      <p class="label kicker"><a href={back.href} class="back">← {back.label}</a> · {kicker}</p>
-      <h1>{title}{en && <span class="en">{en}</span>}</h1>
-      <slot name="head" />
-    </header>
-    <slot />
-    <ol class="rows">
-      {posts.map((p, i) => <PostRow post={p} index={i} />)}
-    </ol>
+  <div class="spread">
+    <div class="sheet">
+      <p class="crumb mono">
+        <a href={back.href}>{back.label}</a>
+        <span>{kind}</span>
+      </p>
+      <header class="sheet-head">
+        <h1>{title}</h1>
+        <p class="mono">共 {posts.length} 篇</p>
+      </header>
+      {description && <p class="lede">{description}</p>}
+      <ol class="records">
+        {posts.map((p) => <PostRecord post={p} number={numbers.get(p.id)} />)}
+      </ol>
+    </div>
+
+    <aside class="margin" aria-label={`${kind}统计`}>
+      <h2 class="margin-h mono">统计</h2>
+      <ul class="ledger">
+        <li>
+          <span>文章</span>
+          <span class="mono">{posts.length} 篇</span>
+        </li>
+        <li>
+          <span>字数合计</span>
+          <span class="mono">{words.toLocaleString('zh-CN')} 字</span>
+        </li>
+        {
+          dates.length > 0 && (
+            <li>
+              <span>最近一篇</span>
+              <span class="mono">{fmtDate(new Date(Math.max(...dates)))}</span>
+            </li>
+          )
+        }
+        {
+          dates.length > 0 && (
+            <li>
+              <span>最早一篇</span>
+              <span class="mono">{fmtDate(new Date(Math.min(...dates)))}</span>
+            </li>
+          )
+        }
+      </ul>
+      {
+        others.length > 0 && (
+          <>
+            <h2 class="margin-h mono">全部{kind}</h2>
+            <ul class="ledger">
+              {others.map((o) => (
+                <li>
+                  {o.current ? <span class="is-current" aria-current="page">{o.name}</span> : <a href={o.href}>{o.name}</a>}
+                  <span class="mono">{o.count} 篇</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      }
+    </aside>
   </div>
 </Base>
-
-<style>
-  .back:hover {
-    color: var(--sky);
-  }
-
-  .rows {
-    margin: 0;
-    padding: 0;
-    border-top: 1.5px solid var(--rule-strong);
-  }
-</style>

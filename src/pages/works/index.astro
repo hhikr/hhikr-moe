@@ -6,15 +6,6 @@ import { listProjects, PROJECT_KINDS, type ProjectKind } from '@/server/projects
 export const prerender = false;
 
 const works = listProjects(viewerOf(Astro.locals));
-// Prototype only: /works/?sample on the dev server shows the list with two
-// made-up works, since the local database has none. Remove with the prototype.
-if (import.meta.env.DEV && Astro.url.searchParams.has('sample')) {
-  const day = (s: string) => new Date(`${s}T12:00:00+08:00`);
-  works.push(
-    { id: -1, slug: 'sample-a', kind: 'mod', title: '示例作品：仓库整理 Mod', summary: '示例数据。一键把箱子里的物品按类别排好，支持自定义排序规则。', hidden: false, createdAt: day('2026-08-02'), updatedAt: day('2026-09-30'), latestVersion: 'v1.4.2', downloads: 1284, fileCount: 3 },
-    { id: -2, slug: 'sample-b', kind: 'app', title: '示例作品：题单进度导出工具', summary: '示例数据。把浏览器里保存的 Hot 100 进度导出成一份表格。', hidden: false, createdAt: day('2026-06-11'), updatedAt: day('2026-07-19'), latestVersion: 'v0.3.0', downloads: 96, fileCount: 1 },
-  );
-}
 Astro.response.headers.set('Cache-Control', works.some((w) => w.hidden) ? 'private, no-store' : 'no-cache');
 
 const kinds = (Object.keys(PROJECT_KINDS) as ProjectKind[]).map((kind) => ({ name: PROJECT_KINDS[kind], count: works.filter((w) => w.kind === kind).length }));
@@ -24,14 +15,14 @@ const downloads = works.reduce((n, w) => n + w.downloads, 0);
 <Base title="作品" description="hhikr 做的 mod 和其他可以下载的东西。">
   <div class="spread">
     <div class="sheet">
-      <header class="top">
+      <header class="sheet-head">
         <h1>作品</h1>
         <p class="mono">共 {works.length} 件</p>
       </header>
 
       {
         works.length === 0 ? (
-          <p class="none">还没有发布作品。做好的 mod 和小工具会放在这里，可以直接下载。</p>
+          <p class="empty">还没有发布作品。做好的 mod 和小工具会放在这里，可以直接下载。</p>
         ) : (
           <ul class="works">
             {works.map((w) => (
@@ -64,7 +55,7 @@ const downloads = works.reduce((n, w) => n + w.downloads, 0);
     </div>
 
     <aside class="margin" aria-label="作品统计">
-      <h2 class="mono">按类型</h2>
+      <h2 class="margin-h mono">按类型</h2>
       <ul class="ledger">
         {
           kinds.map((k) => (
@@ -84,33 +75,6 @@ const downloads = works.reduce((n, w) => n + w.downloads, 0);
 </Base>
 
 <style>
-  .top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--ink);
-  }
-
-  .top h1 {
-    margin: 0;
-    font-size: var(--t-h1);
-    line-height: 1.25;
-  }
-
-  .top p {
-    margin: 0;
-  }
-
-  .none {
-    max-width: 30rem;
-    margin: 1.5rem 0 0;
-    font-size: var(--t-body);
-    line-height: 1.75;
-    color: var(--ink-2);
-  }
-
   .works {
     margin: 0;
     padding: 0;
@@ -192,27 +156,6 @@ const downloads = works.reduce((n, w) => n + w.downloads, 0);
 
   .about .facts {
     margin-top: 0.9rem;
-  }
-
-  .margin h2 {
-    margin: 0 0 0.5rem;
-  }
-
-  .ledger {
-    max-width: 20rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    border-top: 1px solid var(--rule);
-  }
-
-  .ledger li {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.55rem 0;
-    border-bottom: 1px solid var(--rule);
   }
 
   @media (max-width: 560px) {
