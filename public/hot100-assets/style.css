@@ -37,4 +37,63 @@
 @media(max-width:650px){.hot100 .demo-fields{grid-template-columns:minmax(0,1fr)}.hot100 .custom-heading{display:block}.hot100 .custom-heading>span{display:block;margin-top:4px}.hot100 .custom{padding:14px}.hot100 .custom-actions>span{flex-basis:100%}}
 .hot100 .playback-hint{margin:0;padding:12px 16px 0;color:var(--muted);font-size:12px}
 
-.hot100{--muted:var(--ink-3);--blue:var(--sky);--soft:var(--sky-soft);font-family:var(--font-sans);font-size:14px}.hot100 .sidebar{top:60px;height:calc(100dvh - 60px)}.hot100 .side-head h1{font-family:var(--font-display)}.hot100 .hot100-grid{max-width:1720px}.hot100-notice{max-width:1720px;margin:auto;padding:8px 24px;font-size:11px;color:var(--ink-3);border-bottom:1px solid var(--rule)}.hot100 .editor-wrap pre{border-radius:0}.hot100 .environment{flex-wrap:wrap}.hot100 .visual svg{height:auto}@media(max-width:650px){.hot100 .sidebar{top:auto;height:auto}.hot100-notice{padding:8px 18px}}
+.hot100{font-size:14px}.hot100 .sidebar{top:60px;height:calc(100dvh - 60px)}.hot100 .hot100-grid{max-width:1720px}.hot100-notice{max-width:1720px;margin:auto;padding:8px 24px;font-size:11px;border-bottom:1px solid var(--rule)}.hot100 .editor-wrap pre{border-radius:0}.hot100 .environment{flex-wrap:wrap}.hot100 .visual svg{height:auto}@media(max-width:650px){.hot100 .sidebar{top:auto;height:auto}.hot100-notice{padding:8px 18px}}
+
+/* ==========================================================================
+   The site's frame around the lesson (redesign/endfield). Only the sidebar,
+   the heading, the question numbers and the type change here; the lab, the
+   code editor and the Java panel keep the look they had, which is why the
+   colours they borrowed from the site are pinned to the same values below.
+   ========================================================================== */
+.hot100{--muted:var(--ink-2);--blue:var(--ink);--soft:var(--rule);--card:var(--panel);font-family:var(--font-ui)}
+.hot100 .lab,.hot100 #practice-view,.hot100 #pending{font-family:var(--font-text)}
+.hot100-notice{color:var(--ink-2);font-family:var(--font-ui)}
+
+/* sidebar: the paper of the site, sticky under whatever the site's own bar is */
+.hot100 .sidebar{background:var(--paper)}
+@media(min-width:1100px){.hot100 .sidebar{top:0;height:100dvh}}
+@media(min-width:651px) and (max-width:1099px){.hot100 .sidebar{top:3.5rem;height:calc(100dvh - 3.5rem)}}
+.hot100 .eyebrow{font-family:var(--font-mono);letter-spacing:.08em}
+/* "Hot" solid and "100" hollow, the way the home page sets its name */
+.hot100 .side-head h1{font-family:var(--font-ui);font-weight:800;letter-spacing:-.04em;line-height:.95}
+.hot100 .side-head h1 em{font-style:normal;color:transparent;-webkit-text-stroke:1.5px var(--ink)}
+.hot100 .blue-dot{color:var(--ink)}
+.hot100 .search input{border-radius:0;background:var(--panel)}
+.hot100 .search input:focus-visible{border-color:var(--ink);outline:2px solid var(--trace);outline-offset:-1px}
+.hot100 progress{accent-color:var(--ink)}
+/* the three filters are chips: cut corner, yellow when on */
+.hot100 .filters button{border:0;border-radius:0;padding:4px 12px 4px 8px;background:linear-gradient(-45deg,transparent calc(var(--cut) - .5px),var(--chip) var(--cut));color:var(--ink);font-family:var(--font-ui);font-size:11px}
+.hot100 .filters button:hover,.hot100 .filters .selected{background:linear-gradient(-45deg,transparent calc(var(--cut) - .5px),var(--signal) var(--cut));color:var(--on-signal);border:0}
+.hot100 details.group summary{font-family:var(--font-ui)}
+.hot100 .group summary b{font-weight:700}
+/* a question: its number is a small tag; the open one is "where you are", in yellow */
+.hot100 .group button{font-family:var(--font-ui);transition:background-color .12s,padding-left .2s var(--snap)}
+.hot100 .group button:hover{background:var(--chip)}
+.hot100 .qid{font-family:var(--font-mono);font-size:10px;padding:0 5px;background:var(--chip);color:var(--ink-2);text-align:center}
+.hot100 .group button.active{background:var(--signal);color:var(--on-signal);font-weight:700}
+.hot100 .group button.active:before{background:var(--on-signal);width:4px}
+.hot100 .group button.active .qid{background:var(--on-signal);color:var(--signal)}
+.hot100 .group button.active .demo-dot{background:var(--on-signal)}
+.hot100 .demo-dot{border-radius:0;background:var(--ink-2)}
+@media(prefers-reduced-motion:reduce){.hot100 .group button{transition:none}}
+.hot100 .sidebar footer a{color:var(--ink);border-bottom:1px solid var(--rule)}
+
+/* the heading of a lesson */
+.hot100 .breadcrumb{font-family:var(--font-mono)}
+.hot100 .lesson-heading .eyebrow{color:var(--ink-2)}
+.hot100 h2{font-family:var(--font-text);font-weight:400;letter-spacing:0;font-size:var(--t-title);line-height:1.3}
+.hot100 .meta{font-family:var(--font-mono)}
+/* difficulty: grey, then ink-ruled, then ink. No green or red. */
+.hot100 .badge,html[data-theme="dark"] .hot100 .badge{border-radius:0;background:var(--chip);color:var(--ink);font-family:var(--font-ui);font-weight:600}
+.hot100 .badge.M{background:var(--panel);box-shadow:inset 0 0 0 1px var(--ink);color:var(--ink)}
+.hot100 .badge.H{background:var(--tag-bg);color:var(--tag-fg)}
+.hot100 .completion{border:0;border-radius:0;padding:7px 18px 7px 12px;background:linear-gradient(-45deg,transparent .5rem,var(--chip) calc(.5rem + .5px));color:var(--ink);font-family:var(--font-ui);font-weight:700}
+.hot100 .completion:hover{background:linear-gradient(-45deg,transparent .5rem,var(--signal) calc(.5rem + .5px));color:var(--on-signal)}
+.hot100 .completion.completed{background:linear-gradient(-45deg,transparent .5rem,var(--ink) calc(.5rem + .5px));color:var(--panel)}
+.hot100 .tabs button{font-family:var(--font-ui);color:var(--ink-2)}
+.hot100 .tabs button:hover{color:var(--ink)}
+.hot100 .tabs [aria-selected=true]{color:var(--ink);font-weight:700;border-bottom:3px solid var(--trace)}
+.hot100 .description h3,.hot100 .principle h3,.hot100 .lab-top h3,.hot100 .next-step h3,.hot100 .practice-intro h3{font-family:var(--font-ui);font-weight:800}
+.hot100 .section-no{font:700 13px var(--font-mono);color:var(--ink);padding:1px 6px;background:var(--chip)}
+.hot100 .description p,.hot100 .principle>p{font-family:var(--font-text);font-size:15px}
+@media(max-width:1100px) and (min-width:651px){.hot100 .side-head h1{font-size:38px}}
