@@ -125,6 +125,13 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     }
   });
 
+  // Under a filtered list, <p data-filter-empty hidden> says so when nothing is left.
+  const showFilterEmpty = () => {
+    const any = [...document.querySelectorAll<HTMLElement>('[data-group]')].some((row) => !row.hidden);
+    document.querySelectorAll<HTMLElement>('[data-filter-empty]').forEach((note) => (note.hidden = any));
+  };
+  (window as { showFilterEmpty?: () => void }).showFilterEmpty = showFilterEmpty;
+
   // Filter chips: <button data-filter="…"> shows rows whose data-group matches.
   const filters = document.querySelector('[data-filters]');
   filters?.addEventListener('click', (e) => {
@@ -134,6 +141,7 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     document.querySelectorAll<HTMLElement>('[data-group]').forEach((row) => {
       row.hidden = chip.dataset.filter !== 'all' && row.dataset.group !== chip.dataset.filter;
     });
+    showFilterEmpty();
   });
 </script>
 
@@ -388,24 +396,21 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     display: none;
   }
 
-  /* A row of big figures on one plate. */
+  /* A row of big figures on one plate, divided by hairlines however it wraps. */
   .em-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 1px;
     margin-bottom: 1.25rem;
-    padding: 0 1.15rem;
-    background: var(--panel);
+    background: var(--rule);
+    border: 1px solid var(--rule);
   }
 
   .em-tile {
     display: grid;
     gap: 0.15rem;
-    padding: 1.2rem 1rem 1.2rem 0;
-  }
-
-  .em-tile + .em-tile {
-    padding-left: 1.25rem;
-    border-left: 1px solid var(--rule);
+    padding: 1.2rem 1.15rem;
+    background: var(--panel);
   }
 
   .em-tile .n {
@@ -416,7 +421,7 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     font-variant-numeric: tabular-nums;
   }
 
-  .em-tile .cjk {
+  .em-tile .k {
     font-size: 0.85rem;
     color: var(--ink-2);
   }
@@ -516,7 +521,8 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     padding-inline: 1.15rem;
   }
 
-  .em-panel > .em-rows:last-child > li:last-child {
+  .em-panel > .em-rows:last-child > li:last-child,
+  .em-panel > .em-rows:has(+ .em-empty[hidden]:last-child) > li:last-child {
     border-bottom: 0;
   }
 
@@ -525,7 +531,8 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     border-top: 0;
   }
 
-  .em-panel > .em-rows:last-child {
+  .em-panel > .em-rows:last-child,
+  .em-panel > .em-rows:has(+ .em-empty[hidden]:last-child) {
     margin-bottom: -1.15rem;
   }
 
@@ -541,6 +548,10 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     padding: 1rem 0;
     border-top: 1px solid var(--rule);
     color: var(--ink-2);
+  }
+
+  .em-empty[hidden] {
+    display: none;
   }
 
   .em-panel > .em-empty:first-child {
@@ -877,9 +888,6 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     }
     .em-cols {
       grid-template-columns: 1fr;
-    }
-    .em-tile + .em-tile {
-      padding-left: 1rem;
     }
   }
 </style>

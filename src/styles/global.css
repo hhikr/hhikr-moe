@@ -1,8 +1,8 @@
 /* ==========================================================================
    hhikr.moe — design tokens & base
-   A numbered engineering manual: ruled boundaries, cut corners on whatever
-   can be clicked, yellow for "current" only. See
-   artifacts/endfield-research/design-plan.md.
+   Reading pages are a numbered engineering manual: ruled boundaries, cut
+   corners on whatever can be clicked, yellow for "current" only. The home
+   page and the admin area are bolder. See docs/design/endfield/.
    ========================================================================== */
 
 @import '@fontsource-variable/jetbrains-mono/wght.css';
@@ -41,7 +41,8 @@
   --hatch: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--ink) 22%, transparent) 5px 6.5px);
   --contour: color-mix(in srgb, var(--ink) 9%, transparent);
 
-  /* Ratio about 1.33. One weight throughout: size and colour carry the levels. */
+  /* Ratio about 1.33. The reading face has one weight, so there size and colour
+     carry the levels; the interface face is variable and may be heavy. */
   --t-display: 3.375rem;
   --t-h1: 2.5rem;
   --t-title: 1.875rem;
@@ -63,21 +64,8 @@
   --snap: cubic-bezier(0.16, 1, 0.3, 1);
   --mech: cubic-bezier(0.7, 0, 0.2, 1);
 
-  /* Names the pages not yet redesigned still use. Remove as they move over. */
-  --paper-2: var(--chip);
-  --paper-3: var(--rule);
-  --card: var(--panel);
-  --ink-3: var(--ink-2);
-  --rule-strong: var(--ink);
-  --sky: var(--ink);
-  --sky-ink: var(--ink);
-  --sky-soft: var(--rule);
+  /* A highlighter stroke: marked text, search hits, an editor selection. */
   --mark: color-mix(in srgb, var(--signal) 55%, transparent);
-  --code-bg: var(--paper);
-  --shadow: none;
-  --font-sans: var(--font-text);
-  --font-display: var(--font-text);
-  --font-cjk: var(--font-text);
 
   color-scheme: light;
 }
@@ -366,13 +354,6 @@ main {
   .margin {
     padding-top: 2rem;
   }
-}
-
-/* Pages not yet redesigned sit on the paper, flush left like the sheet. */
-.wrap {
-  width: 100%;
-  max-width: calc(var(--page) + var(--pad) * 2);
-  padding-inline: var(--pad);
 }
 
 /* ---------- record fields ---------- */
@@ -948,72 +929,4 @@ button.chip {
   padding-inline: 0.3em;
   background: var(--signal);
   color: var(--on-signal);
-}
-
-/* ---------- pieces the pages not yet redesigned still use ---------- */
-
-.cjk,
-.display {
-  font-family: var(--font-text);
-}
-
-.section-head {
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-  margin: 0 0 1.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--ink);
-}
-
-.section-head h2 {
-  margin: 0;
-  font-size: var(--t-h2);
-}
-
-.section-head .en {
-  color: var(--ink-2);
-}
-
-.section-head .more {
-  margin-left: auto;
-}
-
-.link-arrow {
-  font-family: var(--font-mono);
-  font-size: var(--t-mono);
-  color: var(--ink-2);
-  border-bottom: 1px solid var(--rule);
-  white-space: nowrap;
-}
-
-.link-arrow:hover {
-  color: var(--ink);
-  border-color: var(--ink);
-}
-
-.page-head {
-  padding-block: clamp(2rem, 5vw, 3.5rem) 2rem;
-}
-
-.page-head .kicker {
-  margin: 0 0 0.75rem;
-}
-
-.page-head h1 {
-  margin: 0;
-  font-size: var(--t-h1);
-  line-height: 1.25;
-}
-
-.page-head h1 .en {
-  margin-left: 0.5em;
-  font-size: var(--t-h2);
-  color: var(--ink-2);
-}
-
-.page-head p {
-  max-width: 36rem;
-  margin: 1rem 0 0;
-  color: var(--ink-2);
 }

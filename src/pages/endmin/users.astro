@@ -99,6 +99,7 @@ const activity = userActivity();
       ))
     }
   </ul>
+  <p class="em-empty" data-filter-empty hidden>没有符合条件的用户。</p>
   </section>
 </Endmin>
 
@@ -118,6 +119,7 @@ const activity = userActivity();
     const wanted = search.value.trim().toLowerCase();
     const group = document.querySelector<HTMLElement>('[data-filter][aria-pressed="true"]')?.dataset.filter ?? 'all';
     for (const row of rows) row.hidden = !row.dataset.user!.includes(wanted) || (group !== 'all' && row.dataset.group !== group);
+    (window as { showFilterEmpty?: () => void }).showFilterEmpty?.();
   };
   search.addEventListener('input', filter);
   // Wait until the chips' own handler has marked which one is pressed.

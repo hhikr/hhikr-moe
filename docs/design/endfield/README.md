@@ -12,16 +12,46 @@
 
 本目录里的 `*.png` 和 `contour-reference/` 是游戏及其官网的截图，**只作设计参考，不得用进网站**。
 
-## 已经改过的页面
+## 页面状态
 
-| 页面 | 文件 | 状态 |
+旧变量别名（`--sky`、`--card`、`--paper-2` 等）已从 `global.css` 删除，所有页面都用新变量。
+
+**原型阶段做完、由站长认可的**（不要重新设计）：
+
+| 页面 | 文件 | 认可的截图 |
 | --- | --- | --- |
-| 全局变量、外壳、导航、页脚 | `src/styles/global.css`、`src/layouts/Base.astro`、`src/components/Header.astro`、`Footer.astro` | 已改 |
-| 首页 | `src/pages/index.astro` | 已改（最终截图 `shots/home7-light.jpg`） |
-| 文章页 | `src/components/PostArticle.astro`、`Toc.astro`、`SeriesNav.astro`、`src/styles/prose.css` | 已改 |
-| 作品页 | `src/pages/works/index.astro` | 已改 |
-| 管理页外壳和总览 | `src/layouts/Endmin.astro`、`src/pages/endmin/index.astro` | 已改 |
-| 其余页面（分类、合订本、题单、关于、登录、管理子页等） | — | **未改**，靠 `global.css` 里的旧变量别名维持可用 |
+| 全局变量、外壳、导航、页脚 | `src/styles/global.css`、`src/layouts/Base.astro`、`src/components/Header.astro`、`Footer.astro` | — |
+| 首页 | `src/pages/index.astro` | `home7-light.jpg` |
+| 文章页 | `src/components/PostArticle.astro`、`Toc.astro`、`SeriesNav.astro`、`src/styles/prose.css` | `post-light/dark/mobile.jpg` |
+| 作品列表 | `src/pages/works/index.astro` | `works-light.png`、`works-dark.png`、`works-mobile.jpg` |
+| 管理页外壳和总览 | `src/layouts/Endmin.astro`、`src/pages/endmin/index.astro` | `endmin6-light.jpg`、`endmin6-dark.jpg` |
+
+**铺开阶段改的**（尚待站长审阅；截图在 `shots/`，文件名为 页面名-light/dark/mobile.jpg）：
+
+| 页面 | 文件 | 截图 |
+| --- | --- | --- |
+| 文章列表 | `src/pages/posts/index.astro`、`src/components/PostRecord.astro`、`Heatmap.astro` | `posts-*` |
+| 分类 | `src/pages/categories/index.astro` | `categories-*` |
+| 单个分类、单个标签 | `src/pages/categories/[cat].astro`、`src/pages/tags/[tag].astro`、`src/layouts/TermList.astro` | `category-*`、`tag-*` |
+| 合订本、单本 | `src/pages/series/index.astro`、`[name].astro` | `series-*`、`series-volume-*` |
+| 标签 | `src/pages/tags/index.astro` | `tags-*` |
+| 关于 | `src/pages/about.astro` | `about-*` |
+| 作品详情 | `src/pages/works/[slug].astro` | `work-*` |
+| 登录 | `src/pages/login.astro` | `login-*`（带错误提示的状态） |
+| 隐私 | `src/pages/privacy.astro` | `privacy-*` |
+| 404 | `src/pages/404.astro` | `404-*` |
+| 评论区、搜索框 | `src/components/Comments.astro`、`Search.astro`、`src/scripts/comments.ts` | 无单独截图 |
+| Hot 100 外框 | `public/hot100-assets/style.css` 末尾一段 | `hot100-*` |
+| 管理：文章、编辑器、预览 | `src/pages/endmin/posts.astro`、`posts/[id]/index.astro`、`src/scripts/editor.ts`；预览直接用文章页 | `endmin-posts-*`、`endmin-editor-*` |
+| 管理：评论、媒体、统计、用户、备份 | `src/pages/endmin/*.astro` | `endmin-comments-*` 等 |
+| 管理：作品列表、作品编辑 | `src/pages/endmin/works/index.astro`、`[id].astro` | `endmin-works-*`、`endmin-work-edit-*` |
+
+**共用的写法**（新页面先找这里）：
+
+- 阅读类页面：`global.css` 的 `.spread` / `.sheet` / `.margin` 版式，`.crumb`（上一级）、`.sheet-head`（页名加计数）、`.lede`、`.empty`（空状态）、`.filters`、`.group-head`（列表里的分组标题）、`.records`（记录行）、`.more`、`.margin-h` 加 `.ledger`（页边的数字表）。
+- 按钮：`global.css` 的 `.btn`（切角、黄色擦入，原样从首页移出），`.btn.go`、`.btn.small`、`.btn.danger`（只用于删除）；一排按钮用 `.actions`。
+- 表单：给容器加 `.form`，标签用 `.field`；出错提示用 `.notice`（黄色"注意"小旗）。
+- 管理页：`Endmin.astro` 的 `.em-panel`（白底、顶边粗墨色页签，和总览看板同一种）、`.em-rows`（悬停有色条）、`.em-tiles`、`.em-state`（`published` 实线、`hidden`/`draft` 虚线、`alert`/`banned` 黄块）、`.em-btn`、`.em-filters` 里的 `.end`（放在最右的主操作）、`.em-note`、`.em-empty`，以及配合筛选的 `data-filter-empty`。`wide` 属性给编辑器用整个窗口宽度。
 
 ## 已定下的设计决定
 
@@ -71,11 +101,27 @@
 2. 设环境变量 `ENDMIN_GOOGLE_EMAIL=owner@example.com`，用 `src/server/auth.ts` 的 `signInWithGoogle` 建一个管理员（写法同 `tests/server/auth.test.mjs`），再用 `node scripts/endmin-login-link.mjs` 取一次性登录链接。
 3. `node scripts/seed-sample-data.mjs --local`：加入假的用户、评论、作品和访问记录，用来看这些页面有内容时的样子。所有名字和文字都写明是示例数据。只对开发用的库运行。
 
+## 铺开阶段的设计判断（站长可改）
+
+- **列表页一律是"白纸加页边"**：页边放真实的统计（各类篇数、字数合计、最近一篇、写作日历等）。另一种做法是像旧版那样整页一栏、没有页边。
+- **文章列表按年份分组**，组头是等宽的年份和篇数；写作日历（热力图）移到页边。旧版是左侧大号斜体年份。
+- **分类页**每类显示最近 5 篇加"全部 N 篇"；页边用斜线纹底的墨色条显示各类占比。另一种做法是只列分类名和说明，不列文章。
+- **合订本列表**保留"每章一格"的进度条，悬停时浅色主题亮黄、深色主题亮 `--trace`。单本页的章节行第一列是章序 `01`，不是文章编号。
+- **标签页**改为按篇数排序的一排切角小标签，不再用字号大小表示多少（旧版的标签云）。
+- **关于页**：头像放在页边，版本沿革最新一条的版本号是黄色"当前"标签；"本站使用"更新为现在的字体（去掉了已不用的 Instrument Serif）。
+- **作品详情**沿用文章页的版式，下载按钮在标题下；页边是"本页"目录和链接。旧版是左文右图的大头图。
+- **404** 用首页的语气：空心大数字、黄色马克笔一句、切角按钮。它也可以走安静的阅读调子。
+- **评论区和搜索框**：头像改成方形，首字母头像用 `--tag-bg`（原来按名字取随机色相）；弹窗是墨色描边加顶边粗页签。
+- **Hot 100**：题目列表里当前题是整行黄块；难度由绿/黄/红改为 灰底 / 墨色描边 / 墨底；侧栏标题 Hot 实心、100 空心。实验区、代码编辑器、Java 面板没动，它们用到的颜色变量固定为原来的值。
+- **管理子页**：内容都放在和总览同款的看板上（白底、顶边粗页签）；没有改成卡片网格。编辑器从网站自己的外壳移进管理页的命令栏下面，占满窗口宽度。
+- **红色只留给删除**：因此"撤回为草稿""封禁用户""从列表移除（链接、图片、封面）"都改成了普通按钮（仍保留确认框）；备份失败、待审评论、已封禁用户改为黄色标记；出错提示是黄色"出错/注意"小旗；版本对比里新增的内容用黄色标记、删除的内容用灰色删除线，不再用绿色和红色。如果站长认为封禁也算"危险操作"，在 `src/pages/endmin/users.astro` 给那个按钮加回 `danger` 即可。
+- **统计图**在手机上保持可读的最小宽度、在看板里横向滚动，而不是整体缩小。
+
 ## 还没做的事
 
-- 其余页面的改版（见上表）。
-- `src/pages/works/index.astro` 里有仅开发环境生效的 `?sample` 假数据，定稿前删掉。
-- 文章编号（No.001…）目前由 `src/lib/posts.ts` 的 `postNumbers()` 按发布顺序现算，没有存进数据库。
-- 思源黑体的许可证文本（OFL 1.1）还没有复制进仓库。
-- 管理页里的 Hermes 面板和定时任务日历在本机无法预览，没有实际看过效果。
-- 动效只核对过样式数值，没有逐个目视确认手感。
+- 文章编号（No.001…）目前由 `src/lib/posts.ts` 的 `postNumbers()` 按发布顺序现算，没有存进数据库。存库要改数据库结构，不在纯界面改版范围内。
+- 管理页里的 Hermes 面板和定时任务日历依赖服务器上的另一个服务，本机无法预览，只核对过代码。用 Google 登录的流程本机也无法走通。
+- 动效只核对过样式数值，没有逐个目视确认手感。两个持续动画与"不做持续循环的装饰动画"的原则不符，待站长决定：首页的近期文章滚动条（承载内容，悬停即停）、管理总览外圈缓慢旋转的虚线环。
+- 霞鹜文楷的 OFL 许可证文本还没放进仓库（npm 包本身是 MIT，没有带字体许可文件）。思源黑体的已放在 `LICENSES/`。
+- `package.json` 里 `@fontsource-variable/inter` 和 `@fontsource/instrument-serif` 已经没有任何地方引用，可以删掉。
+- 首页、文章页等原型页的截图早于背景等高线的改动，需要时重截。
