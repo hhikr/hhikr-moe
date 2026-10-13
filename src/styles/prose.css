@@ -35,7 +35,7 @@
 .prose h4,
 .prose h5 {
   position: relative;
-  font-family: var(--font-cjk);
+  font-family: var(--font-text);
   color: var(--ink);
   scroll-margin-top: 5.5rem;
 }
@@ -176,7 +176,7 @@
 .prose ol > li::marker {
   font-family: var(--font-mono);
   font-size: 0.85em;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .prose li > p {
@@ -342,7 +342,7 @@
   text-align: center;
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .prose iframe {

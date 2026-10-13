@@ -3,57 +3,62 @@ import Base from '@/layouts/Base.astro';
 ---
 
 <Base title="404" description="页面未找到。" noindex>
-  <div class="wrap lost">
-    <p class="label">Error 404 · Page not found</p>
-    <h1 class="display">404</h1>
-    <p class="cjk msg">页面未找到</p>
-    <div class="actions">
-      <a class="chip" href="/">回到首页</a>
-      <a class="chip" href="/posts/">浏览全部文章</a>
-      <button class="chip" type="button" data-search-open>搜索一下 ⌕</button>
-    </div>
+  <div class="lost">
+    <p class="mono">Error 404 / Page not found</p>
+    <h1><span class="code" aria-hidden="true">404</span><span class="msg">页面未找到</span></h1>
+    <p class="hint">这个地址上没有页面。它可能被改名或删掉了，也可能是地址打错了。</p>
+    <p class="actions">
+      <a class="btn go" href="/">回到首页</a>
+      <a class="btn" href="/posts/">全部文章</a>
+      <button class="btn" type="button" data-search-open>搜索</button>
+    </p>
   </div>
 </Base>
 
 <style>
   .lost {
-    padding-block: clamp(4rem, 12vw, 9rem);
-    text-align: center;
+    container-type: inline-size;
+    padding: clamp(2rem, 6vw, 4.5rem) var(--pad) 5rem;
+    font-family: var(--font-ui);
+  }
+
+  .lost > p {
+    margin: 0;
   }
 
   h1 {
-    margin: 0.5rem 0 0;
-    font-size: clamp(8rem, 30vw, 20rem);
-    line-height: 0.9;
-    font-style: italic;
-    letter-spacing: -0.05em;
+    display: flex;
+    flex-direction: column;
+    margin: 1rem 0 0;
   }
 
-  h1 span {
-    color: var(--sky);
+  /* the number, hollow, as large as the column takes: the same voice as the home page */
+  .code {
+    font-size: clamp(7rem, 34cqi, 18rem);
+    font-weight: 800;
+    line-height: 0.82;
+    letter-spacing: -0.06em;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--ink);
   }
 
   .msg {
-    margin: 1.5rem 0 0.5rem;
-    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    align-self: flex-start;
+    margin-top: 1.5rem;
+    padding: 0.1em 0.45em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-size: clamp(1.3rem, 3.5cqi, 1.9rem);
+    font-weight: 800;
   }
 
   .hint {
-    margin: 0;
-    color: var(--ink-3);
+    max-width: 30rem;
+    margin-top: 1rem !important;
+    color: var(--ink-2);
   }
 
   .actions {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 2rem;
-  }
-
-  .actions .chip {
-    padding: 0.35em 1em;
-    font-size: 0.85rem;
-    cursor: pointer;
+    margin-top: 2rem !important;
   }
 </style>

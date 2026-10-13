@@ -32,7 +32,7 @@ const pos = posts.findIndex((p) => p.id === current.id);
       ))
     }
   </ol>
-  <a class="all link-arrow" href={seriesUrl(series)}>查看整本</a>
+  <a class="all more mono" href={seriesUrl(series)}>查看整本</a>
 </details>
 
 <style>
@@ -82,7 +82,7 @@ const pos = posts.findIndex((p) => p.id === current.id);
   .i {
     font-family: var(--font-mono);
     font-size: 0.75rem;
-    color: var(--ink-3);
+    color: var(--ink-2);
     padding-top: 0.15rem;
   }
 
@@ -91,7 +91,9 @@ const pos = posts.findIndex((p) => p.id === current.id);
   }
 
   li a:hover {
-    color: var(--sky);
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
   }
 
   li.current span[aria-current] {
@@ -101,11 +103,11 @@ const pos = posts.findIndex((p) => p.id === current.id);
   }
 
   li.current .i {
-    color: var(--sky);
+    color: var(--ink);
   }
 
   li.draft a {
-    color: var(--ink-3);
+    color: var(--ink-2);
   }
 
   .all {

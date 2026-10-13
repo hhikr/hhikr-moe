@@ -4,10 +4,11 @@ import Base from '@/layouts/Base.astro';
 ---
 
 <Base title="隐私说明" description="这个网站保存哪些数据，以及如何删除。">
-  <div class="wrap">
-    <header class="page-head">
-      <p class="label kicker">Privacy</p>
+  <div class="spread">
+    <div class="sheet">
+    <header class="sheet-head">
       <h1>隐私说明</h1>
+      <p class="mono">更新 2026.10.11</p>
     </header>
 
     <div class="prose">
@@ -39,21 +40,24 @@ import Base from '@/layouts/Base.astro';
 
       <h2>删除</h2>
       <p>你可以随时删除自己的评论。需要删除账号时，登录后在任意文章评论区的「账号」里操作，账号、头像和它名下的评论会立即一并删除；在那里也可以修改密码，或让其他设备上的登录全部失效。无法登录时，通过<a href="/about/">关于页</a>上的联系方式告诉站长，也能删除。</p>
-
-      <p class="updated">最后更新：2026 年 10 月 11 日</p>
     </div>
+    </div>
+
+    <aside class="margin" aria-label="要点">
+      <h2 class="margin-h mono">要点</h2>
+      <ul class="ledger">
+        <li><span>浏览需要登录</span><span class="mono">否</span></li>
+        <li><span>第三方统计</span><span class="mono">无</span></li>
+        <li><span>广告</span><span class="mono">无</span></li>
+        <li><span>Cookie</span><span class="mono">仅登录</span></li>
+        <li><span>IP 地址</span><span class="mono">不保存</span></li>
+      </ul>
+    </aside>
   </div>
 </Base>
 
 <style>
   .prose {
-    max-width: var(--measure);
-    padding-bottom: 4rem;
-  }
-
-  .updated {
-    margin-top: 3rem;
-    color: var(--ink-3);
-    font-size: 0.85rem;
+    margin-top: 2rem;
   }
 </style>
