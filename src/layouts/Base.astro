@@ -16,9 +16,11 @@ interface Props {
   modified?: Date;
   tags?: string[];
   noindex?: boolean;
+  /** Leave out the site's own navigation and footer: the page brings its own. */
+  bare?: boolean;
 }
 
-const { title, description = SITE.description, image, type = 'website', published, modified, tags = [], noindex } = Astro.props;
+const { title, description = SITE.description, image, type = 'website', published, modified, tags = [], noindex, bare = false } = Astro.props;
 
 const fullTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${AUTHOR.name} 的个人网站`;
 const canonical = new URL(Astro.url.pathname, SITE.url);
@@ -56,8 +58,8 @@ const jsonLd = {
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="alternate" type="application/rss+xml" title={SITE.title} href="/rss.xml" />
     <link rel="sitemap" href="/sitemap-index.xml" />
-    <meta name="theme-color" content="#f4f0e6" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0e1117" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f4f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#191919" media="(prefers-color-scheme: dark)" />
 
     <meta property="og:site_name" content={SITE.title} />
     <meta property="og:type" content={type} />
@@ -78,11 +80,27 @@ const jsonLd = {
   </head>
   <body>
     <a class="skip" href="#main">跳到正文</a>
-    <Header />
-    <main id="main">
-      <slot />
-    </main>
-    <Footer />
+    <div class="tri top" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="progress" aria-hidden="true"><span data-progress></span></div>
+    {
+      bare ? (
+        <div class="content bare">
+          <main id="main">
+            <slot />
+          </main>
+        </div>
+      ) : (
+        <div class="shell">
+          <Header />
+          <div class="content">
+            <main id="main">
+              <slot />
+            </main>
+            <Footer />
+          </div>
+        </div>
+      )
+    }
     <Search />
     <script>
       import '@/scripts/site.ts';
@@ -97,13 +115,11 @@ const jsonLd = {
     bottom: 1rem;
     z-index: 300;
     padding: 0.55rem 1rem;
-    border: 1.5px solid var(--ink);
-    border-radius: 999px;
+    border: 1px solid var(--ink);
     background: var(--paper);
     color: var(--ink);
     font-family: var(--font-mono);
     font-size: 0.78rem;
-    box-shadow: 4px 4px 0 var(--sky-soft);
     cursor: pointer;
   }
 
@@ -148,7 +164,6 @@ const jsonLd = {
     max-height: 88vh;
     object-fit: contain;
     background: #fff;
-    border-radius: 3px;
   }
   .lightbox p {
     margin: 0;

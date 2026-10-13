@@ -6,6 +6,7 @@ import { commentCounts, listAllComments } from '@/server/comments.ts';
 import { cosmoOrigin } from '@/server/cosmo.ts';
 import { cronCalendars, hermesInternal, hermesStatus } from '@/server/hermes.ts';
 import { listAllPosts } from '@/server/posts.ts';
+import { listProjects } from '@/server/projects.ts';
 import { statsReport } from '@/server/stats.ts';
 import { formatBytes, systemStatus } from '@/server/system.ts';
 import { listUsers } from '@/server/users.ts';
@@ -104,14 +105,83 @@ const dayTitle = (d: { day: string; runs: number; failed: number }) =>
   `${Number(d.day.slice(5, 7))}月${Number(d.day.slice(8))}日：${d.runs === 0 ? '没有运行' : `运行 ${d.runs} 次${d.failed ? `，其中 ${d.failed} 次失败` : ''}`}`;
 const liveJobs = calendars.filter((job) => !job.removed).length;
 const showHermes = !!cosmo || watched;
+
+// ── The wheel ────────────────────────────────────────────────────────────
+// The eight sections of the management area as eight blocks of a ring around
+// the dial. Each is a link; pointing at one puts its figures in the centre.
+const works = listProjects({ role: 'endmin' });
+const W = 300;
+const wAt = (r: number, deg: number) => {
+  const a = (deg * Math.PI) / 180;
+  return { x: +(W + r * Math.sin(a)).toFixed(1), y: +(W - r * Math.cos(a)).toFixed(1) };
+};
+const [R1, R2, GAP] = [228, 288, 1.6];
+const block = (mid: number) => {
+  const [a0, a1] = [mid - 22.5 + GAP, mid + 22.5 - GAP];
+  const [o0, o1, i1, i0] = [wAt(R2, a0), wAt(R2, a1), wAt(R1, a1), wAt(R1, a0)];
+  return `M${o0.x} ${o0.y}A${R2} ${R2} 0 0 1 ${o1.x} ${o1.y}L${i1.x} ${i1.y}A${R1} ${R1} 0 0 0 ${i0.x} ${i0.y}Z`;
+};
+const wheel = [
+  { k: 'overview', href: '/endmin/', zh: '概览', en: 'Overview', big: up[0], unit: up[1], sub: now ? `读数 ${hour.format(new Date(now.at * 1000))}` : '还没有读数' },
+  { k: 'posts', href: '/endmin/posts/', zh: '文章', en: 'Posts', big: published.length, unit: '篇已发布', sub: `草稿 ${drafts.length}` },
+  { k: 'works', href: '/endmin/works/', zh: '作品', en: 'Works', big: works.length, unit: '件作品', sub: `下载 ${works.reduce((total, w) => total + w.downloads, 0)}` },
+  { k: 'media', href: '/endmin/media/', zh: '媒体', en: 'Media', big: sys.mediaFiles, unit: '个文件', sub: formatBytes(sys.mediaBytes) },
+  { k: 'comments', href: '/endmin/comments/', zh: '评论', en: 'Comments', big: comments.total, unit: '条评论', sub: `待审 ${comments.hidden}`, alert: comments.hidden > 0 },
+  { k: 'users', href: '/endmin/users/', zh: '用户', en: 'Users', big: users.length, unit: '位用户', sub: '' },
+  { k: 'stats', href: '/endmin/stats/', zh: '统计', en: 'Stats', big: today.views, unit: '次浏览', sub: '今天' },
+  {
+    k: 'backup',
+    href: '/endmin/backup/',
+    zh: '备份',
+    en: 'Backup',
+    big: backupRed > 0 ? backupRed : backup.lastOk ? '正常' : '—',
+    unit: backupRed > 0 ? '个问题' : !backup.configured ? '尚未配置' : backup.lastOk ? when.format(new Date(backup.lastOk.startedAt)) : '还没有成功过',
+    sub: '',
+    alert: backupRed > 0,
+  },
+].map((s, i) => {
+  const mid = i * 45;
+  const [l0, l1] = [wAt(R2 + 8, mid - 22.5 + GAP), wAt(R2 + 8, mid + 22.5 - GAP)];
+  return {
+    ...s,
+    i,
+    d: block(mid),
+    at: wAt((R1 + R2) / 2, mid),
+    flag: wAt(R2 - 14, mid + 15),
+    // Pointing at a block: a bracket closes round its outer edge, and a beam runs from it in to the dial.
+    lock: `M${l0.x} ${l0.y}A${R2 + 8} ${R2 + 8} 0 0 1 ${l1.x} ${l1.y}`,
+    beam: [wAt(R1 - 3, mid), wAt(196, mid)],
+  };
+});
 ---
 
 <Endmin title="概览" en="Overview" plain>
   <div class="board">
     <div class="orbit">
       <figure class="hub">
-        <h1 class="cjk">概览<span class="display">Overview</span></h1>
-        <svg viewBox="0 0 400 400" role="img" aria-label={dialLabel}>
+        <h1 class="sr-only">概览</h1>
+        <svg class="wheel" viewBox="0 0 600 600" aria-label={`管理分区，以及机器现在的状态：${dialLabel}`}>
+          <circle class="orbit-line" cx={W} cy={W} r="296" />
+          {
+            wheel.map((s) => (
+              <a
+                href={s.href}
+                class:list={['seg', { here: s.k === 'overview', alert: s.alert }]}
+                data-k={s.k}
+                data-fx-host={s.k}
+                style={`--i:${s.i}`}
+                aria-label={`${s.zh}：${s.big} ${s.unit}${s.sub ? `，${s.sub}` : ''}`}
+              >
+                <path class="lock" d={s.lock} pathLength="100" />
+                <line class="beam" x1={s.beam[0].x} y1={s.beam[0].y} x2={s.beam[1].x} y2={s.beam[1].y} pathLength="100" />
+                <path class="plate" d={s.d} />
+                <text class="seg-zh" x={s.at.x} y={s.at.y - 4} text-anchor="middle">{s.zh}</text>
+                <text class="seg-en" x={s.at.x} y={s.at.y + 13} text-anchor="middle">{s.en}</text>
+                {s.alert && <rect class="seg-flag" x={s.flag.x - 7} y={s.flag.y - 7} width="14" height="14" />}
+              </a>
+            ))
+          }
+          <g transform="translate(100 100)">
           <circle class="face" cx={C} cy={C} r={FACE} />
           {
             [0, 6, 12, 18].map((h) => (
@@ -150,6 +220,7 @@ const showHermes = !!cosmo || watched;
                     transform={`rotate(-90 ${C} ${C})`}
                   />
                 )}
+                {(ring.share ?? 0) > 0.85 && <rect class="ring-flag" x={C - 86} y={C - ring.r - 8} width="80" height="16" />}
                 <text x={C - 10} y={C - ring.r} text-anchor="end" dominant-baseline="central">
                   {ring.label} <tspan class="v">{percent(ring.share)}</tspan>
                 </text>
@@ -157,11 +228,20 @@ const showHermes = !!cosmo || watched;
             ))
           }
 
-          <text class="core-label" x={C} y={C - 16} text-anchor="middle">系统已运行</text>
-          <text class="core" x={C} y={C + 28} text-anchor="middle">
-            {up[0]}<tspan class="unit" dx="5">{up[1]}</tspan>
-          </text>
-          <text class="core-label" x={C} y={C + 50} text-anchor="middle">{now ? `读数 ${hour.format(new Date(now.at * 1000))}` : '还没有读数'}</text>
+          {/* The centre reads out whichever block of the ring is pointed at; left alone, the machine's uptime. */}
+          {
+            wheel.map((s) => (
+              <g class="read" data-k={s.k} aria-hidden="true">
+                <polygon class="core-tag" points={`${C - 40},${C - 30} ${C + 40},${C - 30} ${C + 40},${C - 17} ${C + 34},${C - 11} ${C - 40},${C - 11}`} />
+                <text class="core-label on-tag" x={C} y={C - 16.5} text-anchor="middle">{s.k === 'overview' ? '系统已运行' : s.zh}</text>
+                <text class:list={['core', { long: String(s.big).length > 4 }]} x={C} y={C + 28} text-anchor="middle">
+                  <tspan data-fx-of={s.k}>{s.big}</tspan>{s.k === 'overview' && <tspan class="unit" dx="5">{s.unit}</tspan>}
+                </text>
+                <text class="core-label" x={C} y={C + 50} text-anchor="middle">{s.k === 'overview' ? s.sub : [s.unit, s.sub].filter(Boolean).join(' | ')}</text>
+              </g>
+            ))
+          }
+          </g>
         </svg>
         <figcaption>
           <span><i class="k-cpu"></i>外圈向外 处理器（满格 {cpuTop * 100}%{vps.cpuPeak !== null && `，24 小时峰值 ${percent(vps.cpuPeak)}`}）</span>
@@ -172,20 +252,20 @@ const showHermes = !!cosmo || watched;
       </figure>
 
       <section class="sat l1">
-        <h2>文章 <a href="/endmin/posts/">全部 →</a></h2>
+        <h2>文章 <a href="/endmin/posts/">全部</a></h2>
         <div class="figs">
-          <a href="/endmin/posts/"><b>{published.length}</b><span class="cjk">已发布</span></a>
-          <a href="/endmin/posts/"><b>{hidden.length}</b><span class="cjk">隐藏</span></a>
-          <a href="/endmin/posts/"><b>{drafts.length}</b><span class="cjk">草稿</span></a>
+          <a href="/endmin/posts/"><b data-fx-load>{published.length}</b><span class="cjk">已发布</span></a>
+          <a href="/endmin/posts/"><b data-fx-load>{hidden.length}</b><span class="cjk">隐藏</span></a>
+          <a href="/endmin/posts/"><b data-fx-load>{drafts.length}</b><span class="cjk">草稿</span></a>
         </div>
       </section>
 
       <section class="sat r1">
-        <h2>访问 <a href="/endmin/stats/">详情 →</a></h2>
+        <h2>访问 <a href="/endmin/stats/">详情</a></h2>
         <div class="figs">
-          <a href="/endmin/stats/"><b>{today.views.toLocaleString('zh-CN')}</b><span class="cjk">今天</span><small>{today.visitors.toLocaleString('zh-CN')} 人</small></a>
-          <a href="/endmin/stats/"><b>{sum(lastWeek, 'views').toLocaleString('zh-CN')}</b><span class="cjk">7 天</span><small>{sum(lastWeek, 'visitors').toLocaleString('zh-CN')} 人</small></a>
-          <a href="/endmin/stats/"><b>{visits.views.toLocaleString('zh-CN')}</b><span class="cjk">30 天</span><small>{visits.visitors.toLocaleString('zh-CN')} 人</small></a>
+          <a href="/endmin/stats/"><b data-fx-load>{today.views.toLocaleString('zh-CN')}</b><span class="cjk">今天</span><small>{today.visitors.toLocaleString('zh-CN')} 人</small></a>
+          <a href="/endmin/stats/"><b data-fx-load>{sum(lastWeek, 'views').toLocaleString('zh-CN')}</b><span class="cjk">7 天</span><small>{sum(lastWeek, 'visitors').toLocaleString('zh-CN')} 人</small></a>
+          <a href="/endmin/stats/"><b data-fx-load>{visits.views.toLocaleString('zh-CN')}</b><span class="cjk">30 天</span><small>{visits.visitors.toLocaleString('zh-CN')} 人</small></a>
         </div>
         <svg class="spark" viewBox="0 0 300 48" preserveAspectRatio="none" role="img" aria-label="最近 30 天每天的浏览次数">
           {visits.series.map((d, i) => <rect x={i * 10 + 1} y={48 - Math.max(1, (d.views / peak) * 46)} width="8" height={Math.max(1, (d.views / peak) * 46)}><title>{`${d.day}：${d.views} 次`}</title></rect>)}
@@ -193,14 +273,27 @@ const showHermes = !!cosmo || watched;
       </section>
 
       <section class="sat l2">
-        <h2>互动 <a href="/endmin/comments/">评论 →</a></h2>
+        <h2>互动 <a href="/endmin/comments/">评论</a></h2>
         <div class="figs">
-          <a href="/endmin/comments/"><b>{comments.total}</b><span class="cjk">评论</span></a>
-          <a href="/endmin/comments/" class:list={{ bad: comments.hidden > 0 }}><b>{comments.hidden}</b><span class="cjk">待审</span></a>
-          <a href="/endmin/users/"><b>{users.length}</b><span class="cjk">用户</span></a>
+          <a href="/endmin/comments/"><b data-fx-load>{comments.total}</b><span class="cjk">评论</span></a>
+          <a href="/endmin/comments/" class:list={{ bad: comments.hidden > 0 }}><b data-fx-load>{comments.hidden}</b><span class="cjk">待审</span></a>
+          <a href="/endmin/users/"><b data-fx-load>{users.length}</b><span class="cjk">用户</span></a>
         </div>
       </section>
 
+      {/* Three panels a side, always: where Hermes is not set up, the works and media stand in its place. */}
+      {
+        !showHermes && (
+          <section class="sat r2">
+            <h2>作品与媒体 <a href="/endmin/works/">作品</a></h2>
+            <div class="figs">
+              <a href="/endmin/works/"><b data-fx-load>{works.length}</b><span class="cjk">作品</span></a>
+              <a href="/endmin/works/"><b data-fx-load>{works.reduce((total, w) => total + w.downloads, 0).toLocaleString('zh-CN')}</b><span class="cjk">下载</span></a>
+              <a href="/endmin/media/"><b data-fx-load>{sys.mediaFiles}</b><span class="cjk">媒体文件</span></a>
+            </div>
+          </section>
+        )
+      }
       {
         showHermes && (
           <section class="sat r2">
@@ -213,12 +306,12 @@ const showHermes = !!cosmo || watched;
               )}
             </h2>
             <div class="figs">
-              {watched && <a href={cosmo ? `${cosmo}/` : '#cron'}><b>{hermes.online ? (hermes.activeSessions ?? 0) : '—'}</b><span class="cjk">会话</span></a>}
-              {watched && <a href="#cron"><b>{liveJobs}</b><span class="cjk">定时任务</span></a>}
+              {watched && <a href={cosmo ? `${cosmo}/` : '#cron'}><b data-fx-load>{hermes.online ? (hermes.activeSessions ?? 0) : '—'}</b><span class="cjk">会话</span></a>}
+              {watched && <a href="#cron"><b data-fx-load>{liveJobs}</b><span class="cjk">定时任务</span></a>}
               {cosmo && (
                 <p class="doors">
-                  <a class="em-btn go" href={`${cosmo}/`} target="_blank" rel="noopener">对话 ↗</a>
-                  <a class="em-btn" href={`${cosmo}/admin/`} target="_blank" rel="noopener">管理页 ↗</a>
+                  <a class="em-btn go" href={`${cosmo}/`} target="_blank" rel="noopener">对话</a>
+                  <a class="em-btn" href={`${cosmo}/admin/`} target="_blank" rel="noopener">管理页</a>
                 </p>
               )}
             </div>
@@ -227,7 +320,7 @@ const showHermes = !!cosmo || watched;
       }
 
       <section class="sat l3">
-        <h2>网站 <a href="/endmin/backup/">备份 →</a></h2>
+        <h2>网站 <a href="/endmin/backup/">备份</a></h2>
         <dl class="em-facts">
           <div>
             <dt>数据库</dt>
@@ -251,7 +344,7 @@ const showHermes = !!cosmo || watched;
         </dl>
       </section>
 
-      <section class:list={['sat', showHermes ? 'r3' : 'r2']}>
+      <section class="sat r3">
         <h2>机器 <span class="state idle">每分钟一次</span></h2>
         <dl class="em-facts">
           <div>
@@ -278,8 +371,8 @@ const showHermes = !!cosmo || watched;
   {
     watched && (
       <section class="em-panel wide" id="cron">
-        <h2 class="mid">定时任务</h2>
-        {cosmo && <p class="mid-link"><a href={`${cosmo}/admin/cron`} target="_blank" rel="noopener">在 Hermes 里管理 ↗</a></p>}
+        <h2 class="em-mid"><span>定时任务</span></h2>
+        {cosmo && <p class="mid-link"><a href={`${cosmo}/admin/cron`} target="_blank" rel="noopener">在 Hermes 里管理</a></p>}
         {calendars.length === 0 ? (
           <p class="em-empty mid-empty">Hermes 里还没有定时任务。建一个之后，它每运行一次，这里就点亮一格。</p>
         ) : (
@@ -304,7 +397,7 @@ const showHermes = !!cosmo || watched;
                       week.map(
                         (d, n) =>
                           d && (
-                            <rect class:list={[`l${level(d.runs, job.busiest)}`, { bad: d.failed > 0 }]} x={GRID_LEFT + w * STEP} y={GRID_TOP + n * STEP} width={CELL} height={CELL} rx="2">
+                            <rect class:list={[`l${level(d.runs, job.busiest)}`, { bad: d.failed > 0 }]} x={GRID_LEFT + w * STEP} y={GRID_TOP + n * STEP} width={CELL} height={CELL}>
                               <title>{dayTitle(d)}</title>
                             </rect>
                           ),
@@ -325,7 +418,7 @@ const showHermes = !!cosmo || watched;
 
   <div class="em-cols">
     <section class="em-panel">
-      <h2>最新评论 <a href="/endmin/comments/">全部 →</a></h2>
+      <h2>最新评论 <a href="/endmin/comments/">全部</a></h2>
       {
         recent.length === 0 ? (
           <p class="em-empty">还没有评论。</p>
@@ -348,7 +441,7 @@ const showHermes = !!cosmo || watched;
     </section>
 
     <section class="em-panel">
-      <h2>草稿 <a href="/endmin/posts/">全部文章 →</a></h2>
+      <h2>草稿 <a href="/endmin/posts/">全部文章</a></h2>
       {
         drafts.length === 0 ? (
           <p class="em-empty">没有草稿。</p>
@@ -379,49 +472,240 @@ const showHermes = !!cosmo || watched;
   </div>
 </Endmin>
 
+<script>
+  import { wireReadouts } from '@/scripts/fx';
+
+  wireReadouts();
+</script>
+
 <style>
-  /* ---------- the board: a dial with six panels around it ---------- */
+  /* ---------- the board: the wheel, and the panels either side of it ---------- */
   .board {
     container: board / inline-size;
+    margin-inline: calc(var(--pad) * -1);
+    padding: 0.5rem var(--pad) 2rem;
   }
 
   .orbit {
-    --gap: 1.75rem;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-    gap: 2rem var(--gap);
+    gap: 1.25rem;
   }
 
   .hub {
     grid-column: 1 / -1;
     justify-self: center;
-    width: min(100%, 26rem);
+    width: min(100%, 36rem);
     margin: 0;
   }
 
-  .hub h1 {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 0.9rem;
-    margin: 0 0 0.25rem;
-    font-size: clamp(2rem, 4vw, 2.9rem);
-    line-height: 1.1;
-  }
-
-  .hub h1 .display {
-    font-size: 0.55em;
-    font-style: italic;
-    color: var(--ink-3);
-  }
-
-  .hub svg {
+  .wheel {
     display: block;
     width: 100%;
     height: auto;
     overflow: visible;
   }
 
+  /* A dashed line around the lot, turning slowly: the board is live. */
+  .orbit-line {
+    fill: none;
+    stroke: var(--ink-2);
+    stroke-width: 1;
+    stroke-dasharray: 2 10;
+    transform-box: view-box;
+    transform-origin: 300px 300px;
+    animation: turn 120s linear infinite;
+  }
+
+  @keyframes turn {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* --- the ring of sections: every block is a link --- */
+  .seg .plate {
+    fill: var(--panel);
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    transition: fill 0.12s;
+  }
+
+  /* Pointing at a block locks on to it: a bracket is drawn round its outer
+     edge from both ends, and a beam runs from it in to the dial, where the
+     readout settles on that block's figures (fx.ts). */
+  .seg .lock,
+  .seg .beam {
+    fill: none;
+    stroke: var(--trace);
+    stroke-width: 3;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: stroke-dashoffset 0.16s var(--mech);
+  }
+
+  .seg .beam {
+    stroke-width: 2;
+    stroke-dasharray: 8 6;
+    stroke-dashoffset: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .seg:hover .lock,
+  .seg:focus-visible .lock {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.34s var(--mech);
+  }
+
+  .seg:hover .beam,
+  .seg:focus-visible .beam {
+    opacity: 1;
+    animation: feed 0.5s linear infinite;
+  }
+
+  @keyframes feed {
+    to {
+      stroke-dashoffset: -14;
+    }
+  }
+
+  .seg {
+    transform-box: view-box;
+    transform-origin: 300px 300px;
+    transition: transform 0.22s var(--snap);
+    outline: none;
+  }
+
+  /* Opening the page: the ring is assembled a block at a time, clockwise. */
+  @media (prefers-reduced-motion: no-preference) {
+    .seg {
+      animation: seat 460ms var(--snap) backwards;
+      animation-delay: calc(var(--i) * 55ms + 80ms);
+    }
+    @keyframes seat {
+      from {
+        opacity: 0;
+        transform: scale(1.12) rotate(-9deg);
+      }
+    }
+  }
+
+  .seg-zh {
+    fill: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 19px;
+    font-weight: 700;
+    transition: fill 0.15s;
+  }
+
+  .seg-en {
+    fill: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    transition: fill 0.15s;
+  }
+
+  /* where you are */
+  .seg.here .plate {
+    fill: var(--ink);
+  }
+
+  .seg.here .seg-zh,
+  .seg.here .seg-en {
+    fill: var(--panel);
+  }
+
+  /* something waits there: a heavier edge, and a yellow flag on it */
+  .seg.alert .plate {
+    stroke-width: 3.5;
+  }
+
+  .seg-flag {
+    fill: var(--signal);
+    stroke: var(--on-signal);
+    stroke-width: 1.5;
+  }
+
+  .seg:hover,
+  .seg:focus-visible {
+    transform: scale(1.035);
+  }
+
+  .seg:hover .plate,
+  .seg:focus-visible .plate {
+    fill: var(--signal);
+    stroke: var(--on-signal);
+  }
+
+  .seg:hover .seg-zh,
+  .seg:hover .seg-en,
+  .seg:focus-visible .seg-zh,
+  .seg:focus-visible .seg-en {
+    fill: var(--on-signal);
+  }
+
+  .seg:focus-visible .plate {
+    stroke-width: 4;
+  }
+
+  /* --- the centre: one readout at a time --- */
+  .read {
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .read[data-k='overview'] {
+    opacity: 1;
+  }
+
+  .wheel:has(.seg:not(.here):is(:hover, :focus-visible)) .read[data-k='overview'] {
+    opacity: 0;
+  }
+
+  .wheel:has(.seg[data-k='posts']:is(:hover, :focus-visible)) .read[data-k='posts'],
+  .wheel:has(.seg[data-k='works']:is(:hover, :focus-visible)) .read[data-k='works'],
+  .wheel:has(.seg[data-k='media']:is(:hover, :focus-visible)) .read[data-k='media'],
+  .wheel:has(.seg[data-k='comments']:is(:hover, :focus-visible)) .read[data-k='comments'],
+  .wheel:has(.seg[data-k='users']:is(:hover, :focus-visible)) .read[data-k='users'],
+  .wheel:has(.seg[data-k='stats']:is(:hover, :focus-visible)) .read[data-k='stats'],
+  .wheel:has(.seg[data-k='backup']:is(:hover, :focus-visible)) .read[data-k='backup'] {
+    opacity: 1;
+  }
+
+  .core-tag {
+    fill: var(--signal);
+  }
+
+  .core-label {
+    fill: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: 11px;
+  }
+
+  .core-label.on-tag {
+    fill: var(--on-signal);
+    font-weight: 700;
+  }
+
+  .core {
+    fill: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 52px;
+    font-weight: 800;
+  }
+
+  .core.long {
+    font-size: 34px;
+  }
+
+  .core .unit {
+    fill: var(--ink-2);
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  /* --- the machine: a 24-hour face and three arcs --- */
   .face {
     fill: none;
     stroke: var(--rule);
@@ -429,7 +713,7 @@ const showHermes = !!cosmo || watched;
   }
 
   .axis {
-    fill: var(--ink-3);
+    fill: var(--ink-2);
     font-family: var(--font-mono);
     font-size: 11px;
   }
@@ -439,22 +723,23 @@ const showHermes = !!cosmo || watched;
     stroke-width: 4;
   }
 
+  /* Ink by day, yellow by night: yellow is no line on a white page. */
   .t-cpu {
-    stroke: var(--sky);
+    stroke: var(--trace);
   }
 
   .t-mem {
-    stroke: var(--ink);
-    opacity: 0.55;
+    stroke: var(--ink-2);
+    opacity: 0.7;
   }
 
   .blank {
-    fill: var(--ink-3);
+    fill: var(--ink-2);
     opacity: 0.6;
   }
 
   .hand-name {
-    fill: var(--signal);
+    fill: var(--ink);
     font-family: var(--font-mono);
     font-size: 10px;
   }
@@ -466,81 +751,69 @@ const showHermes = !!cosmo || watched;
   }
 
   .tick:hover .hit {
-    opacity: 0.08;
+    opacity: 0.1;
   }
 
   .hand {
-    stroke: var(--signal);
-    stroke-width: 1.5;
-    stroke-linecap: round;
+    stroke: var(--tri-a);
+    stroke-width: 2;
   }
 
   .ring circle {
     fill: none;
     stroke-width: 11;
-    stroke-linecap: round;
   }
 
   .ring .track {
-    stroke: var(--paper-3);
+    stroke: var(--chip);
   }
 
   .ring .arc {
     animation: sweep 0.9s var(--ease) backwards;
   }
 
-  .ring.cpu .arc {
-    stroke: var(--sky);
+  /* The three arcs are quiet greys. One that is nearly full turns to the
+     strongest mark the theme has (ink by day, yellow by night) and its name
+     gets a yellow flag: no fourth colour is brought in for it. */
+  .ring .arc {
+    stroke: var(--ink-2);
   }
 
   .ring.mem .arc {
-    stroke: var(--ink);
+    opacity: 0.75;
     animation-delay: 0.08s;
   }
 
   .ring.disk .arc {
-    stroke: var(--ink-3);
+    opacity: 0.5;
     animation-delay: 0.16s;
   }
 
   .ring.warn .arc {
-    stroke: var(--signal);
+    stroke: var(--trace);
+    opacity: 1;
+  }
+
+  .ring-flag {
+    fill: var(--signal);
   }
 
   .ring text {
     fill: var(--ink-2);
-    font-family: var(--font-cjk);
-    font-size: 13px;
+    font-family: var(--font-ui);
+    font-size: 12px;
   }
 
   .ring .v {
     fill: var(--ink);
-    font-family: var(--font-mono);
-    font-size: 12px;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 
   .ring.warn text,
   .ring.warn .v {
-    fill: var(--signal);
-  }
-
-  .core-label {
-    fill: var(--ink-3);
-    font-family: var(--font-mono);
-    font-size: 11px;
-  }
-
-  .core {
-    fill: var(--ink);
-    font-family: var(--font-display);
-    font-size: 56px;
-  }
-
-  .core .unit {
-    fill: var(--ink-2);
-    font-family: var(--font-cjk);
-    font-size: 17px;
+    fill: var(--on-signal);
+    font-weight: 700;
   }
 
   @keyframes sweep {
@@ -550,8 +823,13 @@ const showHermes = !!cosmo || watched;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .ring .arc {
-      animation: none;
+    .ring .arc,
+    .orbit-line,
+    .seg .beam {
+      animation: none !important;
+    }
+    .seg {
+      transition: none;
     }
   }
 
@@ -561,9 +839,8 @@ const showHermes = !!cosmo || watched;
     justify-content: center;
     gap: 0.2rem 1rem;
     margin-top: 0.75rem;
-    color: var(--ink-3);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
+    color: var(--ink-2);
+    font-size: 0.72rem;
   }
 
   .hub figcaption .wide {
@@ -581,135 +858,249 @@ const showHermes = !!cosmo || watched;
   }
 
   .k-cpu {
-    background: var(--sky);
+    background: var(--trace);
   }
 
   .k-mem {
-    background: var(--ink);
-    opacity: 0.55;
+    background: var(--ink-2);
+    opacity: 0.7;
   }
 
   .hub figcaption .k-now {
     width: 0.75rem;
     height: 2px;
     vertical-align: 0.2rem;
-    background: var(--signal);
+    background: var(--tri-a);
   }
 
   /* ---------- the panels ---------- */
-  .sat {
+  .sat,
+  .em-cols .em-panel,
+  .em-panel.wide {
     position: relative;
     min-width: 0;
-    padding-top: 0.7rem;
-    border-top: 1.5px solid var(--rule-strong);
+    padding: 1rem 1.15rem 1.15rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
   }
 
-  .sat h2 {
+  /* The six panels round the wheel are not boxes in a table. Each is an open
+     plate with the corner nearest the wheel cut away, so the three on a side
+     follow its curve; the top pair lead, the bottom pair are the small print. */
+  .sat {
+    --cutaway: 1.6rem;
+    border: 0;
+  }
+
+  .l1 {
+    background: linear-gradient(-45deg, transparent var(--cutaway), var(--panel) calc(var(--cutaway) + 0.5px));
+  }
+
+  .l3 {
+    background: linear-gradient(-135deg, transparent var(--cutaway), var(--panel) calc(var(--cutaway) + 0.5px));
+  }
+
+  .r1 {
+    background: linear-gradient(45deg, transparent var(--cutaway), var(--panel) calc(var(--cutaway) + 0.5px));
+  }
+
+  .r3 {
+    background: linear-gradient(135deg, transparent var(--cutaway), var(--panel) calc(var(--cutaway) + 0.5px));
+  }
+
+  /* on the right the tab sits at the outer end too, so the two sides mirror */
+  .r1::before,
+  .r2::before,
+  .r3::before {
+    transform-origin: right;
+  }
+
+  .l1 .figs b,
+  .r1 .figs b {
+    font-size: 3.1rem;
+  }
+
+  .l2 .figs b,
+  .r2 .figs b {
+    font-size: 2rem;
+  }
+
+  .l3 .figs,
+  .r3 .figs {
+    border-top: 0;
+  }
+
+  /* A heavy tab on the top edge of every panel. Pointing at the panel runs it
+     out along the whole edge. */
+  .sat::before,
+  .em-cols .em-panel::before,
+  .em-panel.wide::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    height: 5px;
+    background: var(--ink);
+    transform: scaleX(0.14);
+    transform-origin: left;
+    transition: transform 0.4s var(--mech);
+  }
+
+  .sat:hover::before,
+  .sat:focus-within::before,
+  .em-cols .em-panel:hover::before,
+  .em-panel.wide:hover::before {
+    transform: none;
+  }
+
+  /* Opening the page: the panels are switched on from the top row down. */
+  @media (prefers-reduced-motion: no-preference) {
+    .sat {
+      animation: power 520ms var(--mech) backwards;
+    }
+    .l1,
+    .r1 {
+      animation-delay: 120ms;
+    }
+    .l2,
+    .r2 {
+      animation-delay: 220ms;
+    }
+    .l3,
+    .r3 {
+      animation-delay: 320ms;
+    }
+    @keyframes power {
+      from {
+        opacity: 0;
+        clip-path: inset(0 0 100% 0);
+      }
+      to {
+        opacity: 1;
+        clip-path: inset(-6px);
+      }
+    }
+  }
+
+  .sat h2,
+  .em-cols .em-panel h2 {
     display: flex;
     align-items: baseline;
     gap: 0.75rem;
-    margin: 0 0 0.5rem;
-    font-family: var(--font-cjk);
-    font-size: 1.2rem;
-    font-weight: 400;
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+    font-weight: 800;
   }
 
   .sat h2 a,
+  .em-cols .em-panel h2 a,
   .state {
     margin-left: auto;
-    color: var(--ink-3);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
+    color: var(--ink-2);
+    font-size: 0.75rem;
+    font-weight: 400;
     white-space: nowrap;
   }
 
   .sat h2 a:hover,
-  .sat dt a:hover {
-    color: var(--sky-ink);
+  .em-cols .em-panel h2 a:hover {
+    color: var(--ink);
+    text-decoration: underline;
   }
 
   .state::before {
     content: '';
     display: inline-block;
-    width: 0.45rem;
-    height: 0.45rem;
+    width: 0.5rem;
+    height: 0.5rem;
     margin-right: 0.4rem;
-    border-radius: 50%;
-    background: var(--sky);
+    background: var(--trace);
   }
 
   .state.idle::before {
-    background: var(--ink-3);
+    background: var(--ink-2);
   }
 
   .state.off {
-    color: var(--signal);
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-weight: 700;
   }
 
   .state.off::before {
-    background: var(--signal);
-  }
-
-  .sat dt a {
-    text-decoration: underline;
-    text-decoration-color: var(--rule);
-    text-underline-offset: 0.2em;
+    background: var(--on-signal);
   }
 
   .sat .em-facts dd {
-    font-size: 0.76rem;
-    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+  }
+
+  .sat .em-facts div:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
   }
 
   .figs {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.75rem;
-    padding: 0.5rem 0 0.25rem;
+    padding-top: 0.7rem;
     border-top: 1px solid var(--rule);
   }
 
   .figs a {
     display: grid;
-    gap: 0.15rem;
+    gap: 0.1rem;
+    align-content: start;
+    justify-items: start;
   }
 
   .figs b {
-    font-family: var(--font-display);
-    font-size: 2.5rem;
-    font-weight: 400;
+    font-size: 2.4rem;
+    font-weight: 800;
     font-variant-numeric: tabular-nums;
-    line-height: 1;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
   }
 
   .figs .cjk {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
     color: var(--ink-2);
-    font-size: 0.92rem;
   }
 
   .figs small {
-    color: var(--ink-3);
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
+    color: var(--ink-2);
+    font-size: 0.72rem;
   }
 
-  .figs a:hover .cjk {
-    color: var(--sky-ink);
+  .figs b {
+    background: linear-gradient(var(--signal), var(--signal)) left / 0% 100% no-repeat;
+    transition: background-size 0.22s var(--mech);
+  }
+
+  .figs a:hover b,
+  .figs a:focus-visible b {
+    background-size: 100% 100%;
+    color: var(--on-signal);
   }
 
   .figs .bad b,
-  .bad {
-    color: var(--signal);
+  .em-meta .bad {
+    padding: 0 0.15em;
+    background: var(--signal);
+    color: var(--on-signal);
   }
 
   .spark {
     display: block;
     width: 100%;
-    height: 1.6rem;
-    margin-top: 0.5rem;
+    height: 2rem;
+    margin-top: 0.75rem;
     border-bottom: 1px solid var(--rule);
-    fill: var(--sky);
-    opacity: 0.7;
+    fill: var(--trace);
   }
 
   .doors {
@@ -721,15 +1112,62 @@ const showHermes = !!cosmo || watched;
     margin: 0;
   }
 
-  /* Wide enough for the panels to stand around the dial: three on each side in
-     shared rows, so the two sides mirror each other. */
-  @container board (min-width: 56rem) {
+  /* Wide enough for the panels to stand either side of the wheel. */
+  @container board (min-width: 62rem) {
     .orbit {
-      --gap: 2rem;
-      grid-template-columns: minmax(0, 1fr) clamp(22rem, 41cqi, 31rem) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) clamp(27rem, 44cqi, 38rem) minmax(0, 1fr);
       grid-template-rows: repeat(3, auto);
-      align-items: start;
-      row-gap: 1.9rem;
+      /* each pair of panels, left and right, is as tall as the taller of the two */
+      align-items: stretch;
+      --gap: clamp(1.25rem, 3cqi, 2.5rem);
+      gap: 1.25rem var(--gap);
+    }
+
+    /* The wheel bulges at its middle and falls away above and below, and the
+       panels give way to it: the middle pair stand back, and the top and
+       bottom pairs lean in under and over its shoulders. */
+    .l1,
+    .l3 {
+      margin-right: -1rem;
+    }
+
+    .r1,
+    .r3 {
+      margin-left: -1rem;
+    }
+
+    .l2 {
+      margin: 0 1.75rem 0 -0.75rem;
+    }
+
+    .r2 {
+      margin: 0 -0.75rem 0 1.75rem;
+    }
+
+    /* From each of the middle pair a lead runs in to the wheel's rim. */
+    .l2::after,
+    .r2::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: calc(1.75rem + var(--gap) + 0.4rem);
+      height: 7px;
+      margin-top: -3.5px;
+      pointer-events: none;
+    }
+
+    .l2::after {
+      left: 100%;
+      background:
+        linear-gradient(var(--ink), var(--ink)) center / 100% 1px no-repeat,
+        linear-gradient(var(--ink), var(--ink)) right center / 7px 7px no-repeat;
+    }
+
+    .r2::after {
+      right: 100%;
+      background:
+        linear-gradient(var(--ink), var(--ink)) center / 100% 1px no-repeat,
+        linear-gradient(var(--ink), var(--ink)) left center / 7px 7px no-repeat;
     }
 
     .hub {
@@ -765,93 +1203,44 @@ const showHermes = !!cosmo || watched;
     .r3 {
       grid-row: 3;
     }
+  }
 
-    /* The top rule of the lower four panels is carried on to the dial and ends in a dot. */
-    .sat {
-      --reach: calc(var(--gap) + 1.25rem);
+  /* A phone: bigger names on the ring, and no small print in it. */
+  @container board (max-width: 34rem) {
+    .seg-zh {
+      font-size: 25px;
     }
-
-    .sat:not(.l1, .r1)::before,
-    .sat:not(.l1, .r1)::after {
-      content: '';
-      position: absolute;
-      pointer-events: none;
-    }
-
-    .sat::before {
-      top: -1.5px;
-      width: var(--reach);
-      height: 1.5px;
-      background: var(--rule-strong);
-    }
-
-    .sat::after {
-      top: -4.25px;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--ink);
-    }
-
-    .l2::before,
-    .l3::before {
-      left: 100%;
-    }
-
-    .l2::after,
-    .l3::after {
-      left: calc(100% + var(--reach) - 4.25px);
-    }
-
-    .r2::before,
-    .r3::before {
-      right: 100%;
-    }
-
-    .r2::after,
-    .r3::after {
-      right: calc(100% + var(--reach) - 4.25px);
+    .seg-en {
+      display: none;
     }
   }
 
   /* ---------- the scheduled jobs ---------- */
   .em-panel.wide {
-    margin-top: 3.5rem;
+    margin-top: 1.5rem;
   }
 
-  /* a heading set in the middle of its own rule */
-  .em-panel h2.mid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    gap: 1.5rem;
-  }
-
-  .em-panel h2.mid::before,
-  .em-panel h2.mid::after {
-    content: '';
-    height: 1.5px;
-    background: var(--rule-strong);
+  .em-panel h2.em-mid {
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
   }
 
   .mid-link {
     margin: 0 0 0.6rem;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    text-align: center;
+    font-size: 0.75rem;
   }
 
   .mid-link a {
-    color: var(--ink-3);
+    color: var(--ink-2);
   }
 
   .mid-link a:hover {
-    color: var(--sky-ink);
+    color: var(--ink);
+    text-decoration: underline;
   }
 
   .mid-empty {
     border-top: 0;
-    text-align: center;
   }
 
   .habits {
@@ -871,8 +1260,7 @@ const showHermes = !!cosmo || watched;
   }
 
   .habit-head .t {
-    font-family: var(--font-cjk);
-    font-size: 1.08rem;
+    font-weight: 700;
   }
 
   .habit-head .em-state {
@@ -897,14 +1285,14 @@ const showHermes = !!cosmo || watched;
 
   .heat rect,
   .heat-key i {
-    fill: var(--sky);
-    background: var(--sky);
+    fill: var(--trace);
+    background: var(--trace);
   }
 
   .heat .l0,
   .heat-key .l0 {
-    fill: var(--paper-3);
-    background: var(--paper-3);
+    fill: var(--chip);
+    background: var(--chip);
   }
 
   .heat .l1,
@@ -919,8 +1307,9 @@ const showHermes = !!cosmo || watched;
 
   .heat .bad,
   .heat-key .bad {
-    fill: var(--signal);
-    background: var(--signal);
+    fill: var(--tri-a);
+    background: var(--tri-a);
+    opacity: 1;
   }
 
   .heat-key {
@@ -929,9 +1318,8 @@ const showHermes = !!cosmo || watched;
     align-items: center;
     gap: 0.3rem;
     margin: 0.8rem 0 0;
-    color: var(--ink-3);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
+    color: var(--ink-2);
+    font-size: 0.75rem;
   }
 
   .heat-key i {
@@ -939,7 +1327,6 @@ const showHermes = !!cosmo || watched;
     width: 0.7rem;
     height: 0.7rem;
     margin-left: 0.7rem;
-    border-radius: 2px;
   }
 
   .heat-key i + i {
@@ -948,12 +1335,9 @@ const showHermes = !!cosmo || watched;
 
   .em-cols {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
     margin-top: 1.5rem;
-  }
-
-  .em-cols .em-panel {
-    padding-top: 0.7rem;
-    border-top: 1.5px solid var(--rule-strong);
+    padding-top: 0;
   }
 
   .em-cols .em-panel + .em-panel {
@@ -963,7 +1347,6 @@ const showHermes = !!cosmo || watched;
   @media (max-width: 860px) {
     .em-cols {
       grid-template-columns: 1fr;
-      gap: 2.25rem;
     }
   }
 </style>

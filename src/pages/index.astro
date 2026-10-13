@@ -1,525 +1,1174 @@
 ---
 import Base from '@/layouts/Base.astro';
-import PostRow from '@/components/PostRow.astro';
-import SeriesCard from '@/components/SeriesCard.astro';
-import Icon from '@/components/Icon.astro';
 import { AUTHOR, CATEGORIES, SITE, SOCIALS } from '@/site.config';
-import { categoryUrl, fmtDate, getPosts, groupBy, postUrl, viewerOf } from '@/lib/posts';
+import { categoryOf, categoryUrl, fmtDate, getPosts, groupBy, postNumbers, postUrl, seriesName, seriesUrl, viewerOf } from '@/lib/posts';
+import { listProjects, PROJECT_KINDS } from '@/server/projects.ts';
 
 export const prerender = false;
 
-const posts = getPosts(viewerOf(Astro.locals));
-const latest = posts.slice(0, 6);
-const series = [...groupBy(posts, (p) => p.data.series)].sort((a, b) => b[1].length - a[1].length);
-const byCategory = groupBy(posts, (p) => p.data.category);
-const tagCount = new Set(posts.flatMap((p) => p.data.tags)).size;
-const words = posts.reduce((n, p) => n + p.words, 0);
-const startHere = posts.find((p) => p.id === 'time-machine');
+const viewer = viewerOf(Astro.locals);
+const posts = getPosts(viewer);
+const numbers = postNumbers();
+const latest = posts[0];
+const latestCat = latest && categoryOf(latest);
+const n = (x: number) => x.toLocaleString('zh-CN');
 
-const stats = [
-  { n: posts.length, label: '篇文章', en: 'entries' },
-  { n: series.length, label: '个合订本', en: 'volumes' },
-  words >= 10000
-    ? { n: (words / 10000).toFixed(1), label: '万字', en: 'words' }
-    : { n: words, label: '字', en: 'words' },
-  { n: tagCount, label: '个标签', en: 'tags' },
+const words = posts.reduce((sum, p) => sum + p.words, 0);
+const first = posts.length ? new Date(Math.min(...posts.map((p) => p.data.date.valueOf()))) : undefined;
+const days = first ? Math.floor((Date.now() - first.valueOf()) / 86_400_000) + 1 : 0;
+
+const byCategory = groupBy(posts, (p) => p.data.category);
+const categories = Object.entries(CATEGORIES).map(([key, c]) => {
+  const list = byCategory.get(key) ?? [];
+  return { ...c, count: list.length, share: posts.length ? list.length / posts.length : 0 };
+});
+const series = [...groupBy(posts, (p) => p.data.series)]
+  .map(([name, list]) => ({ name, count: list.length, words: list.reduce((sum, p) => sum + p.words, 0) }))
+  .sort((a, b) => b.count - a.count);
+const works = listProjects(viewer);
+// One page per problem, named by its number on LeetCode.
+const problems = Object.keys(import.meta.glob('./hot100/*.astro'))
+  .map((f) => Number(f.match(/\/(\d+)\.astro$/)?.[1]))
+  .filter(Boolean)
+  .sort((a, b) => a - b);
+
+// The parts of the site. Pointing at one in the index shows what is in it.
+const parts = [
+  { k: 'posts', name: '文章', en: 'Posts', count: posts.length, href: '/posts/', all: `全部 ${posts.length} 篇` },
+  { k: 'series', name: '合订本', en: 'Series', count: series.length, href: '/series/', all: `全部 ${series.length} 本` },
+  { k: 'hot', name: '题单', en: 'Hot 100', count: problems.length, href: '/hot100/', all: '进入题单' },
+  { k: 'cats', name: '分类', en: 'Categories', count: categories.length, href: '/categories/', all: '全部分类' },
+  { k: 'works', name: '作品', en: 'Works', count: works.length, href: '/works/', all: `全部 ${works.length} 件` },
+  { k: 'about', name: '关于', en: 'About', count: SITE.since, href: '/about/', all: '关于这个站' },
 ];
+const ticker = posts.slice(0, 10);
 ---
 
 <Base>
-  <section class="hero wrap">
-    <div class="hero-text">
-      <p class="label kicker rise">{posts.length} 篇文章 · {SITE.since} 年起</p>
-      <h1 class="masthead display rise" style="--i:1">
-        Hitch&shy;hiker<span class="star" aria-hidden="true">✦</span>
-      </h1>
-      <p class="sub cjk rise" style="--i:2">{AUTHOR.name} 的个人网站</p>
-      <p class="intro rise" style="--i:3">
-        {AUTHOR.bio}。
+  <div class="home">
+    <section class="hero" data-hero>
+      <p class="hero-meta">
+        <time datetime={new Date().toISOString()}>{fmtDate(new Date())}</time>
+        {first && <span>第 <b data-fx-load>{n(days)}</b> 天</span>}
+        <span><b data-fx-load>{posts.length}</b> 篇</span>
+        <span><b data-fx-load>{n(words)}</b> 字</span>
       </p>
-      <div class="actions rise" style="--i:4">
-        {
-          startHere && (
-            <a class="btn primary" href={postUrl(startHere)}>
-              <span class="cjk">引导之始</span>
-              <Icon name="arrow" size={16} />
-            </a>
-          )
-        }
-        <a class="btn" href="/posts/"><span class="cjk">浏览全部文章</span></a>
-        <ul class="socials" aria-label="社交链接">
+
+      <h1 class="wordmark">
+        <span class="solid">HHIKR</span>
+        <span class="hollow" aria-hidden="true">.MOE</span>
+      </h1>
+
+      <div class="hero-copy">
+        <p class="claim"><span>{AUTHOR.name} 的个人网站</span></p>
+        <p class="bio">{AUTHOR.bio}。学习笔记、折腾记录与杂谈。</p>
+        <p class="actions">
           {
-            SOCIALS.map((s) => (
-              <li>
-                <a href={s.href} target="_blank" rel="noopener noreferrer me" aria-label={s.label} title={s.label}>
-                  <Icon name={s.icon} size={18} />
-                </a>
-              </li>
-            ))
+            latest && (
+              <a class="btn go" href={postUrl(latest)}>
+                读最新一篇 <span class="no">{numbers.get(latest.id)}</span>
+              </a>
+            )
           }
-        </ul>
+          <a class="btn" href="/posts/">全部文章</a>
+          <a class="btn" href="/hot100/">题单 Hot 100</a>
+        </p>
       </div>
-    </div>
 
-    <figure class="postcard rise" style="--i:2">
-      <div class="stamp">
-        <img src="/img/sky-1100.webp" srcset="/img/sky-480.webp 480w, /img/sky-760.webp 760w, /img/sky-1100.webp 1100w" sizes="(max-width: 860px) 92vw, 34rem" width="1440" height="811" alt="蓝天白云下抬头望天的女孩插画" loading="eager" decoding="async" class="sky" />
-        <span class="postmark label" aria-hidden="true">HHIKR.MOE<br />{fmtDate(new Date())}</span>
-      </div>
-      <div class="polaroid">
-        <img src="/img/avatar-220.webp" width="220" height="248" alt={`${AUTHOR.name} 的头像（铅笔线稿）`} loading="lazy" decoding="async" class="avatar" />
-        <span class="cjk">hhikr</span>
-      </div>
-    </figure>
-
-    <div class="horizon" aria-hidden="true"><span class="walker"></span></div>
-  </section>
-
-  <section class="wrap stats" aria-label="站点统计">
-    {
-      stats.map((s, i) => (
-        <div class="stat rise" style={`--i:${i + 3}`}>
-          <span class="n display">{s.n}</span>
-          <span class="l">
-            <span class="cjk">{s.label}</span>
-            <span class="label">{s.en}</span>
-          </span>
+      <figure class="hero-art">
+        <div class="frame">
+          <img
+            src="/img/avatar-869.webp"
+            srcset="/img/avatar-560.webp 560w, /img/avatar-869.webp 869w"
+            sizes="(max-width: 899px) 100vw, 42vw"
+            width="869"
+            height="979"
+            alt={`${AUTHOR.name} 的头像：闭着眼大笑的短发女孩，铅笔线稿`}
+            loading="eager"
+            decoding="sync"
+            fetchpriority="high"
+          />
         </div>
-      ))
-    }
-  </section>
+        <figcaption>{AUTHOR.headline}</figcaption>
+      </figure>
 
-  <section class="wrap block">
-    <header class="section-head">
-      <span class="label">§ 01</span>
-      <h2>最新</h2>
-      <span class="en">Latest</span>
-      <a class="more link-arrow" href="/posts/">全部文章 →</a>
-    </header>
-    <ol class="rows">
-      {latest.map((p, i) => <PostRow post={p} index={i} />)}
-    </ol>
-  </section>
-
-  {
-    series.length > 0 && (
-      <section class="wrap block">
-        <header class="section-head">
-          <span class="label">§ 02</span>
-          <h2>合订本</h2>
-          <span class="en">Series</span>
-          <a class="more link-arrow" href="/series/">全部合订本 →</a>
-        </header>
-        <div class="series-grid">
-          {series.map(([name, ps], i) => (
-            <SeriesCard name={name} posts={ps} index={i} />
-          ))}
-        </div>
-      </section>
-    )
-  }
-
-  <section class="wrap block">
-    <header class="section-head">
-      <span class="label">§ 03</span>
-      <h2>分类</h2>
-      <span class="en">Sections</span>
-      <a class="more link-arrow" href="/categories/">全部分类 →</a>
-    </header>
-    <div class="cats">
       {
-        Object.entries(CATEGORIES).map(([key, c], i) => {
-          const list = byCategory.get(key) ?? [];
-          return (
-            <a href={categoryUrl(c.slug)} class="cat rise" style={`--i:${i}`}>
-              <span class="cat-n display">{String(list.length).padStart(2, '0')}</span>
-              <span class="cat-name cjk">{c.name}</span>
-              <span class="cat-en display">{c.en}</span>
-              <span class="cat-latest label">{list[0] ? `最近：${list[0].data.title}` : '暂无文章'}</span>
-            </a>
-          );
-        })
+        ticker.length > 0 && (
+          <div class="ticker" aria-label="最近的文章">
+            <div class="track">
+              {[0, 1].map((copy) => (
+                <ul aria-hidden={copy === 1 ? 'true' : undefined}>
+                  {ticker.map((p) => (
+                    <li>
+                      <a href={postUrl(p)} tabindex={copy === 1 ? -1 : undefined}>
+                        <b>{numbers.get(p.id)}</b>
+                        {p.data.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ))}
+            </div>
+          </div>
+        )
       }
-    </div>
-  </section>
+    </section>
+
+    {
+      latest && (
+        <section class="latest" aria-labelledby="latest-h">
+          <a href={postUrl(latest)} data-fx-host>
+            <span class="big-no" aria-hidden="true" data-fx>
+              {numbers.get(latest.id)?.replace('No.', '')}
+            </span>
+            <span class="latest-body">
+              <span class="latest-meta">
+                <span class="flag">最新</span>
+                <time datetime={latest.data.date.toISOString()}>{fmtDate(latest.data.date)}</time>
+                <span>{n(latest.words)} 字</span>
+                <span>约 {latest.minutes} 分钟</span>
+                {latestCat && <span>{latestCat.name}</span>}
+              </span>
+              <span id="latest-h" class="latest-title">{latest.data.title}</span>
+              {latest.data.summary && <span class="latest-summary">{latest.data.summary}</span>}
+              <span class="btn go">阅读全文</span>
+            </span>
+          </a>
+        </section>
+      )
+    }
+
+    <section class="index" aria-labelledby="index-h">
+      <h2 id="index-h" class="bar-title">全站索引</h2>
+      <div class="index-grid" data-index>
+        {
+          parts.map((part, i) => (
+            <>
+              <a class:list={['row', { 'is-active': i === 0 }]} data-row={part.k} href={part.href} style={`grid-row:${i + 1}`} data-fx-host>
+                <span class="row-name">{part.name}</span>
+                <span class="row-en">{part.en}</span>
+                <span class="row-count" data-fx>{part.count}</span>
+              </a>
+              <div class:list={['pane', { 'is-active': i === 0 }]} data-pane={part.k}>
+                {part.k === 'posts' &&
+                  (posts.length > 0 ? (
+                    <ol class="records">
+                      {posts.slice(0, 7).map((p) => (
+                        <li>
+                          <a class="record" href={postUrl(p)}>
+                            <span class="tag">{numbers.get(p.id)}</span>
+                            <time class="mono" datetime={p.data.date.toISOString()}>{fmtDate(p.data.date)}</time>
+                            <span class="name">
+                              {p.data.title}
+                              {p.data.hidden && <span class="badge-draft">隐藏</span>}
+                            </span>
+                            <span class="mono">{n(p.words)} 字</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p class="none">还没有发布文章。</p>
+                  ))}
+
+                {part.k === 'series' &&
+                  (series.length > 0 ? (
+                    <ul class="lines">
+                      {series.slice(0, 7).map((s) => (
+                        <li>
+                          <a href={seriesUrl(s.name)}>
+                            <span>{seriesName(s.name)}</span>
+                            <span class="mono">
+                              {s.count} 篇，{n(s.words)} 字
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p class="none">还没有合订本。</p>
+                  ))}
+
+                {part.k === 'hot' && (
+                  <>
+                    <p class="pane-lead">每一格是一道题，数字是它在力扣上的题号。每道题都有 Java 解法、逐步演示和编程练习。</p>
+                    <ol class="matrix">
+                      {problems.map((id, at) => (
+                        <li style={`--i:${at}`}>
+                          <a href={`/hot100/${id}/`}>{id}</a>
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                )}
+
+                {part.k === 'cats' && (
+                  <ul class="cats">
+                    {categories.map((c) => (
+                      <li>
+                        <a href={categoryUrl(c.slug)}>
+                          <span class="cat-name">{c.name}</span>
+                          <span class="mono">{c.count} 篇</span>
+                          <span class="bar" aria-hidden="true">
+                            <i style={`width:${(c.share * 100).toFixed(1)}%`} />
+                          </span>
+                          <span class="cat-about">{c.description}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {part.k === 'works' &&
+                  (works.length > 0 ? (
+                    <ul class="lines">
+                      {works.slice(0, 6).map((w) => (
+                        <li>
+                          <a href={`/works/${w.slug}/`}>
+                            <span>{w.title}</span>
+                            <span class="mono">
+                              {PROJECT_KINDS[w.kind]}
+                              {w.latestVersion && `，${w.latestVersion}`}，更新 {fmtDate(w.updatedAt)}
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p class="none">还没有发布作品。做好的 mod 和小工具会放在这里，可以直接下载。</p>
+                  ))}
+
+                {part.k === 'about' && (
+                  <div class="who">
+                    <img src="/img/sky-480.webp" width="480" height="270" alt="蓝天白云下抬头望天的女孩插画" loading="lazy" decoding="async" />
+                    <div>
+                      <p class="who-name">{AUTHOR.name}</p>
+                      <p class="who-bio">{AUTHOR.bio}。</p>
+                      <p class="actions">
+                        {SOCIALS.map((s) => (
+                          <a class="btn" href={s.href} target="_blank" rel="noopener noreferrer me">
+                            {s.label}
+                          </a>
+                        ))}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <p class="pane-foot">
+                  <a class="btn go" href={part.href}>
+                    {part.all}
+                  </a>
+                </p>
+              </div>
+            </>
+          ))
+        }
+      </div>
+    </section>
+  </div>
 </Base>
 
+<script>
+  import { wireReadouts } from '@/scripts/fx';
+
+  wireReadouts();
+
+  // The index: pointing at a row (or reaching it with the keyboard) shows
+  // what is in that part of the site, and it stays shown until another is picked.
+  const index = document.querySelector<HTMLElement>('[data-index]');
+  if (index) {
+    const pick = (key: string) => {
+      index.querySelectorAll<HTMLElement>('[data-row]').forEach((row) => row.classList.toggle('is-active', row.dataset.row === key));
+      index.querySelectorAll<HTMLElement>('[data-pane]').forEach((pane) => pane.classList.toggle('is-active', pane.dataset.pane === key));
+    };
+    index.querySelectorAll<HTMLElement>('[data-row]').forEach((row) => {
+      row.addEventListener('pointerenter', (e) => e.pointerType === 'mouse' && pick(row.dataset.row!));
+      row.addEventListener('focus', () => pick(row.dataset.row!));
+    });
+  }
+
+  // The picture leans a little away from the pointer.
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  if (hero && matchMedia('(prefers-reduced-motion: no-preference) and (hover: hover)').matches) {
+    hero.addEventListener('pointermove', (e) => {
+      const box = hero.getBoundingClientRect();
+      hero.style.setProperty('--mx', ((e.clientX - box.left) / box.width - 0.5).toFixed(3));
+      hero.style.setProperty('--my', ((e.clientY - box.top) / box.height - 0.5).toFixed(3));
+    });
+  }
+</script>
+
 <style>
-  .hero {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: clamp(2rem, 5vw, 5rem);
+  .home {
+    width: 100%;
+    font-family: var(--font-ui);
+  }
+
+  /* A button is a block with one corner cut, like every entrance on the site. */
+  .btn {
+    --fill: var(--chip);
+    display: inline-flex;
     align-items: center;
-    padding-top: clamp(2.5rem, 7vw, 6rem);
-    padding-bottom: clamp(4rem, 8vw, 7rem);
-  }
-
-  .kicker {
-    margin: 0 0 1.5rem;
-  }
-
-  .masthead {
+    gap: 0.6em;
     position: relative;
-    margin: 0;
-    font-size: clamp(4.2rem, 13.5vw, 11.5rem);
-    line-height: 0.82;
-    letter-spacing: -0.045em;
-    font-style: italic;
-    hyphens: manual;
+    isolation: isolate;
+    padding: 0.55rem 1.5rem 0.55rem 1rem;
+    background: var(--fill);
+    -webkit-mask: linear-gradient(-45deg, transparent 0.5rem, #000 calc(0.5rem + 0.5px));
+    mask: linear-gradient(-45deg, transparent 0.5rem, #000 calc(0.5rem + 0.5px));
+    color: var(--ink);
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition:
+      color 0.12s 0.06s,
+      transform 0.1s;
   }
 
-  .star {
-    display: inline-block;
-    font-style: normal;
-    font-size: 0.28em;
-    vertical-align: 1.9em;
-    margin-left: 0.08em;
-    color: var(--sky);
-    animation: twinkle 4s ease-in-out infinite;
+  /* The cut corner is a mask, so the focus ring is drawn inside the block. */
+  .btn:focus-visible {
+    outline-offset: -4px;
   }
 
-  @keyframes twinkle {
-    50% {
-      opacity: 0.35;
-      transform: rotate(45deg) scale(0.85);
+  .btn.go {
+    --fill: var(--ink);
+    color: var(--panel);
+  }
+
+  .btn .no {
+    font-weight: 400;
+    opacity: 0.75;
+  }
+
+  /* Pointing at a button: yellow is driven across it from the left, behind a
+     bright leading edge, and the label changes as the edge passes. */
+  .btn::before,
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    transform: translateX(-101%);
+    transition: transform 0.28s var(--mech);
+  }
+
+  .btn::before {
+    background: var(--signal);
+  }
+
+  .btn::after {
+    inset: 0 auto 0 0;
+    z-index: 0;
+    width: 3px;
+    background: var(--on-signal);
+    opacity: 0;
+  }
+
+  a.btn:hover,
+  a.btn:focus-visible,
+  a:hover > .latest-body > .btn {
+    color: var(--on-signal);
+  }
+
+  a.btn:hover::before,
+  a.btn:focus-visible::before,
+  a:hover > .latest-body > .btn::before {
+    transform: none;
+  }
+
+  a.btn:hover::after,
+  a:hover > .latest-body > .btn::after {
+    animation: edge 0.3s var(--mech);
+  }
+
+  @keyframes edge {
+    0% {
+      left: 0;
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      left: 100%;
+      opacity: 0;
     }
   }
 
-  .sub {
-    margin: 1.4rem 0 0;
-    font-size: clamp(1.4rem, 2.6vw, 2rem);
-    line-height: 1.3;
+  a.btn:active {
+    transform: translateY(1px) scale(0.985);
   }
 
-  .intro {
-    max-width: 32rem;
-    margin: 1rem 0 0;
-    font-size: 1.05rem;
-    color: var(--ink-2);
+  @media (prefers-reduced-motion: reduce) {
+    .btn::before,
+    .btn::after {
+      transition: none;
+      animation: none !important;
+    }
   }
 
   .actions {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 2rem;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    height: 2.75rem;
-    padding: 0 1.25rem;
-    border: 1.5px solid var(--ink);
-    border-radius: 999px;
-    font-size: 1.02rem;
-    transition: background 0.25s, color 0.25s, transform 0.25s var(--ease), box-shadow 0.25s;
-  }
-
-  .btn:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 3px 3px 0 var(--ink);
-  }
-
-  .btn.primary {
-    background: var(--ink);
-    color: var(--paper);
-  }
-
-  .btn.primary:hover {
-    background: var(--sky);
-    border-color: var(--sky);
-    box-shadow: 3px 3px 0 var(--ink);
-  }
-
-  .socials {
-    display: flex;
-    gap: 0.15rem;
-    list-style: none;
-    margin: 0 0 0 0.5rem;
-    padding: 0;
-  }
-
-  .socials a {
-    display: grid;
-    place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 999px;
-    color: var(--ink-2);
-    transition: color 0.2s, background 0.2s;
-  }
-
-  .socials a:hover {
-    color: var(--sky);
-    background: var(--paper-2);
-  }
-
-  /* postcard */
-  .postcard {
-    position: relative;
+    gap: 0.6rem;
     margin: 0;
-    justify-self: end;
-    width: 100%;
-    max-width: 34rem;
   }
 
-  .stamp {
+  /* ---------- the opening ---------- */
+  .hero {
+    --mx: 0;
+    --my: 0;
+    container-type: inline-size;
     position: relative;
-    padding: 10px;
-    background: var(--card);
-    /* perforated stamp edge */
-    -webkit-mask:
-      radial-gradient(circle 5px at 5px 5px, #0000 98%, #000) -5px -5px / 15px 15px,
-      linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat;
-    -webkit-mask-composite: source-over;
-    mask:
-      radial-gradient(circle 5px at 5px 5px, #0000 98%, #000) -5px -5px / 15px 15px,
-      linear-gradient(#000 0 0) 10px 10px / calc(100% - 20px) calc(100% - 20px) no-repeat;
-    filter: drop-shadow(0 12px 22px rgb(28 26 22 / 0.18));
-    transform: rotate(1.5deg);
-  }
-
-  .sky {
-    display: block;
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    object-fit: cover;
-    object-position: 30% 60%;
-  }
-
-  .postmark {
-    position: absolute;
-    top: 1.6rem;
-    right: 1.6rem;
-    padding: 0.5rem 0.7rem;
-    border: 1.5px solid rgb(255 255 255 / 0.85);
-    border-radius: 999px;
-    color: #fff;
-    text-align: center;
-    line-height: 1.4;
-    font-size: 0.62rem;
-    transform: rotate(-12deg);
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
-  }
-
-
-  .polaroid {
-    position: absolute;
-    left: -2.5rem;
-    bottom: -2.25rem;
-    width: 9.5rem;
-    padding: 0.5rem 0.5rem 0.4rem;
-    background: #fbf8ef;
-    box-shadow: var(--shadow);
-    transform: rotate(-6deg);
-    text-align: center;
-    transition: transform 0.5s var(--ease);
-  }
-
-  .polaroid:hover {
-    transform: rotate(-2deg) translateY(-6px) scale(1.04);
-  }
-
-  .polaroid::before {
-    /* tape */
-    content: '';
-    position: absolute;
-    top: -0.7rem;
-    left: 50%;
-    width: 4.5rem;
-    height: 1.4rem;
-    transform: translateX(-50%) rotate(3deg);
-    background: color-mix(in srgb, var(--sky) 30%, rgb(255 255 255 / 0.55));
-    backdrop-filter: blur(1px);
-  }
-
-  .avatar {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1;
-    object-fit: cover;
-    object-position: top;
-  }
-
-  .polaroid span {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.95rem;
-    color: #3a372f;
-  }
-
-  .horizon {
-    position: absolute;
-    left: var(--gutter);
-    right: var(--gutter);
-    bottom: 0;
-    height: 1.5px;
-    background: var(--rule-strong);
-  }
-
-  .walker {
-    position: absolute;
-    right: 6%;
-    bottom: 1px;
-    width: 64px;
-    height: 60px;
-    background: var(--ink);
-    -webkit-mask: url('/mark.png') bottom / contain no-repeat;
-    mask: url('/mark.png') bottom / contain no-repeat;
-  }
-
-  /* stats */
-  .stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 42%);
+    grid-template-rows: auto 1fr auto auto;
+    column-gap: clamp(1.5rem, 4vw, 3.5rem);
+    min-height: min(46rem, calc(100dvh - 3px));
+    padding-top: 1.25rem;
     border-bottom: 1px solid var(--rule);
+    overflow: hidden;
   }
 
-  .stat {
+  .hero-meta {
+    grid-column: 1;
     display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    padding: 1.5rem 1rem 1.5rem 0;
+    flex-wrap: wrap;
+    gap: 0.25rem 0;
+    margin: 0;
+    padding-inline: var(--pad);
+    font-size: var(--t-mono);
+    color: var(--ink-2);
   }
 
-  .stat + .stat {
-    padding-left: 1.5rem;
-    border-left: 1px solid var(--rule);
+  .hero-meta > * + *::before {
+    content: '/';
+    margin-inline: 0.75em;
+    color: var(--rule);
   }
 
-  .stat .n {
-    font-size: clamp(2.4rem, 4.5vw, 3.6rem);
-    line-height: 1;
-  }
-
-  .stat .l {
+  /* The name: as heavy and as wide as the column takes. */
+  .wordmark {
+    grid-column: 1;
+    align-self: end;
     display: flex;
     flex-direction: column;
-    line-height: 1.3;
+    margin: 2rem 0 0;
+    padding-left: var(--pad);
+    font-weight: 800;
+    line-height: 0.84;
+    letter-spacing: -0.065em;
   }
 
-  .stat .l .cjk {
-    font-size: 1rem;
+  .wordmark .solid {
+    font-size: clamp(4.25rem, 16.5cqi, 13.5rem);
   }
 
-  .block {
-    margin-top: clamp(3.5rem, 7vw, 6rem);
+  .wordmark .hollow {
+    margin-top: 0.12em;
+    font-size: clamp(2.4rem, 8cqi, 6.5rem);
+    color: transparent;
+    -webkit-text-stroke: 2px var(--ink);
   }
 
-  .rows {
+  .hero-copy {
+    grid-column: 1;
+    padding: 1.75rem var(--pad) 2.25rem;
+  }
+
+  .hero-copy p {
+    margin: 0;
+  }
+
+  /* a marker stroke under the one line that says what this is */
+  .claim span {
+    padding: 0.1em 0.45em;
+    background: linear-gradient(var(--signal), var(--signal)) left / 100% 100% no-repeat;
+    color: var(--on-signal);
+    font-size: clamp(1.15rem, 2.1cqi, 1.6rem);
+    font-weight: 800;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .bio {
+    max-width: 30rem;
+    margin-top: 0.9rem !important;
+    color: var(--ink-2);
+  }
+
+  .hero-copy .actions {
+    margin-top: 1.5rem;
+  }
+
+  /* the picture: a cut frame, a hatched shadow, a plate with the motto */
+  .hero-art {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    position: relative;
+    margin: 0 var(--pad) 2.25rem 0;
+    min-height: 20rem;
+  }
+
+  .hero-art::before {
+    content: '';
+    position: absolute;
+    inset: 1.5rem -1rem -1rem 1.5rem;
+    background: var(--hatch);
+    transform: translate(calc(var(--mx) * 12px), calc(var(--my) * 10px));
+  }
+
+  .frame {
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(3.25rem 0, 100% 0, 100% calc(100% - 3.25rem), calc(100% - 3.25rem) 100%, 0 100%, 0 3.25rem);
+    /* the colour of the paper the drawing is on, so the frame reads as one sheet */
+    background: #fffff3;
+  }
+
+  /* The drawing stands on the bottom edge with room over its head, rather than
+     filling the frame with a face. Its sides fade into the sheet, where the
+     lines of the hood would otherwise stop dead at the edge of the scan. */
+  .frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: 50% 100%;
+    transform-origin: 50% 100%;
+    transform: scale(0.92) translate(calc(var(--mx) * -14px), calc(var(--my) * -8px));
+    transition: transform 0.4s var(--ease);
+    -webkit-mask: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+    mask: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  }
+
+  .hero-art figcaption {
+    position: absolute;
+    left: -1.25rem;
+    bottom: 1.75rem;
+    max-width: 78%;
+    padding: 0.55rem 1.4rem 0.6rem 0.9rem;
+    background: linear-gradient(-45deg, transparent 0.6rem, var(--ink) calc(0.6rem + 0.5px));
+    color: var(--panel);
+    font-size: clamp(0.85rem, 1.45cqi, 1.1rem);
+    font-weight: 600;
+    line-height: 1.45;
+  }
+
+  /* Opening the page, in order: the name is driven in from the left behind a
+     shutter, the yellow stroke is laid down under the claim, the picture is
+     uncovered from its cut corner with a scan line running down it, and the
+     figures in the top line settle (fx.ts). Under a second, then it is still. */
+  .frame::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--signal);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .wordmark .solid,
+    .wordmark .hollow {
+      animation: drive 620ms var(--mech) both;
+    }
+    .wordmark .hollow {
+      animation-delay: 140ms;
+    }
+    @keyframes drive {
+      from {
+        clip-path: inset(0 100% 0 0);
+        transform: translateX(-0.12em);
+      }
+      to {
+        clip-path: inset(0 -5% 0 0);
+        transform: none;
+      }
+    }
+
+    .claim span {
+      animation: stroke 420ms var(--mech) 420ms both;
+    }
+    @keyframes stroke {
+      from {
+        background-size: 0% 100%;
+      }
+    }
+
+    .frame {
+      animation: uncover 760ms var(--mech) 120ms both;
+    }
+    @keyframes uncover {
+      from {
+        clip-path: polygon(3.25rem 0, 3.25rem 0, 3.25rem 0, 0 3.25rem, 0 3.25rem, 0 3.25rem);
+      }
+    }
+
+    .frame::after {
+      animation: scan 900ms linear 500ms both;
+    }
+    @keyframes scan {
+      0% {
+        top: 0;
+        opacity: 0.9;
+      }
+      90% {
+        opacity: 0.9;
+      }
+      100% {
+        top: 100%;
+        opacity: 0;
+      }
+    }
+
+    .hero-art figcaption {
+      animation: plate 420ms var(--snap) 780ms both;
+    }
+    @keyframes plate {
+      from {
+        opacity: 0;
+        transform: translateX(-1.25rem);
+      }
+    }
+  }
+  /* the recent posts, passing by */
+  .ticker {
+    grid-column: 1 / -1;
+    background: var(--ink);
+    color: var(--panel);
+    overflow: hidden;
+  }
+
+  .track {
+    display: flex;
+    width: max-content;
+  }
+
+  .ticker ul {
+    display: flex;
+    flex: none;
     margin: 0;
     padding: 0;
-    border-top: 1px solid var(--rule);
+    list-style: none;
   }
 
-  .series-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-    gap: 1.25rem;
-  }
-
-  .cats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-top: 1px solid var(--rule);
-  }
-
-  .cat {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-areas:
-      'n name'
-      'n en'
-      'latest latest';
-    column-gap: 1rem;
-    padding: 1.75rem 1.5rem 1.75rem 0;
-    border-bottom: 1px solid var(--rule);
-    transition: background 0.3s;
-  }
-
-  .cat + .cat {
-    padding-left: 1.5rem;
-    border-left: 1px solid var(--rule);
-  }
-
-  .cat:hover {
-    background: var(--paper-2);
-  }
-
-  .cat-n {
-    grid-area: n;
-    font-size: 4rem;
-    line-height: 0.85;
-    color: var(--sky);
-  }
-
-  .cat-name {
-    grid-area: name;
-    font-size: 1.7rem;
-    line-height: 1.1;
-  }
-
-  .cat-en {
-    grid-area: en;
-    font-style: italic;
-    color: var(--ink-3);
-    font-size: 1.1rem;
-  }
-
-
-  .cat-latest {
-    grid-area: latest;
-    margin-top: 0.75rem;
-    text-transform: none;
-    letter-spacing: 0.02em;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .ticker a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1.5rem;
+    font-size: 0.875rem;
     white-space: nowrap;
   }
 
-  @media (max-width: 860px) {
+  .ticker b {
+    padding: 0 0.45em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-weight: 700;
+  }
+
+  .ticker a:hover {
+    background: var(--signal);
+    color: var(--on-signal);
+  }
+
+  .ticker a:hover b {
+    background: var(--on-signal);
+    color: var(--signal);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .track {
+      animation: pass 60s linear infinite;
+    }
+    .ticker:hover .track,
+    .ticker:focus-within .track {
+      animation-play-state: paused;
+    }
+    @keyframes pass {
+      to {
+        transform: translateX(-50%);
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ticker {
+      overflow-x: auto;
+    }
+    .ticker ul[aria-hidden] {
+      display: none;
+    }
+  }
+
+  /* ---------- the newest post ---------- */
+  .latest {
+    container-type: inline-size;
+    background: var(--panel);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .latest > a {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(1.5rem, 5cqi, 4rem);
+    padding: clamp(1.75rem, 4cqi, 3rem) var(--pad);
+  }
+
+  /* its number, hollow until pointed at */
+  .big-no {
+    font-size: clamp(5rem, 19cqi, 14rem);
+    font-weight: 800;
+    line-height: 0.8;
+    letter-spacing: -0.06em;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--ink);
+    /* filled from the left, by ink poured into the outline */
+    background: linear-gradient(var(--ink), var(--ink)) left / 0% 100% no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    transition: background-size 0.45s var(--mech);
+  }
+
+  .latest > a:hover .big-no,
+  .latest > a:focus-visible .big-no {
+    background-size: 100% 100%;
+  }
+
+  .latest-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+    max-width: 44rem;
+  }
+
+  .latest-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 1rem;
+    font-size: var(--t-mono);
+    color: var(--ink-2);
+  }
+
+  .flag {
+    padding: 0.05em 0.6em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-weight: 700;
+  }
+
+  .latest-title {
+    font-size: clamp(1.6rem, 3.6cqi, 2.6rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .latest-summary {
+    font-family: var(--font-text);
+    font-size: var(--t-body);
+    line-height: 1.8;
+    color: var(--ink-2);
+  }
+
+  /* ---------- the index: point at a part, see what is in it ---------- */
+  .index {
+    padding: clamp(2rem, 4vw, 3rem) var(--pad) 4rem;
+  }
+
+  .bar-title {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin: 0 0 1.25rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+
+  .bar-title::after {
+    content: '';
+    flex: 1;
+    height: 0.8rem;
+    background: var(--hatch);
+    border-left: 0.8rem solid var(--ink);
+  }
+
+  .index-grid {
+    display: grid;
+    grid-template-columns: minmax(17rem, 36%) minmax(0, 1fr);
+    grid-template-rows: repeat(6, auto) 1fr;
+    column-gap: clamp(1.5rem, 3vw, 2.5rem);
+    border-top: 2px solid var(--ink);
+  }
+
+  .row {
+    grid-column: 1;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.9rem;
+    padding: 0.85rem 1.1rem 0.85rem 1.4rem;
+    border-bottom: 1px solid var(--rule);
+    isolation: isolate;
+    transition:
+      color 0.12s 0.05s,
+      padding 0.25s var(--snap);
+  }
+
+  /* Picking a row: an ink shutter is driven across it from the left, and
+     leaves to the right when another is picked; the yellow bar follows it in. */
+  .row::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--ink);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.3s var(--mech);
+  }
+
+  .row.is-active::after {
+    transform: none;
+    transform-origin: left;
+  }
+
+  .row::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.55rem;
+    background: var(--signal);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s var(--snap) 0.12s;
+  }
+
+  .row-name {
+    font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .row-en {
+    font-size: 0.75rem;
+    color: var(--ink-2);
+  }
+
+  .row-count {
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .row.is-active {
+    padding-left: 1.9rem;
+    color: var(--panel);
+  }
+
+  .row.is-active::before {
+    transform: none;
+  }
+
+  .row.is-active .row-en {
+    color: inherit;
+    opacity: 0.7;
+  }
+
+  .pane {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    display: none;
+    min-width: 0;
+    padding-top: 0.25rem;
+  }
+
+  .pane.is-active {
+    display: block;
+  }
+
+  /* What a picked row brings up is switched on rather than faded in: a scan
+     line runs down the pane, and its lines come up one after another. */
+  @media (prefers-reduced-motion: no-preference) and (min-width: 900px) {
+    .pane {
+      position: relative;
+    }
+
+    .pane.is-active::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 2px;
+      background: var(--trace);
+      pointer-events: none;
+      animation: scan 420ms linear both;
+    }
+
+    .pane.is-active :is(.records, .lines, .cats) > li,
+    .pane.is-active :is(.pane-lead, .none, .who, .pane-foot) {
+      animation: come 320ms var(--snap) both;
+      animation-delay: calc(var(--n, 0) * 38ms);
+    }
+
+    .pane li:nth-child(2) {
+      --n: 1;
+    }
+    .pane li:nth-child(3) {
+      --n: 2;
+    }
+    .pane li:nth-child(4) {
+      --n: 3;
+    }
+    .pane li:nth-child(5) {
+      --n: 4;
+    }
+    .pane li:nth-child(6) {
+      --n: 5;
+    }
+    .pane li:nth-child(n + 7) {
+      --n: 6;
+    }
+    .pane .pane-foot {
+      --n: 7;
+    }
+
+    @keyframes come {
+      from {
+        opacity: 0;
+        transform: translateX(-14px);
+        clip-path: inset(0 100% 0 0);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+        clip-path: inset(0 -2% 0 0);
+      }
+    }
+
+    /* the hundred problems light up in order, like a board being powered */
+    .pane.is-active .matrix > li {
+      animation: light 1ms steps(1) both;
+      animation-delay: calc(var(--i) * 5ms);
+    }
+
+    @keyframes light {
+      from {
+        opacity: 0;
+      }
+    }
+  }
+
+  .pane-lead,
+  .none {
+    max-width: 36rem;
+    margin: 0.75rem 0 1rem;
+    color: var(--ink-2);
+  }
+
+  .pane-foot {
+    margin: 1.25rem 0 0;
+  }
+
+  .pane .records {
+    border-top: 0;
+  }
+
+  .pane :global(a.record) {
+    margin-inline: 0;
+    padding-inline: 0.6rem;
+  }
+
+  .pane :global(.record .name) {
+    font-family: var(--font-ui);
+    font-weight: 600;
+  }
+
+  .lines,
+  .cats,
+  .matrix {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .lines a {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.1rem 1rem;
+    padding: 0.75rem 0.6rem;
+    border-bottom: 1px solid var(--rule);
+    transition: background-color 0.15s;
+  }
+
+  .lines a > :first-child {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .lines a:hover,
+  .cats a:hover {
+    background: var(--chip);
+  }
+
+  .cats a {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.4rem 1rem;
+    align-items: baseline;
+    padding: 0.9rem 0.6rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    transition: background-color 0.15s;
+  }
+
+  .cat-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .bar {
+    grid-column: 1 / -1;
+    height: 0.7rem;
+    background: var(--hatch);
+  }
+
+  .bar i {
+    display: block;
+    height: 100%;
+    background: var(--ink);
+  }
+
+  .cat-about {
+    grid-column: 1 / -1;
+    font-size: 0.85rem;
+    color: var(--ink-2);
+  }
+
+  .matrix {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
+    gap: 2px;
+  }
+
+  .matrix a {
+    display: grid;
+    place-items: center;
+    height: 2.2rem;
+    background: var(--chip);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+    transition:
+      transform 0.18s var(--snap),
+      background-color 0.08s;
+  }
+
+  .matrix a:hover,
+  .matrix a:focus-visible {
+    position: relative;
+    z-index: 1;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-weight: 700;
+    transform: scale(1.22);
+    outline: 2px solid var(--on-signal);
+    outline-offset: 0;
+  }
+
+  .who {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+    padding-top: 0.75rem;
+  }
+
+  .who img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--rule);
+    background: #fff;
+  }
+
+  .who p {
+    margin: 0;
+  }
+
+  .who-name {
+    font-size: 1.6rem;
+    font-weight: 800;
+  }
+
+  .who-bio {
+    margin: 0.3rem 0 1rem !important;
+    color: var(--ink-2);
+  }
+
+  /* ---------- narrower ---------- */
+  @media (max-width: 899px) {
     .hero {
-      grid-template-columns: 1fr;
-      padding-bottom: 5rem;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: none;
+      min-height: 0;
     }
-    .postcard {
-      justify-self: center;
-      max-width: 30rem;
-      margin-top: 1rem;
+    .hero-art {
+      grid-column: 1;
+      grid-row: auto;
+      order: 3;
+      height: 19rem;
+      min-height: 0;
+      margin: 0 calc(var(--pad) + 1rem) 2.25rem var(--pad);
     }
-    .polaroid {
-      left: auto;
-      right: -0.5rem;
-      bottom: -2.5rem;
-      width: 7.5rem;
+    .hero-art figcaption {
+      left: -0.5rem;
+      bottom: 1rem;
     }
-    .walker {
-      right: auto;
-      left: 4%;
-      width: 48px;
-      height: 45px;
+    .hero-copy {
+      padding-bottom: 1.75rem;
     }
-    .stats {
-      grid-template-columns: 1fr 1fr;
+    .ticker {
+      order: 4;
     }
-    .stat:nth-child(3) {
-      padding-left: 0;
-      border-left: 0;
+
+    .latest > a {
+      grid-template-columns: minmax(0, 1fr);
     }
-    .stat:nth-child(n + 3) {
-      border-top: 1px solid var(--rule);
+
+    /* The index reads straight down: each part, then what is in it. */
+    .index-grid {
+      display: block;
     }
-    .cats {
-      grid-template-columns: 1fr;
+    .row,
+    .row.is-active {
+      padding-left: 1.4rem;
+      background: var(--ink);
+      color: var(--panel);
     }
-    .cat + .cat {
-      padding-left: 0;
-      border-left: 0;
+    .row::before {
+      transform: none;
+    }
+    .row .row-en {
+      color: inherit;
+      opacity: 0.7;
+    }
+    .pane {
+      display: block;
+      padding: 0.5rem 0 2rem;
+    }
+    .who {
+      grid-template-columns: 6rem minmax(0, 1fr);
     }
   }
 </style>

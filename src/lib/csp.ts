@@ -17,6 +17,13 @@ export const THEME_SCRIPT = `(() => {
   const root = document.documentElement;
   root.dataset.theme = dark ? 'dark' : 'light';
   root.dataset.themePref = pref;
+  // The first page of a visit draws the strip at the top; later ones do not.
+  try {
+    if (!sessionStorage.getItem('arrived')) {
+      sessionStorage.setItem('arrived', '1');
+      root.dataset.arrive = '';
+    }
+  } catch {}
 })();`;
 
 const hashOf = (script: string) => `'sha256-${crypto.createHash('sha256').update(script).digest('base64')}'`;

@@ -13,6 +13,8 @@ const jobs = [
   ...[480, 760, 1100].map((w) => ['sky.jpg', `sky-${w}.webp`, (s) => s.resize({ width: w }).webp({ quality: 80 })]),
   ['sky.jpg', 'og-default.jpg', (s) => s.resize(1200, 630, { fit: 'cover' }).jpeg({ quality: 82 })],
   ['avatar.png', 'avatar-220.webp', (s) => s.resize({ width: 220 }).webp({ quality: 82 })],
+  // The same drawing, large: the picture that opens the home page.
+  ...[560, 869].map((w) => ['avatar.png', `avatar-${w}.webp`, (s) => s.resize({ width: w }).webp({ quality: 84 })]),
 ];
 
 for (const [source, name, transform] of jobs) {

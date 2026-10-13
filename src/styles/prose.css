@@ -41,26 +41,27 @@
 }
 
 .prose h1 {
-  font-family: var(--font-cjk);
-  font-size: 1.9rem;
-  margin: 2.6em 0 0.8em;
+  font-size: var(--t-title);
+  margin: 2.2em 0 0.8em;
 }
 
 .prose h2 {
-  font-size: 1.7rem;
-  margin: 2.4em 0 0.7em;
-  padding-top: 0.6em;
+  font-size: var(--t-h2);
+  line-height: 1.45;
+  margin: 2.6em 0 0.8em;
+  padding-top: 0.9em;
   border-top: 1px solid var(--rule);
 }
 
 .prose h3 {
-  font-size: 1.32rem;
+  font-size: 1.1875rem;
   margin: 2em 0 0.6em;
 }
 
 .prose h4 {
-  font-size: 1.12rem;
+  font-size: var(--t-body);
   margin: 1.8em 0 0.5em;
+  color: var(--ink-2);
 }
 
 .prose h5,
@@ -74,7 +75,7 @@
   margin-left: 0.4em;
   font-family: var(--font-mono);
   font-size: 0.75em;
-  color: var(--sky);
+  color: var(--ink-2);
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -89,18 +90,31 @@
 }
 
 /* inline */
+/* A link is ink over a yellow block. In the dark theme the block would swallow
+   the light text, so there it is a yellow line instead. */
 .prose a {
-  color: var(--sky-ink);
+  color: var(--ink);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--sky) 40%, transparent);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.22em;
-  transition: text-decoration-color 0.2s, color 0.2s;
+  text-decoration-color: var(--signal);
+  text-decoration-thickness: 0.4em;
+  text-underline-offset: -0.18em;
+  text-decoration-skip-ink: none;
+  transition: text-decoration-thickness 0.15s, text-underline-offset 0.15s;
 }
 
 .prose a:hover {
-  text-decoration-color: var(--sky);
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1.15em;
+  text-underline-offset: -0.92em;
+}
+
+:root[data-theme='dark'] .prose a {
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.25em;
+}
+
+:root[data-theme='dark'] .prose a:hover {
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.25em;
 }
 
 .prose a.external::after {
@@ -112,9 +126,12 @@
   text-decoration: none;
 }
 
+/* The reading face has no bold: emphasis is a thin ink line under the words. */
 .prose strong {
-  font-weight: 650;
-  background: linear-gradient(transparent 62%, var(--mark) 62%);
+  text-decoration: underline;
+  text-decoration-color: var(--ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
 }
 
 .prose mark {
@@ -127,8 +144,7 @@
   font-family: var(--font-mono);
   font-size: 0.86em;
   padding: 0.12em 0.38em;
-  border-radius: 3px;
-  background: var(--code-bg);
+  background: var(--paper);
   border: 1px solid var(--rule);
   color: var(--ink);
 }
@@ -139,7 +155,6 @@
   padding: 0.1em 0.45em;
   border: 1px solid var(--rule);
   border-bottom-width: 2px;
-  border-radius: 4px;
 }
 
 /* lists */
@@ -155,7 +170,7 @@
 }
 
 .prose ul > li::marker {
-  color: var(--sky);
+  color: var(--ink-2);
 }
 
 .prose ol > li::marker {
@@ -174,7 +189,7 @@
 }
 
 .prose input[type='checkbox'] {
-  accent-color: var(--sky);
+  accent-color: var(--ink);
   margin-right: 0.5em;
 }
 
@@ -183,8 +198,6 @@
   padding: 0.2em 0 0.2em 1.2em;
   border-left: 3px solid var(--ink);
   color: var(--ink-2);
-  font-family: var(--font-cjk);
-  font-size: 1.05em;
 }
 
 .prose blockquote > * + * {
@@ -193,10 +206,8 @@
 
 .prose hr {
   border: 0;
-  height: 1.5rem;
+  border-top: 1px solid var(--rule);
   margin-block: 2.5em;
-  background: radial-gradient(circle, var(--ink-3) 1.5px, transparent 2px) center / 1.5rem 1.5rem repeat-x;
-  max-width: 6rem;
 }
 
 /* code blocks */
@@ -205,8 +216,7 @@
   padding: 1.1rem 1.25rem;
   overflow-x: auto;
   border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background: var(--code-bg) !important;
+  background: var(--paper) !important;
   font-family: var(--font-mono);
   font-size: 0.85rem;
   line-height: 1.7;
@@ -234,14 +244,11 @@
   right: 0.75rem;
   transform: translateY(-50%);
   padding: 0 0.5em;
-  background: var(--paper);
+  background: var(--panel);
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  font-size: 0.7rem;
+  color: var(--ink-2);
   border: 1px solid var(--rule);
-  border-radius: 2px;
   z-index: 1;
 }
 
@@ -251,8 +258,7 @@
   right: 0.55rem;
   padding: 0.25em 0.6em;
   border: 1px solid var(--rule);
-  border-radius: 3px;
-  background: var(--paper);
+  background: var(--panel);
   font-family: var(--font-mono);
   font-size: 0.7rem;
   color: var(--ink-2);
@@ -268,8 +274,8 @@
 }
 
 .code-frame .copy:hover {
-  color: var(--sky);
-  border-color: var(--sky);
+  color: var(--ink);
+  border-color: var(--ink);
 }
 
 @media (hover: none) {
@@ -299,22 +305,18 @@
 }
 
 .prose thead th {
-  border-bottom: 1.5px solid var(--ink);
-  font-family: var(--font-mono);
-  font-size: 0.8em;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--ink);
+  color: var(--ink-2);
 }
 
 .prose tbody tr:hover {
-  background: var(--paper-2);
+  background: var(--paper);
 }
 
 /* images & figures */
 .prose img {
   display: block;
   margin-inline: auto;
-  border-radius: var(--radius);
   cursor: zoom-in;
   background: #fff;
 }
@@ -343,11 +345,6 @@
   color: var(--ink-3);
 }
 
-.prose figcaption::before {
-  content: 'FIG — ';
-  color: var(--sky);
-}
-
 .prose iframe {
   max-width: 100%;
   border: 0;
@@ -369,7 +366,7 @@
 .prose .footnotes {
   margin-top: 4rem;
   padding-top: 1.5rem;
-  border-top: 1.5px solid var(--ink);
+  border-top: 1px solid var(--ink);
   font-size: 0.88rem;
   color: var(--ink-2);
 }
@@ -379,10 +376,8 @@
   padding: 0;
   border: 0;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  font-size: var(--t-mono);
+  color: var(--ink-2);
 }
 
 .prose .footnotes h2.sr-only {
@@ -413,14 +408,12 @@
 
 /* callouts */
 .prose .callout {
-  --c: var(--sky);
+  --c: var(--ink-2);
   position: relative;
   padding: 0.9rem 1.15rem 1rem 1.15rem;
-  border: 1px solid color-mix(in srgb, var(--c) 35%, var(--rule));
+  border: 1px solid var(--rule);
   border-left: 3px solid var(--c);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  background: color-mix(in srgb, var(--c) 6%, var(--card));
-  font-family: var(--font-sans);
+  background: var(--paper);
   font-size: 0.97em;
   color: var(--ink);
 }
@@ -432,10 +425,7 @@
 .prose .callout-title {
   margin: 0 0 0.35em;
   font-family: var(--font-mono);
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--t-mono);
   color: var(--c);
 }
 
@@ -460,26 +450,26 @@
 .prose .callout[data-callout='hint'],
 .prose .callout[data-callout='success'],
 .prose .callout[data-callout='example'] {
-  --c: #2f8f6b;
+  --c: #1f7a58;
 }
 
 .prose .callout[data-callout='warning'],
 .prose .callout[data-callout='caution'],
 .prose .callout[data-callout='question'],
 .prose .callout[data-callout='todo'] {
-  --c: #c47f0e;
+  --c: #8a5a00;
 }
 
 .prose .callout[data-callout='danger'],
 .prose .callout[data-callout='bug'],
 .prose .callout[data-callout='important'] {
-  --c: var(--signal);
+  --c: var(--danger);
 }
 
 .prose .callout[data-callout='quote'],
 .prose .callout[data-callout='abstract'],
 .prose .callout[data-callout='summary'] {
-  --c: var(--ink-3);
+  --c: var(--ink-2);
 }
 
 :root[data-theme='dark'] .prose .callout[data-callout='tip'],
@@ -500,7 +490,6 @@
 .spoiler {
   font-style: normal;
   padding: 0 0.25em;
-  border-radius: 2px;
   background: var(--ink);
   color: transparent;
   cursor: pointer;
@@ -510,7 +499,7 @@
 }
 
 .spoiler:hover {
-  background: color-mix(in srgb, var(--ink) 85%, var(--sky));
+  background: var(--ink-2);
 }
 
 .spoiler.revealed {

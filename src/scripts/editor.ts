@@ -99,7 +99,7 @@ const highlight = HighlightStyle.define([
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
   { tag: [tags.link, tags.url], color: 'var(--sky-ink)' },
-  { tag: tags.monospace, color: 'var(--signal)' },
+  { tag: tags.monospace, color: 'var(--danger)' },
   { tag: tags.quote, color: 'var(--ink-2)' },
   { tag: [tags.processingInstruction, tags.meta, tags.contentSeparator], color: 'var(--ink-3)' },
 ]);
