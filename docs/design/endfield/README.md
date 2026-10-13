@@ -5,10 +5,10 @@
 本目录三份文件：
 
 - `README.md`（本文件）：改到哪了、哪些决定已经定下、还差什么。**与下面两份有出入时，以本文件为准。**
-- `design-plan.md`：最初的设计方案。首页和管理页后来被推翻重做，那两部分已过时；配色、字体、形状的总体思路仍然有效。
+- `design-plan.md`：设计方案。最初写于动手之前，2026 年 10 月 13 日已按原型改写为现在的决定，改动见其文末的"修订记录"。
 - `findings.md`：对游戏官网和界面的调研。文中按文件名引用的截图（`cn-*.png`、`intl-*.png`、`game-*.png`、`fzwiki-*.png`）就在本目录。
 - `contour-reference/`：站长给的三张等高线参考图。背景等高线要的就是这种不闭合、成束流动的线。
-- `shots/`：各轮原型的预览截图，文件名里数字越大越新（如 `endmin6-light.jpg`、`home7-light.jpg`）。早期编号的是已被否决的版本，可用来对照"不要什么"。
+- `shots/`：各轮原型的预览截图，文件名里数字越大越新。被认可的最终版是 `home7-light.jpg`、`endmin6-light.jpg`、`endmin6-dark.jpg`、`post-light/dark/mobile.jpg`、`works-light.png`、`works-dark.png`、`works-mobile.jpg`；编号更小的 `home*`、`endmin*` 是已被否决的版本，可用来对照"不要什么"。这些最终版截图都早于背景等高线的改动，背景以代码为准。
 
 本目录里的 `*.png` 和 `contour-reference/` 是游戏及其官网的截图，**只作设计参考，不得用进网站**。
 
@@ -17,7 +17,7 @@
 | 页面 | 文件 | 状态 |
 | --- | --- | --- |
 | 全局变量、外壳、导航、页脚 | `src/styles/global.css`、`src/layouts/Base.astro`、`src/components/Header.astro`、`Footer.astro` | 已改 |
-| 首页 | `src/pages/index.astro` | 已改（第四版） |
+| 首页 | `src/pages/index.astro` | 已改（最终截图 `shots/home7-light.jpg`） |
 | 文章页 | `src/components/PostArticle.astro`、`Toc.astro`、`SeriesNav.astro`、`src/styles/prose.css` | 已改 |
 | 作品页 | `src/pages/works/index.astro` | 已改 |
 | 管理页外壳和总览 | `src/layouts/Endmin.astro`、`src/pages/endmin/index.astro` | 已改 |
