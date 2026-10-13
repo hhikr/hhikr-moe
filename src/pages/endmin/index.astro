@@ -874,9 +874,7 @@ const wheel = [
   }
 
   /* ---------- the panels ---------- */
-  .sat,
-  .em-cols .em-panel,
-  .em-panel.wide {
+  .sat {
     position: relative;
     min-width: 0;
     padding: 1rem 1.15rem 1.15rem;
@@ -932,9 +930,7 @@ const wheel = [
 
   /* A heavy tab on the top edge of every panel. Pointing at the panel runs it
      out along the whole edge. */
-  .sat::before,
-  .em-cols .em-panel::before,
-  .em-panel.wide::before {
+  .sat::before {
     content: '';
     position: absolute;
     top: -1px;
@@ -948,9 +944,7 @@ const wheel = [
   }
 
   .sat:hover::before,
-  .sat:focus-within::before,
-  .em-cols .em-panel:hover::before,
-  .em-panel.wide:hover::before {
+  .sat:focus-within::before {
     transform: none;
   }
 
@@ -983,8 +977,7 @@ const wheel = [
     }
   }
 
-  .sat h2,
-  .em-cols .em-panel h2 {
+  .sat h2 {
     display: flex;
     align-items: baseline;
     gap: 0.75rem;
@@ -994,7 +987,6 @@ const wheel = [
   }
 
   .sat h2 a,
-  .em-cols .em-panel h2 a,
   .state {
     margin-left: auto;
     color: var(--ink-2);
@@ -1003,8 +995,7 @@ const wheel = [
     white-space: nowrap;
   }
 
-  .sat h2 a:hover,
-  .em-cols .em-panel h2 a:hover {
+  .sat h2 a:hover {
     color: var(--ink);
     text-decoration: underline;
   }
@@ -1335,6 +1326,7 @@ const wheel = [
 
   .em-cols {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
     gap: 1.25rem;
     margin-top: 1.5rem;
     padding-top: 0;

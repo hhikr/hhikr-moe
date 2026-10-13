@@ -14,13 +14,16 @@ const hidden = works.filter((w) => w.hidden).length;
     <button type="button" class="chip" data-filter="all" aria-pressed="true">全部 {works.length}</button>
     <button type="button" class="chip" data-filter="public" aria-pressed="false">公开 {works.length - hidden}</button>
     <button type="button" class="chip" data-filter="hidden" aria-pressed="false">隐藏 {hidden}</button>
-    <button type="button" class="em-btn go new-work" data-new-work>新建作品</button>
+    <button type="button" class="em-btn go end" data-new-work>新建作品</button>
   </div>
 
   {
     works.length === 0 ? (
-      <p class="em-empty">还没有作品。新建的作品默认是隐藏的，准备好之后再公开。</p>
+      <section class="em-panel">
+        <p class="em-empty">还没有作品。新建的作品默认是隐藏的，准备好之后再公开。</p>
+      </section>
     ) : (
+      <section class="em-panel">
       <ul class="em-rows">
         {works.map((w) => (
           <li data-group={w.hidden ? 'hidden' : 'public'}>
@@ -57,6 +60,7 @@ const hidden = works.filter((w) => w.hidden).length;
           </li>
         ))}
       </ul>
+      </section>
     )
   }
 </Endmin>
@@ -69,9 +73,3 @@ const hidden = works.filter((w) => w.hidden).length;
     if (res.ok) location.assign(`/endmin/works/${res.data.id}/`);
   });
 </script>
-
-<style>
-  .new-work {
-    margin-left: auto;
-  }
-</style>

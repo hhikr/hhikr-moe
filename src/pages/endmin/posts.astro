@@ -25,9 +25,10 @@ const body = (o: object) => JSON.stringify(o);
         </button>
       ))
     }
-    <button type="button" class="em-btn go new-post" data-new-post>写新文章</button>
+    <button type="button" class="em-btn go end" data-new-post>写新文章</button>
   </div>
 
+  <section class="em-panel">
   <ul class="em-rows">
     {
       posts.map((p) => {
@@ -67,7 +68,7 @@ const body = (o: object) => JSON.stringify(o);
                 </button>
               )}
               {group !== 'draft' && (
-                <button class="em-btn danger" data-api={`/api/endmin/posts/${p.id}`} data-body={body({ status: 'draft' })} data-confirm={`把「${p.title}」撤回为草稿？它会从网站上消失，直到再次发布。`}>
+                <button class="em-btn" data-api={`/api/endmin/posts/${p.id}`} data-body={body({ status: 'draft' })} data-confirm={`把「${p.title}」撤回为草稿？它会从网站上消失，直到再次发布。`}>
                   撤回为草稿
                 </button>
               )}
@@ -77,6 +78,7 @@ const body = (o: object) => JSON.stringify(o);
       })
     }
   </ul>
+  </section>
 </Endmin>
 
 <script>
@@ -87,9 +89,3 @@ const body = (o: object) => JSON.stringify(o);
     if (res.ok) location.assign(`/endmin/posts/${res.data.id}/`);
   });
 </script>
-
-<style>
-  .new-post {
-    margin-left: auto;
-  }
-</style>

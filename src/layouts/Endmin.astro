@@ -15,8 +15,10 @@ interface Props {
   lead?: string;
   /** The page draws its own title: leave the heading out. */
   plain?: boolean;
+  /** Use the whole width of the window, for the editor. */
+  wide?: boolean;
 }
-const { title, en, lead, plain } = Astro.props;
+const { title, en, lead, plain, wide } = Astro.props;
 const user = Astro.locals.user!;
 const path = Astro.url.pathname;
 const pending = commentCounts().hidden;
@@ -75,7 +77,7 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
       </div>
     </header>
 
-    <section class="em-main">
+    <section class:list={['em-main', { wide }]}>
       {
         !plain && (
           <header class="em-head">
@@ -299,6 +301,10 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     padding: clamp(1.25rem, 3vw, 2.25rem) var(--pad) 5rem;
   }
 
+  .em-main.wide {
+    max-width: 112rem;
+  }
+
   /* A page's name, heavy, with a hatched bar running off beside it. */
   .em-head {
     display: grid;
@@ -356,23 +362,45 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     border-left: 0.7rem solid var(--ink);
   }
 
+  /* Something went wrong: flagged in yellow, like everything that needs a look. */
   .em-flash {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
     margin: 0 0 1rem;
     padding: 0.6rem 0.9rem;
-    border: 1px solid var(--danger);
-    color: var(--danger);
+    border: 1px solid var(--ink);
+    background: var(--panel);
+    color: var(--ink);
   }
 
+  .em-flash::before {
+    content: '出错';
+    flex: none;
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .em-flash[hidden] {
+    display: none;
+  }
+
+  /* A row of big figures on one plate. */
   .em-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    border-bottom: 1px solid var(--rule);
+    margin-bottom: 1.25rem;
+    padding: 0 1.15rem;
+    background: var(--panel);
   }
 
   .em-tile {
     display: grid;
-    gap: 0.2rem;
-    padding: 1.4rem 1rem 1.4rem 0;
+    gap: 0.15rem;
+    padding: 1.2rem 1rem 1.2rem 0;
   }
 
   .em-tile + .em-tile {
@@ -381,46 +409,131 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
   }
 
   .em-tile .n {
-    font-family: var(--font-mono);
-    font-size: 2.25rem;
-    line-height: 1.1;
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
   }
 
-  .em-tile .n small {
-    margin-left: 0.3em;
-    font-size: 0.75rem;
-    color: var(--danger);
+  .em-tile .cjk {
+    font-size: 0.85rem;
+    color: var(--ink-2);
   }
 
   .em-cols {
     display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    gap: 2.5rem;
-    padding-top: 2rem;
+    align-items: start;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
   }
 
-  .em-panel h2 {
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    margin: 0 0 0.5rem;
-    font-size: var(--t-h2);
+  .em-cols > .em-panel + .em-panel {
+    margin-top: 0;
   }
 
-  .em-panel h2 a {
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: var(--t-mono);
-    color: var(--ink-2);
+  /* A plate on the paper, with a heavy ink tab on its top edge that runs out
+     along the whole edge when the plate is pointed at. The same as the
+     overview's panels. */
+  .em-panel {
+    position: relative;
+    min-width: 0;
+    padding: 1rem 1.15rem 1.15rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
   }
 
-  .em-panel h2 a:hover {
-    color: var(--ink);
+  .em-panel::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    height: 5px;
+    background: var(--ink);
+    transform: scaleX(0.14);
+    transform-origin: left;
+    transition: transform 0.4s var(--mech);
+    pointer-events: none;
+  }
+
+  .em-panel:hover::before,
+  .em-panel:focus-within::before {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .em-panel::before {
+      transition: none;
+    }
   }
 
   .em-panel + .em-panel {
-    margin-top: 2.25rem;
+    margin-top: 1.25rem;
+  }
+
+  .em-panel > h2,
+  .em-panel > header > h2 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem 0.75rem;
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .em-panel h2 > a,
+  .em-panel h2 > .aside {
+    margin-left: auto;
+    color: var(--ink-2);
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .em-panel h2 > a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+
+  .em-panel h2 > .em-btn {
+    margin-left: auto;
+    font-weight: 400;
+  }
+
+  .em-panel h2 > .em-btn + .em-btn {
+    margin-left: 0;
+  }
+
+  /* A list that fills a plate runs to its edges. */
+  .em-panel > .em-rows {
+    margin-inline: -1.15rem;
+  }
+
+  .em-panel > .em-rows > li {
+    padding-inline: 1.15rem;
+  }
+
+  .em-panel > .em-rows:last-child > li:last-child {
+    border-bottom: 0;
+  }
+
+  .em-panel > .em-rows:first-child {
+    margin-top: -1rem;
+    border-top: 0;
+  }
+
+  .em-panel > .em-rows:last-child {
+    margin-bottom: -1.15rem;
+  }
+
+  .em-note {
+    margin: 0.75rem 0 0;
+    color: var(--ink-2);
+    font-size: 0.85rem;
+    line-height: 1.7;
   }
 
   .em-empty {
@@ -428,6 +541,11 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     padding: 1rem 0;
     border-top: 1px solid var(--rule);
     color: var(--ink-2);
+  }
+
+  .em-panel > .em-empty:first-child {
+    border-top: 0;
+    padding-top: 0.5rem;
   }
 
   .em-rows {
@@ -448,6 +566,38 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
 
   .em-rows > li[hidden] {
     display: none;
+  }
+
+  /* Pointing at a row: a bar comes down its left edge, as in the site's lists. */
+  .em-rows > li {
+    position: relative;
+    transition: background-color 0.15s;
+  }
+
+  .em-rows > li::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--trace);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.2s var(--snap);
+  }
+
+  .em-rows > li:hover {
+    background: var(--paper);
+  }
+
+  .em-rows > li:hover::before,
+  .em-rows > li:focus-within::before {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .em-rows > li::before {
+      transition: none;
+    }
   }
 
   .em-rows .t {
@@ -560,7 +710,11 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     cursor: progress;
   }
 
+  /* What state a thing is in. Live is solid ink, waiting in the wings is
+     dashed, and what needs a look is a yellow block. No red: red is for
+     deleting. */
   .em-state {
+    display: inline-block;
     margin-left: 0.6em;
     padding: 0 0.5em;
     border: 1px solid currentColor;
@@ -568,19 +722,29 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     font-size: 0.7rem;
     line-height: 1.6;
     vertical-align: 0.15em;
+    white-space: nowrap;
   }
 
   .em-state.published {
     color: var(--ink);
   }
-  .em-state.hidden,
-  .em-state.banned {
-    color: var(--danger);
+
+  .em-state.hidden {
+    color: var(--ink);
     border-style: dashed;
   }
+
   .em-state.draft {
     color: var(--ink-2);
     border-style: dashed;
+  }
+
+  .em-state.banned,
+  .em-state.alert {
+    border-color: var(--signal);
+    background: var(--signal);
+    color: var(--on-signal);
+    font-weight: 700;
   }
 
   .em-filters {
@@ -593,6 +757,15 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
 
   .em-filters .chip {
     padding: 0.2em 1em 0.2em 0.75em;
+  }
+
+  /* The thing to do on this screen sits at the right end of the filters. */
+  .em-filters > .end {
+    margin-left: auto;
+  }
+
+  .em-filters + .em-panel {
+    margin-top: 0;
   }
 
   .em-facts {
@@ -667,10 +840,11 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
 
   .em-user img,
   .em-user .ph {
+    flex: none;
     width: 2rem;
     height: 2rem;
     object-fit: cover;
-    background: var(--rule);
+    background: var(--chip);
   }
 
   .em-user .tag {
