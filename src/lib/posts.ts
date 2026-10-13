@@ -64,6 +64,16 @@ export function getPost(slug: string, viewer: Viewer = GUEST): PostWithBody | un
   return p && { ...toPost(p), html: p.html, headings: p.headings };
 }
 
+/**
+ * Each post's number: its place in the order of publication, hidden posts
+ * included, so a guest and the endministrator see the same number. Worked out
+ * on the spot for now; the plan is to store it when a post is first published.
+ */
+export function postNumbers(): Map<string, string> {
+  const oldestFirst = listPosts({ role: 'endmin' }).sort((a, b) => a.publishedAt.valueOf() - b.publishedAt.valueOf() || a.slug.localeCompare(b.slug));
+  return new Map(oldestFirst.map((p, i) => [p.slug, `No.${String(i + 1).padStart(3, '0')}`]));
+}
+
 export const postUrl = (p: Post) => `/posts/${p.id}/`;
 
 /** Same rules as Hugo's urlize so old links keep working. */

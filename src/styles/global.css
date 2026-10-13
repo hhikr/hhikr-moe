@@ -1,69 +1,118 @@
 /* ==========================================================================
-   Hitchhiker — design tokens & base
-   Paper (avatar sketch) · Sky (background art) · Ink (silhouette logo)
+   hhikr.moe — design tokens & base
+   Reading pages are a numbered engineering manual: ruled boundaries, cut
+   corners on whatever can be clicked, yellow for "current" only. The home
+   page and the admin area are bolder. See docs/design/endfield/.
    ========================================================================== */
 
-@import '@fontsource-variable/inter';
-@import '@fontsource-variable/jetbrains-mono';
-@import '@fontsource/instrument-serif/400.css';
-@import '@fontsource/instrument-serif/400-italic.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+@import '@fontsource-variable/noto-sans-sc/wght.css';
 @import 'lxgw-wenkai-screen-web/lxgwwenkaigbscreen/result.css';
 
 :root {
-  --paper: #f4f0e6;
-  --paper-2: #ece6d7;
-  --paper-3: #e2dac7;
-  --card: #fbf9f3;
-  --ink: #1c1a16;
-  --ink-2: #4b463d;
-  --ink-3: #857e70;
-  --rule: #d6cdb9;
-  --rule-strong: #1c1a16;
-  --sky: #2b78d6;
-  --sky-ink: #1d5aa6;
-  --sky-soft: #d9e6f5;
-  --signal: #d4442c;
-  --mark: rgb(43 120 214 / 0.16);
-  --code-bg: #efe9dc;
-  --shadow: 0 1px 0 rgb(28 26 22 / 0.04), 0 10px 30px -12px rgb(28 26 22 / 0.18);
+  --paper: #f4f4f2;
+  --panel: #ffffff;
+  --ink: #161616;
+  --ink-2: #5c5c5c;
+  --rule: #d9d9d6;
+  --signal: #fffa00;
+  /* Text on a yellow fill, in both themes. */
+  --on-signal: #161616;
+  --tri-a: #ff00f0;
+  --tri-b: #fffa00;
+  --tri-c: #00ffa2;
 
-  --font-sans: 'Inter Variable', 'PingFang SC', 'HarmonyOS Sans SC', 'MiSans', 'Noto Sans CJK SC', 'Source Han Sans SC',
-    'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
-  --font-display: 'Instrument Serif', 'LXGW WenKai GB Screen', 'Songti SC', serif;
-  --font-cjk: 'LXGW WenKai GB Screen', 'Instrument Serif', 'Kaiti SC', 'KaiTi', serif;
+  /* Yellow vanishes as a line on white, so lines that mean "here" are ink in
+     the light theme and yellow in the dark one. */
+  --trace: var(--ink);
+  /* Fill of a number tag, and of a quieter key/value block. */
+  --tag-bg: var(--ink);
+  --tag-fg: var(--panel);
+  --chip: #e4e4e0;
+  /* Errors and destructive actions. Not part of the palette proper. */
+  --danger: #b3261e;
+
+  --font-text: 'LXGW WenKai GB Screen', 'Kaiti SC', 'KaiTi', 'STKaiti', 'PingFang SC', 'Microsoft YaHei', serif;
   --font-mono: 'JetBrains Mono Variable', 'LXGW WenKai GB Screen', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  /* The interface voice: heavy monospaced Latin and figures beside Noto Sans SC
+     for Chinese, both served from this site. The reading face above is for
+     what is read. */
+  --font-ui: 'JetBrains Mono Variable', 'Noto Sans SC Variable', sans-serif;
+  --hatch: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--ink) 22%, transparent) 5px 6.5px);
+  --contour: color-mix(in srgb, var(--ink) 9%, transparent);
 
-  --measure: 44rem;
+  /* Ratio about 1.33. The reading face has one weight, so there size and colour
+     carry the levels; the interface face is variable and may be heavy. */
+  --t-display: 3.375rem;
+  --t-h1: 2.5rem;
+  --t-title: 1.875rem;
+  --t-h2: 1.375rem;
+  --t-body: 1.0625rem;
+  --t-ui: 0.9375rem;
+  --t-mono: 0.8125rem;
+
+  --measure: 40rem;
+  --rail: 12rem;
   --page: 76rem;
-  --gutter: clamp(1rem, 4vw, 2.5rem);
-  --radius: 4px;
+  --pad: clamp(1rem, 4vw, 2.5rem);
+  --gutter: var(--pad);
+  --radius: 0px;
+  --cut: 7px;
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+  /* Two more ways of moving. Things that arrive snap into place and settle;
+     shutters and wipes start slowly and close hard, like machinery. */
+  --snap: cubic-bezier(0.16, 1, 0.3, 1);
+  --mech: cubic-bezier(0.7, 0, 0.2, 1);
+
+  /* A highlighter stroke: marked text, search hits, an editor selection. */
+  --mark: color-mix(in srgb, var(--signal) 55%, transparent);
 
   color-scheme: light;
 }
 
 :root[data-theme='dark'] {
-  --paper: #0e1117;
-  --paper-2: #141923;
-  --paper-3: #1c2330;
-  --card: #121722;
-  --ink: #ece5d3;
-  --ink-2: #b8b1a0;
-  --ink-3: #7c786c;
-  --rule: #262d3a;
-  --rule-strong: #ece5d3;
-  --sky: #7fb0ff;
-  --sky-ink: #a9c9ff;
-  --sky-soft: #1a2740;
-  --signal: #ff7b5e;
-  --mark: rgb(127 176 255 / 0.18);
-  --code-bg: #151b26;
-  --shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 14px 34px -14px rgb(0 0 0 / 0.7);
+  --paper: #191919;
+  --panel: #222222;
+  --ink: #ededed;
+  --ink-2: #a3a3a3;
+  --rule: #353535;
+  --trace: var(--signal);
+  --tag-bg: #3a3a3a;
+  --tag-fg: var(--ink);
+  --chip: #2e2e2e;
+  --danger: #ff8a7a;
+  --mark: color-mix(in srgb, var(--signal) 22%, transparent);
   color-scheme: dark;
 }
 
 @view-transition {
   navigation: auto;
+}
+
+::view-transition-group(*) {
+  animation-duration: 200ms;
+  animation-timing-function: var(--ease);
+}
+
+/* Going from page to page: the new one is drawn across the old by a slanted
+   shutter. The day and night switch has its own, and overrides this. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-new(root) {
+    animation: shutter 360ms var(--mech) both;
+    mix-blend-mode: normal;
+  }
+  @keyframes shutter {
+    from {
+      clip-path: polygon(0 0, 0 0, -14% 100%, -14% 100%);
+    }
+    to {
+      clip-path: polygon(0 0, 114% 0, 100% 100%, -14% 100%);
+    }
+  }
 }
 
 *,
@@ -88,35 +137,43 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  line-height: 1.75;
-  font-feature-settings: 'cv11', 'ss01';
+  font-family: var(--font-text);
+  font-size: var(--t-ui);
+  font-weight: 400;
+  line-height: 1.6;
+  /* The reading face has one weight; a synthesised bold or slant looks wrong. */
+  font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: clip;
 }
 
-/* paper grain: a tiled background, cheap to paint */
-body {
-  background-image: var(--grain);
-  background-size: 180px 180px;
+/* Two patches of contour lines behind everything, one in the upper right and
+   one in the lower left; the rest of the paper is left blank. The drawings
+   (scripts/draw-contours.mjs) are used as a mask, so the lines take the ink of
+   whichever theme is on. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--contour);
+  -webkit-mask:
+    url('/contour-a.svg') right -9rem top -7rem / 52rem auto no-repeat,
+    url('/contour-b.svg') left -6rem bottom -14rem / 40rem auto no-repeat;
+  mask:
+    url('/contour-a.svg') right -9rem top -7rem / 52rem auto no-repeat,
+    url('/contour-b.svg') left -6rem bottom -14rem / 40rem auto no-repeat;
 }
 
-:root {
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-:root[data-theme='dark'] {
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.8 0 0 0 0 0.85 0 0 0 0 1 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-main {
-  flex: 1;
+@media (max-width: 719px) {
+  body::before {
+    -webkit-mask: url('/contour-a.svg') right -12rem top -4rem / 34rem auto no-repeat;
+    mask: url('/contour-a.svg') right -12rem top -4rem / 34rem auto no-repeat;
+  }
 }
 
 img,
@@ -131,23 +188,38 @@ a {
   text-decoration: none;
 }
 
+a,
+button,
+summary,
+label[for] {
+  cursor: pointer;
+}
+
 ::selection {
-  background: var(--sky);
-  color: var(--paper);
+  background: var(--signal);
+  color: var(--on-signal);
 }
 
 :focus-visible {
-  outline: 2px solid var(--sky);
-  outline-offset: 3px;
-  border-radius: 2px;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+h4,
+strong,
+b,
+th {
+  font-weight: 400;
 }
 
 h1,
 h2,
 h3,
 h4 {
-  font-weight: 400;
-  line-height: 1.25;
+  line-height: 1.35;
   text-wrap: balance;
 }
 
@@ -169,164 +241,692 @@ button {
   white-space: nowrap;
 }
 
-/* ---------- layout primitives ---------- */
+/* ---------- page frame ---------- */
 
-.wrap {
-  width: 100%;
-  max-width: calc(var(--page) + var(--gutter) * 2);
-  margin-inline: auto;
-  padding-inline: var(--gutter);
+/* The three-colour strip: the top of every page, and under an article title. */
+.tri {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 3px;
 }
 
+.tri i:nth-child(1) {
+  background: var(--tri-a);
+}
+.tri i:nth-child(2) {
+  background: var(--tri-b);
+}
+.tri i:nth-child(3) {
+  background: var(--tri-c);
+}
+
+/* The one page-wide motion: the strip is drawn once, on arriving at the site. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-arrive] .tri.top {
+    transform-origin: left;
+    animation: sweep 600ms var(--ease) both;
+  }
+  @keyframes sweep {
+    from {
+      transform: scaleX(0);
+    }
+  }
+}
+
+/* How far down the article the reader is. Data, so it ignores reduced motion. */
+.progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 3px;
+  pointer-events: none;
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--trace);
+  transform: scaleX(var(--p, 0));
+  transform-origin: left;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--rail) minmax(0, 1fr);
+  min-height: calc(100dvh - 3px);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.content.bare {
+  min-height: calc(100dvh - 3px);
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A page is a white sheet against the rail, with a margin beside it. */
+.spread {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, calc(var(--measure) + var(--pad) * 2)) minmax(0, 1fr);
+}
+
+.sheet {
+  min-width: 0;
+  padding: clamp(2rem, 5vw, 3.5rem) var(--pad) 4rem;
+  background: var(--panel);
+  border-right: 1px solid var(--rule);
+}
+
+.margin {
+  min-width: 0;
+  padding: clamp(2rem, 5vw, 3.5rem) var(--pad) 3rem;
+}
+
+@media (max-width: 1099px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+}
+
+@media (max-width: 959px) {
+  .spread {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+  .sheet {
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 3rem;
+  }
+  .sheet > * {
+    max-width: var(--measure);
+  }
+  .margin {
+    padding-top: 2rem;
+  }
+}
+
+/* ---------- record fields ---------- */
+
+/* Numbers, dates, counts, paths: anything that is a field of a record. */
+.mono,
 .label {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.cjk {
-  font-family: var(--font-cjk);
-}
-
-.display {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.01em;
-}
-
-/* section header:  § 01 ────────── Latest */
-.section-head {
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-  margin: 0 0 1.5rem;
-  padding-top: 0.75rem;
-  border-top: 1.5px solid var(--rule-strong);
-}
-
-.section-head h2 {
-  margin: 0;
-  font-family: var(--font-cjk);
-  font-size: clamp(1.5rem, 2.6vw, 2rem);
-}
-
-.section-head .en {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 1.15em;
-  color: var(--ink-3);
-}
-
-.section-head .more {
-  margin-left: auto;
-}
-
-.link-arrow {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
+  font-size: var(--t-mono);
+  line-height: 1.5;
   color: var(--ink-2);
-  border-bottom: 1px solid var(--rule);
-  transition: color 0.2s, border-color 0.2s;
-  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
-.link-arrow:hover {
-  color: var(--sky);
-  border-color: var(--sky);
+/* Fields in a row, divided by a rule each. */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Every field has a rule on its left; the one that starts a line has it
+     pulled past this edge and cut off, so a wrapped line begins clean. */
+  clip-path: inset(-6px -100vw -6px 0);
+}
+
+.facts > * {
+  margin: 0 calc(0.75rem + 1px) 0 calc(-0.75rem - 1px);
+  padding: 0 0.75rem;
+  border-left: 1px solid var(--rule);
+}
+
+.facts > [hidden] {
+  display: none;
+}
+
+/* A cut corner marks an entrance: number tags, category blocks, the current
+   nav item. Drawn in the background so the focus outline stays whole. */
+.tag,
+.kv,
+.chip {
+  --fill: var(--chip);
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--t-mono);
+  line-height: 1.5;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: linear-gradient(-45deg, transparent calc(var(--cut) - 0.5px), var(--fill) var(--cut));
+  border: 0;
+}
+
+.tag {
+  --fill: var(--tag-bg);
+  padding: 0.1rem 0.8rem 0.1rem 0.5rem;
+  color: var(--tag-fg);
+}
+
+.tag.is-current,
+a.tag:hover,
+a:hover > .tag,
+a.kv:hover,
+a.chip:hover,
+button.chip:hover,
+.chip[aria-pressed='true'],
+.chip.is-active {
+  --fill: var(--signal);
+  color: var(--on-signal);
+}
+
+.kv > * {
+  padding: 0.1rem 0.5rem;
+}
+
+.kv > :first-child {
+  color: var(--ink-2);
+  border-right: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+.kv > :last-child {
+  padding-right: 0.8rem;
+}
+
+a.kv:hover > :first-child {
+  color: var(--on-signal);
 }
 
 .chip {
-  display: inline-flex;
-  align-items: center;
   gap: 0.35em;
-  padding: 0.1em 0.6em;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  line-height: 1.7;
-  color: var(--ink-2);
-  background: transparent;
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
-  white-space: nowrap;
-}
-
-a.chip:hover,
-button.chip:hover {
-  border-color: var(--sky);
-  color: var(--sky);
-}
-
-.chip[aria-pressed='true'],
-.chip.is-active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  padding: 0.1rem 0.8rem 0.1rem 0.5rem;
 }
 
 .chip .n {
-  opacity: 0.6;
+  color: var(--ink-2);
 }
 
 .badge-draft {
   display: inline-block;
   margin-left: 0.6em;
   padding: 0 0.45em;
-  border: 1px dashed var(--signal);
-  color: var(--signal);
+  border: 1px dashed var(--ink-2);
+  color: var(--ink-2);
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-  border-radius: 2px;
-  vertical-align: 0.3em;
+  font-size: 0.72rem;
+  vertical-align: 0.2em;
   line-height: 1.6;
 }
 
-/* page heading used by list pages */
-.page-head {
-  padding-block: clamp(3rem, 8vw, 6rem) 2.5rem;
-}
-
-.page-head .kicker {
-  margin-bottom: 1rem;
-}
-
-.page-head h1 {
+/* A list of records: one row each, columns are real fields. */
+.records {
   margin: 0;
-  font-family: var(--font-cjk);
-  font-size: clamp(2.5rem, 7vw, 5rem);
-  line-height: 1.05;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
 }
 
-.page-head h1 .en {
-  display: block;
-  margin-top: 0.15em;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 0.5em;
-  color: var(--ink-3);
+.records > li {
+  border-bottom: 1px solid var(--rule);
 }
 
-.page-head p {
-  max-width: 36rem;
+.records a.record {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: 0 1rem;
+  align-items: baseline;
+  margin-inline: calc(var(--pad) * -1);
+  padding: 0.7rem var(--pad);
+  transition: background-color 0.15s;
+}
+
+.records a.record:hover {
+  background: var(--paper);
+}
+
+/* Pointing at a record: a bar comes down its left edge and the row steps in. */
+.records a.record {
+  position: relative;
+}
+
+.records a.record::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--trace);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.2s var(--snap);
+}
+
+.records a.record > * {
+  transition: transform 0.25s var(--snap);
+}
+
+.records a.record:hover::before,
+.records a.record:focus-visible::before {
+  transform: none;
+}
+
+.records a.record:hover > *,
+.records a.record:focus-visible > * {
+  transform: translateX(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .records a.record > *,
+  .records a.record::before {
+    transition: none;
+  }
+}
+
+.record .name {
+  font-size: var(--t-body);
+  line-height: 1.5;
+}
+
+@media (max-width: 719px) {
+  .records a.record {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    row-gap: 0.25rem;
+  }
+  .record .name {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .record .tag {
+    justify-self: start;
+  }
+}
+
+/* ---------- buttons ---------- */
+
+/* A button is a block with one corner cut, like every entrance on the site. */
+.btn {
+  --fill: var(--chip);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  position: relative;
+  isolation: isolate;
+  padding: 0.55rem 1.5rem 0.55rem 1rem;
+  background: var(--fill);
+  -webkit-mask: linear-gradient(-45deg, transparent 0.5rem, #000 calc(0.5rem + 0.5px));
+  mask: linear-gradient(-45deg, transparent 0.5rem, #000 calc(0.5rem + 0.5px));
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition:
+    color 0.12s 0.06s,
+    transform 0.1s;
+}
+
+/* The cut corner is a mask, so the focus ring is drawn inside the block. */
+.btn:focus-visible {
+  outline-offset: -4px;
+}
+
+.btn.go {
+  --fill: var(--ink);
+  color: var(--panel);
+}
+
+.btn .no {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+/* Pointing at a button: yellow is driven across it from the left, behind a
+   bright leading edge, and the label changes as the edge passes. */
+.btn::before,
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: translateX(-101%);
+  transition: transform 0.28s var(--mech);
+}
+
+.btn::before {
+  background: var(--signal);
+}
+
+.btn::after {
+  inset: 0 auto 0 0;
+  z-index: 0;
+  width: 3px;
+  background: var(--on-signal);
+  opacity: 0;
+}
+
+a.btn:hover,
+a.btn:focus-visible,
+button.btn:not(:disabled):hover,
+button.btn:focus-visible {
+  color: var(--on-signal);
+}
+
+a.btn:hover::before,
+a.btn:focus-visible::before,
+button.btn:not(:disabled):hover::before,
+button.btn:focus-visible::before {
+  transform: none;
+}
+
+a.btn:hover::after,
+button.btn:not(:disabled):hover::after {
+  animation: edge 0.3s var(--mech);
+}
+
+@keyframes edge {
+  0% {
+    left: 0;
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+a.btn:active,
+button.btn:not(:disabled):active {
+  transform: translateY(1px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn::before,
+  .btn::after {
+    transition: none;
+    animation: none !important;
+  }
+}
+
+
+/* Deleting things: the one place red is used. */
+.btn.danger::before {
+  background: var(--danger);
+}
+
+a.btn.danger:hover,
+button.btn.danger:not(:disabled):hover,
+.btn.danger:focus-visible {
+  color: var(--panel);
+}
+
+/* A smaller button, for rows of things. */
+.btn.small {
+  padding: 0.3rem 1.1rem 0.3rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* A row of buttons. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+button.btn {
+  border: 0;
+  cursor: pointer;
+}
+
+button.btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* ---------- forms ---------- */
+
+/* Inside a .form: a label over its control, with a hint under it. */
+.form .field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.form .field > .label {
+  color: var(--ink);
+}
+
+.form .field small {
+  color: var(--ink-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.form :is(input:not([type='checkbox'], [type='radio'], [type='file'], [type='range']), select, textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-ui);
+  transition: border-color 0.15s;
+}
+
+.form textarea {
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.form :is(input, select, textarea):hover {
+  border-color: var(--ink-2);
+}
+
+.form :is(input, select, textarea):focus-visible {
+  border-color: var(--ink);
+  outline: 2px solid var(--trace);
+  outline-offset: -1px;
+}
+
+.form :is(input[type='checkbox'], input[type='radio']) {
+  accent-color: var(--ink);
+}
+
+/* Something went wrong, or needs reading: a yellow flag before the words.
+   Red is kept for deleting things. */
+.notice {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--ink);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.notice::before {
+  content: '注意';
+  flex: none;
+  padding: 0 0.4em;
+  background: var(--signal);
+  color: var(--on-signal);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.notice[hidden],
+.notice:empty {
+  display: none;
+}
+
+/* ---------- the reading pages: a sheet with a head, lists, a margin ---------- */
+
+/* The way back up, above a page's name: 全部分类 / 学习. */
+.crumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.6em;
+  margin: 0 0 0.75rem;
+}
+
+.crumb a {
+  border-bottom: 1px solid var(--rule);
+}
+
+.crumb a:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.crumb > * + *::before {
+  content: '/';
+  margin-right: 0.6em;
+  color: var(--rule);
+}
+
+/* A page's name with its count on the right, ruled off in ink. */
+.sheet-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--ink);
+}
+
+.sheet-head h1 {
+  margin: 0;
+  font-size: var(--t-h1);
+  line-height: 1.25;
+}
+
+.sheet-head p {
+  margin: 0;
+}
+
+/* A sentence or two under the head saying what is here. */
+.lede {
+  max-width: var(--measure);
   margin: 1.25rem 0 0;
+  font-size: var(--t-body);
+  line-height: 1.75;
   color: var(--ink-2);
 }
 
-/* animated entrance, respects reduced motion */
-@media (prefers-reduced-motion: no-preference) {
-  .rise {
-    animation: rise 0.8s var(--ease) both;
-    animation-delay: calc(var(--i, 0) * 70ms);
-  }
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(14px);
-    }
-  }
+/* Nothing to list yet. */
+.empty {
+  max-width: 30rem;
+  margin: 1.5rem 0 0;
+  font-size: var(--t-body);
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+/* A row of chips that narrows a list. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1.5rem 0 0;
+}
+
+button.chip {
+  cursor: pointer;
+}
+
+/* A heading inside a list: a year, a category. The count sits at the right. */
+.group-head {
+  display: flex;
+  border-bottom: 1px solid var(--ink);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 2.5rem 0 0;
+  padding-bottom: 0.5rem;
+  font-size: var(--t-h2);
+  line-height: 1.35;
+}
+
+.group-head a:hover {
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
+.group-head .mono {
+  white-space: nowrap;
+}
+
+/* A list straight under the head shares its rule; under a lede it brings its own. */
+.sheet-head + .records,
+.group-head + .records {
+  border-top: 0;
+}
+
+.lede + .records {
+  margin-top: 1.5rem;
+}
+
+/* "All of them", at the foot of a short list. */
+.more {
+  display: inline-block;
+  margin-top: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.more:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* In the margin: a small heading and a column of figures. */
+.margin-h {
+  margin: 0 0 0.5rem;
+}
+
+.margin-h:not(:first-child) {
+  margin-top: 2.5rem;
+}
+
+.ledger {
+  max-width: 20rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.ledger > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.ledger a:hover {
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
+.ledger .is-current {
+  padding-inline: 0.3em;
+  background: var(--signal);
+  color: var(--on-signal);
 }

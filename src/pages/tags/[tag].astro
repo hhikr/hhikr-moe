@@ -10,4 +10,4 @@ if (!found) return new Response(null, { status: 404 });
 const [tag, posts] = found;
 ---
 
-<TermList kicker={`Tag · ${posts.length} entries`} title={`# ${tag}`} posts={posts} back={{ href: '/tags/', label: '全部标签' }} />
+<TermList title={`# ${tag}`} posts={posts} kind="标签" back={{ href: '/tags/', label: '全部标签' }} />

@@ -23,18 +23,16 @@ const tools: [string, string, string][] = [
 ---
 
 <section class="comments" id="comments" data-comments data-slug={slug} aria-label="评论">
-  <header class="section-head">
-    <span class="label">§</span>
-    <h2>评论</h2>
-    <span class="en">Comments</span>
-    <span class="more label" data-count></span>
-  </header>
+  <h2 class="group-head">
+    <span>评论</span>
+    <span class="mono" data-count></span>
+  </h2>
 
   <ol class="c-list" data-list></ol>
 
   <div class="c-profile" data-profile hidden></div>
 
-  <form class="c-composer" data-composer novalidate>
+  <form class="c-composer form" data-composer novalidate>
     <div class="c-replying" data-replying hidden>
       <span></span>
       <button type="button" class="c-link">取消</button>
@@ -54,29 +52,29 @@ const tools: [string, string, string][] = [
     <div class="c-preview" data-preview hidden></div>
     <div class="c-bar">
       <p class="c-status" data-status role="status"></p>
-      <button type="button" class="chip" data-preview-toggle>预览</button>
-      <button type="submit" class="chip c-send">发送</button>
+      <button type="button" class="btn" data-preview-toggle>预览</button>
+      <button type="submit" class="btn go c-send">发送</button>
     </div>
   </form>
 
   <dialog class="c-auth" data-auth aria-label="登录后发表评论">
     <button type="button" class="c-close" data-auth-close aria-label="关闭">×</button>
-    <h3 class="cjk">登录后发表评论</h3>
+    <h3>登录后发表评论</h3>
     <p class="c-hint">写好的内容会保留，登录后自动发出。</p>
     {
       googleConfig() && (
-        <a class="c-google" data-google href={`/api/auth/google/start?return=${returnTo}`}>
+        <a class="btn go c-google" data-google data-astro-prefetch="false" href={`/api/auth/google/start?return=${returnTo}`}>
           使用 Google 登录
         </a>
       )
     }
-    <form novalidate>
-      <label>
+    <form class="form" novalidate>
+      <label class="field">
         <span class="label">名字</span>
         <input name="name" autocomplete="username" maxlength="40" />
         <small>注册时填昵称；登录时填完整的名字，例如 narrator#1145。</small>
       </label>
-      <label>
+      <label class="field">
         <span class="label">密码</span>
         <input name="password" type="password" autocomplete="current-password" maxlength="200" />
         <small>至少 10 个字符。没有绑定邮箱，忘记后无法找回。</small>
@@ -84,8 +82,8 @@ const tools: [string, string, string][] = [
       <input class="c-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
       <p class="c-status" data-auth-message role="status"></p>
       <div class="c-bar">
-        <button type="submit" class="chip c-send">登录</button>
-        <button type="button" class="chip" data-register>注册新账号</button>
+        <button type="submit" class="btn go c-send">登录</button>
+        <button type="button" class="btn" data-register>注册新账号</button>
         <a class="c-fine" href="/privacy/" target="_blank">隐私说明</a>
       </div>
     </form>
@@ -93,7 +91,7 @@ const tools: [string, string, string][] = [
       <p>注册好了。你的完整名字是</p>
       <p class="c-handle" data-handle></p>
       <p>昵称可以和别人重名，后面的四位数字用来区分。<strong>以后登录需要输入这个完整的名字</strong>，请记下来。</p>
-      <button type="button" class="chip c-send">知道了，发送评论</button>
+      <button type="button" class="btn go c-send">知道了，发送评论</button>
     </div>
   </dialog>
 </section>
@@ -105,10 +103,6 @@ const tools: [string, string, string][] = [
 <style is:global>
   .comments {
     margin-top: 4rem;
-  }
-
-  .comments .section-head .more {
-    margin-left: auto;
   }
 
   .c-list,
@@ -129,7 +123,7 @@ const tools: [string, string, string][] = [
   .c-replies {
     margin-top: 1rem;
     padding-left: 1rem;
-    border-left: 2px solid var(--rule);
+    border-left: 1px solid var(--ink);
   }
 
   .c-replies .c-item {
@@ -137,21 +131,22 @@ const tools: [string, string, string][] = [
     border-bottom: 0;
   }
 
+  /* square, like everything else on the site */
   .c-avatar {
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: 50%;
     object-fit: cover;
-    background: var(--paper-2);
+    background: var(--chip);
   }
 
   .c-initial {
     display: grid;
     place-items: center;
-    background: hsl(var(--hue, 210) 35% 46%);
-    color: #fff;
-    font-family: var(--font-cjk);
+    background: var(--tag-bg);
+    color: var(--tag-fg);
+    font-family: var(--font-ui);
     font-size: 1.1rem;
+    font-weight: 700;
     line-height: 1;
     user-select: none;
   }
@@ -161,10 +156,11 @@ const tools: [string, string, string][] = [
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.25rem 0.75rem;
+    font-family: var(--font-ui);
   }
 
   .c-name {
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .c-tag {
@@ -172,32 +168,32 @@ const tools: [string, string, string][] = [
     font-family: var(--font-mono);
     font-size: 0.8em;
     font-weight: 400;
-    color: var(--ink-3);
+    color: var(--ink-2);
   }
 
   .c-badge {
     margin-left: 0.5em;
     padding: 0 0.45em;
-    border: 1px solid var(--sky);
-    border-radius: 2px;
-    color: var(--sky-ink);
+    background: var(--signal);
+    color: var(--on-signal);
     font-family: var(--font-mono);
     font-size: 0.66rem;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-weight: 700;
     vertical-align: 0.15em;
   }
 
-  .c-head time,
-  .c-pending {
+  .c-head time {
     font-family: var(--font-mono);
-    font-size: 0.74rem;
-    color: var(--ink-3);
+    font-size: var(--t-mono);
+    color: var(--ink-2);
   }
 
+  /* waiting for review: marked the way this site marks things that need a look */
   .c-pending {
-    color: var(--signal);
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-size: 0.75rem;
   }
 
   .c-body {
@@ -208,9 +204,17 @@ const tools: [string, string, string][] = [
 
   .c-body a,
   .c-preview a {
-    color: var(--sky-ink);
+    color: var(--ink);
     text-decoration: underline;
-    text-underline-offset: 0.2em;
+    text-decoration-color: var(--signal);
+    text-decoration-thickness: 0.4em;
+    text-underline-offset: -0.18em;
+    text-decoration-skip-ink: none;
+  }
+
+  :root[data-theme='dark'] :is(.c-body, .c-preview) a {
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.25em;
   }
 
   .c-body img,
@@ -219,7 +223,6 @@ const tools: [string, string, string][] = [
     max-width: min(100%, 28rem);
     max-height: 24rem;
     margin: 0.5rem 0;
-    border-radius: var(--radius);
     cursor: zoom-in;
   }
 
@@ -227,7 +230,7 @@ const tools: [string, string, string][] = [
   .c-preview blockquote {
     margin: 0.5rem 0;
     padding: 0.1rem 0 0.1rem 0.9rem;
-    border-left: 3px solid var(--rule);
+    border-left: 3px solid var(--ink);
     color: var(--ink-2);
   }
 
@@ -235,8 +238,8 @@ const tools: [string, string, string][] = [
   .c-preview pre {
     margin: 0.5rem 0;
     padding: 0.75rem 0.9rem;
-    border-radius: var(--radius);
-    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    background: var(--paper);
     font-family: var(--font-mono);
     font-size: 0.85rem;
     line-height: 1.6;
@@ -245,7 +248,7 @@ const tools: [string, string, string][] = [
 
   .c-gone,
   .c-broken {
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-size: 0.9rem;
   }
 
@@ -262,15 +265,17 @@ const tools: [string, string, string][] = [
   .c-link {
     padding: 0;
     border: 0;
+    border-bottom: 1px solid transparent;
     background: none;
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-family: var(--font-mono);
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     cursor: pointer;
   }
 
   .c-link:hover {
-    color: var(--sky-ink);
+    color: var(--ink);
+    border-color: var(--ink);
   }
 
   .c-profile {
@@ -279,6 +284,7 @@ const tools: [string, string, string][] = [
     align-items: center;
     gap: 0.75rem;
     margin-top: 2rem;
+    font-family: var(--font-ui);
   }
 
   .c-profile[hidden],
@@ -312,35 +318,37 @@ const tools: [string, string, string][] = [
     align-items: center;
     gap: 1rem;
     padding: 0.4rem 0.75rem;
-    border-left: 3px solid var(--sky);
-    background: var(--paper-2);
+    border-left: 4px solid var(--trace);
+    background: var(--paper);
+    font-family: var(--font-ui);
     font-size: 0.88rem;
   }
 
   .c-tools {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem;
+    gap: 2px;
   }
 
   .c-tools button {
     min-width: 2rem;
-    padding: 0.2rem 0.55rem;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: var(--card);
-    color: var(--ink-2);
+    padding: 0.2rem 0.6rem;
+    border: 0;
+    background: var(--chip);
+    color: var(--ink);
+    font-family: var(--font-ui);
     font-size: 0.8rem;
     cursor: pointer;
+    transition: background-color 0.1s;
   }
 
   .c-tools button:hover {
-    border-color: var(--ink);
-    color: var(--ink);
+    background: var(--signal);
+    color: var(--on-signal);
   }
 
   .c-tools .t-b {
-    font-weight: 700;
+    font-weight: 800;
   }
   .c-tools .t-i {
     font-style: italic;
@@ -352,27 +360,11 @@ const tools: [string, string, string][] = [
     text-decoration: line-through;
   }
 
-  .c-composer textarea,
-  .c-auth input:not(.c-trap) {
-    width: 100%;
-    padding: 0.7rem 0.85rem;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: var(--card);
-    color: var(--ink);
-    font: inherit;
-    line-height: 1.7;
-  }
-
   .c-composer textarea {
-    resize: vertical;
     min-height: 7rem;
-  }
-
-  .c-composer textarea:focus-visible,
-  .c-auth input:focus-visible {
-    border-color: var(--sky);
-    outline: none;
+    font-family: var(--font-text);
+    font-size: var(--t-body);
+    line-height: 1.75;
   }
 
   .c-trap {
@@ -385,8 +377,7 @@ const tools: [string, string, string][] = [
 
   .c-preview {
     padding: 0.75rem 0.9rem;
-    border: 1px dashed var(--rule);
-    border-radius: var(--radius);
+    border: 1px dashed var(--ink-2);
     line-height: 1.75;
     overflow-wrap: anywhere;
   }
@@ -398,56 +389,60 @@ const tools: [string, string, string][] = [
     gap: 0.5rem;
   }
 
+  /* what went wrong, flagged in yellow; empty, it takes no room */
   .c-status {
     flex: 1 1 12rem;
     min-height: 1.4em;
     margin: 0;
-    color: var(--signal);
+    color: var(--ink);
+    font-family: var(--font-ui);
     font-size: 0.86rem;
   }
 
-  .c-bar .chip {
-    padding: 0.4em 1.2em;
-    cursor: pointer;
+  .c-status:not(:empty)::before {
+    content: '注意';
+    margin-right: 0.5rem;
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-size: 0.75rem;
+    font-weight: 700;
   }
 
-  .c-send {
-    border-color: var(--ink);
-    background: var(--ink);
-    color: var(--paper);
-  }
-
-  .c-send:hover {
-    border-color: var(--sky-ink);
-    background: var(--sky-ink);
-    color: var(--paper);
-  }
-
-  .c-send:disabled {
-    opacity: 0.5;
-    cursor: progress;
-  }
-
+  /* the sign-in and account boxes: a plate with an ink tab on top */
   .c-auth {
     width: min(28rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
     padding: 1.75rem;
-    border: 1px solid var(--rule-strong);
-    border-radius: 6px;
-    background: var(--paper);
+    border: 1px solid var(--ink);
+    border-top-width: 5px;
+    background: var(--panel);
     color: var(--ink);
-    box-shadow:
-      8px 8px 0 var(--sky-soft),
-      var(--shadow);
+    font-family: var(--font-ui);
   }
 
   .c-auth::backdrop {
-    background: color-mix(in srgb, var(--paper) 40%, rgb(10 12 18 / 0.45));
-    backdrop-filter: blur(3px);
+    background: color-mix(in srgb, var(--paper) 55%, rgb(10 10 10 / 0.5));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .c-auth[open] {
+      animation: c-open 0.28s var(--mech);
+    }
+    @keyframes c-open {
+      from {
+        clip-path: inset(0 0 100% 0);
+      }
+      to {
+        clip-path: inset(0);
+      }
+    }
   }
 
   .c-auth h3 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    font-weight: 800;
   }
 
   .c-account section {
@@ -463,71 +458,52 @@ const tools: [string, string, string][] = [
     margin: 0;
   }
 
+  .c-account h4 {
+    color: var(--ink);
+  }
+
   .c-account form {
-    margin: 0;
-    padding: 0;
-    border: 0;
     display: grid;
     gap: 0.75rem;
     justify-items: start;
     width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
   }
 
   .c-account label {
     width: 100%;
   }
 
-  .c-account .chip {
-    padding: 0.4em 1.2em;
-    cursor: pointer;
-  }
-
-  .c-account .c-danger {
-    border-color: var(--signal);
-    color: var(--signal);
-  }
-
-  .c-account .c-danger:hover {
-    background: var(--signal);
-    color: #fff;
-  }
-
   .c-hint {
     margin: 0.35rem 0 1.25rem;
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-size: 0.88rem;
   }
 
   .c-close {
     position: absolute;
-    top: 0.75rem;
-    right: 0.9rem;
+    top: 0.6rem;
+    right: 0.8rem;
     border: 0;
     background: none;
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-size: 1.4rem;
     line-height: 1;
     cursor: pointer;
   }
 
+  .c-close:hover {
+    color: var(--ink);
+  }
+
   .c-google {
-    display: block;
-    padding: 0.75rem 1rem;
-    border: 1.5px solid var(--rule-strong);
-    border-radius: var(--radius);
-    background: var(--card);
-    text-align: center;
-    transition:
-      background 0.2s,
-      color 0.2s;
+    width: 100%;
+    justify-content: center;
   }
 
-  .c-google:hover {
-    background: var(--ink);
-    color: var(--paper);
-  }
-
-  .c-auth form {
+  .c-auth > form {
     display: grid;
     gap: 0.9rem;
     margin-top: 1.25rem;
@@ -535,25 +511,22 @@ const tools: [string, string, string][] = [
     border-top: 1px solid var(--rule);
   }
 
-  .c-auth label {
-    display: grid;
-    gap: 0.3rem;
-  }
-
-  .c-auth small,
   .c-fine {
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-size: 0.8rem;
   }
 
-  .c-fine {
+  .c-bar .c-fine {
     margin-left: auto;
-    text-decoration: underline;
+    border-bottom: 1px solid var(--rule);
   }
 
   .c-handle {
+    display: inline-block;
+    padding: 0.1em 0.45em;
+    background: var(--signal);
+    color: var(--on-signal);
     font-family: var(--font-mono);
     font-size: 1.5rem;
-    color: var(--sky-ink);
   }
 </style>

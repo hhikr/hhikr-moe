@@ -1,62 +1,44 @@
 ---
 import Icon from './Icon.astro';
-import { NAV, SITE } from '@/site.config';
+import { NAV } from '@/site.config';
 
 const path = Astro.url.pathname;
 const isActive = (href: string) => path === href || (href !== '/' && path.startsWith(href));
 // Only the endministrator's own (uncached) pages carry this link.
 const endmin = Astro.locals.viewer?.role === 'endmin';
+const items = [{ label: '首页', href: '/' }, ...NAV];
 ---
 
+<!-- A rail down the left on a wide screen, a bar across the top otherwise. -->
 <header class="site-header" data-header>
-  <div class="wrap bar">
-    <a href="/" class="brand" aria-label={`${SITE.title} — 首页`}>
-      <span class="mark" aria-hidden="true"></span>
-      <span class="word">
-        <span class="display">{SITE.shortTitle}</span><span class="dot">.moe</span>
-      </span>
-    </a>
+  <a href="/" class="brand" aria-label="hhikr.moe 首页">HHIKR.MOE</a>
 
-    <nav class="nav" aria-label="主导航">
-      {
-        NAV.map((item) => (
-          <a href={item.href} class:list={['nav-link', { active: isActive(item.href) }]} aria-current={isActive(item.href) ? 'page' : undefined}>
-            <span class="cjk">{item.label}</span>
-          </a>
-        ))
-      }
-    </nav>
+  <nav class="nav" id="site-nav" aria-label="主导航">
+    {
+      items.map((item) => (
+        <a href={item.href} class:list={['nav-link', { active: isActive(item.href) }]} aria-current={isActive(item.href) ? 'page' : undefined}>
+          {item.label}
+        </a>
+      ))
+    }
+  </nav>
 
-    <div class="tools">
-      {endmin && <a class="nav-link" href="/endmin/"><span class="cjk">管理</span></a>}
-      <button class="search-btn" type="button" data-search-open aria-label="搜索 (Ctrl K)">
-        <Icon name="search" size={16} />
-        <span class="hint">搜索</span>
-        <kbd data-kbd>Ctrl K</kbd>
-      </button>
-      <button class="icon-btn" type="button" data-theme-toggle aria-label="切换主题">
-        <Icon name="sun" class="i-light" />
-        <Icon name="moon" class="i-dark" />
-        <Icon name="auto" class="i-auto" />
-      </button>
-      <button class="icon-btn menu-btn" type="button" data-menu-toggle aria-label="菜单" aria-expanded="false" aria-controls="mobile-menu">
-        <Icon name="menu" />
-      </button>
-    </div>
-  </div>
-  <div class="progress" aria-hidden="true"><span data-progress></span></div>
-
-  <div class="mobile-menu" id="mobile-menu" hidden>
-    <nav class="wrap" aria-label="移动端导航">
-      {
-        NAV.map((item, i) => (
-          <a href={item.href} class:list={['m-link', { active: isActive(item.href) }]} style={`--i:${i}`}>
-            <span class="cjk">{item.label}</span>
-            <span class="display">{item.en}</span>
-          </a>
-        ))
-      }
-    </nav>
+  <div class="tools">
+    {endmin && <a class="tool" href="/endmin/"><span class="word">管理</span></a>}
+    <button class="tool" type="button" data-search-open aria-label="搜索 (Ctrl K)">
+      <Icon name="search" size={16} />
+      <span class="word">搜索</span>
+      <kbd class="mono" data-kbd>Ctrl K</kbd>
+    </button>
+    <button class="tool" type="button" data-theme-toggle aria-label="切换主题">
+      <Icon name="sun" size={16} class="i-light" />
+      <Icon name="moon" size={16} class="i-dark" />
+      <Icon name="auto" size={16} class="i-auto" />
+      <span class="word">主题</span>
+    </button>
+    <button class="tool menu-btn" type="button" data-menu-toggle aria-label="菜单" aria-expanded="false" aria-controls="site-nav">
+      <Icon name="menu" size={18} />
+    </button>
   </div>
 </header>
 
@@ -65,150 +47,106 @@ const endmin = Astro.locals.viewer?.role === 'endmin';
     position: sticky;
     top: 0;
     z-index: 50;
-    background: color-mix(in srgb, var(--paper) 86%, transparent);
-    backdrop-filter: saturate(1.4) blur(10px);
-    -webkit-backdrop-filter: saturate(1.4) blur(10px);
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.3s;
-  }
-
-  .site-header.scrolled {
-    border-bottom-color: var(--rule);
-  }
-
-  .bar {
+    align-self: start;
     display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    height: 3.75rem;
+    flex-direction: column;
+    height: 100dvh;
+    padding: 1.5rem 0 1rem;
+    background: var(--paper);
+    border-right: 1px solid var(--rule);
+    font-family: var(--font-ui);
   }
 
   .brand {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-right: auto;
-  }
-
-  .mark {
-    width: 30px;
-    height: 28px;
-    background: var(--ink);
-    -webkit-mask: url('/mark.png') center / contain no-repeat;
-    mask: url('/mark.png') center / contain no-repeat;
-    transition: background 0.3s, transform 0.4s var(--ease);
-  }
-
-  .brand:hover .mark {
-    background: var(--sky);
-    transform: translateY(-2px) rotate(-4deg);
-  }
-
-  .word {
-    font-size: 1.45rem;
-    line-height: 1;
-    letter-spacing: -0.01em;
-  }
-
-  .word .dot {
+    padding: 0 1.25rem;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.02em;
-    color: var(--ink-3);
-    margin-left: 0.1rem;
+    font-size: var(--t-mono);
+    letter-spacing: 0.04em;
   }
 
   .nav {
     display: flex;
-    gap: 0.25rem;
+    flex-direction: column;
+    margin-top: 2rem;
   }
 
   .nav-link {
-    position: relative;
-    padding: 0.35rem 0.7rem;
-    font-size: 1.02rem;
+    padding: 0.4rem 1.25rem;
     color: var(--ink-2);
-    transition: color 0.2s;
+    transition: color 0.15s;
   }
 
-  .nav-link::after {
-    content: '';
-    position: absolute;
-    left: 0.7rem;
-    right: 0.7rem;
-    bottom: 0.15rem;
-    height: 1.5px;
-    background: var(--sky);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.35s var(--ease);
-  }
-
-  .nav-link:hover,
-  .nav-link.active {
+  .nav-link:hover {
     color: var(--ink);
   }
 
-  .nav-link:hover::after,
-  .nav-link.active::after {
-    transform: scaleX(1);
+  /* On the rail, pointing at a section draws a short lead-in and steps it across. */
+  @media (min-width: 1100px) and (prefers-reduced-motion: no-preference) {
+    .nav-link {
+      position: relative;
+      transition:
+        color 0.15s,
+        padding-left 0.25s var(--snap);
+    }
+    .nav-link:not(.active)::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 0.7rem;
+      height: 2px;
+      background: var(--ink);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.2s var(--snap);
+    }
+    .nav-link:not(.active):hover {
+      padding-left: 1.7rem;
+    }
+    .nav-link:not(.active):hover::before {
+      transform: none;
+    }
+  }
+
+  /* The yellow block is "where you are". It carries a name so that it slides
+     to its new place when the page changes. */
+  .nav-link.active {
+    color: var(--on-signal);
+    background: linear-gradient(-45deg, transparent calc(var(--cut) - 0.5px), var(--signal) var(--cut));
+    view-transition-name: nav-current;
   }
 
   .tools {
     display: flex;
-    align-items: center;
-    gap: 0.4rem;
+    flex-direction: column;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
   }
 
-  .search-btn {
+  .tool {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    height: 2.1rem;
-    padding: 0 0.5rem 0 0.7rem;
-    border: 1px solid var(--rule);
-    border-radius: 999px;
-    background: var(--card);
-    color: var(--ink-3);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
+    gap: 0.6rem;
+    padding: 0.4rem 1.25rem;
+    border: 0;
+    background: none;
+    color: var(--ink-2);
+    text-align: left;
+    transition: color 0.15s;
   }
 
-  .search-btn:hover {
-    border-color: var(--sky);
+  .tool:hover {
     color: var(--ink);
   }
 
-  .search-btn kbd {
-    font-family: var(--font-mono);
-    font-size: 0.66rem;
-    padding: 0.05rem 0.4rem;
-    border: 1px solid var(--rule);
-    border-radius: 999px;
-    color: var(--ink-3);
+  .tool kbd {
+    margin-left: auto;
+    font-size: 0.7rem;
   }
 
-  .icon-btn {
-    display: grid;
-    place-items: center;
-    width: 2.1rem;
-    height: 2.1rem;
-    border: 1px solid transparent;
-    border-radius: 999px;
-    background: none;
-    cursor: pointer;
-    color: var(--ink-2);
-    transition: color 0.2s, border-color 0.2s;
-  }
-
-  .icon-btn:hover {
-    color: var(--sky);
-    border-color: var(--rule);
-  }
-
-  .icon-btn :global(svg) {
-    grid-area: 1 / 1;
+  .tool :global(svg) {
+    flex: none;
   }
 
   [data-theme-toggle] :global(.i-light),
@@ -227,75 +165,106 @@ const endmin = Astro.locals.viewer?.role === 'endmin';
     display: none;
   }
 
-  .progress {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -1px;
-    height: 2px;
-    pointer-events: none;
-  }
+  /* ---- a bar across the top ---- */
+  @media (max-width: 1099px) {
+    .site-header {
+      flex-direction: row;
+      align-items: stretch;
+      height: 3.5rem;
+      padding: 0 0 0 var(--pad);
+      border-right: 0;
+      border-bottom: 1px solid var(--rule);
+    }
 
-  .progress span {
-    display: block;
-    height: 100%;
-    width: 100%;
-    background: var(--sky);
-    transform: scaleX(var(--p, 0));
-    transform-origin: left;
-  }
+    .brand {
+      display: flex;
+      align-items: center;
+      padding: 0;
+    }
 
-  .mobile-menu {
-    position: fixed;
-    inset: 3.75rem 0 0 0;
-    background: var(--paper);
-    border-top: 1px solid var(--rule);
-    overflow-y: auto;
-  }
-
-  .mobile-menu nav {
-    display: flex;
-    flex-direction: column;
-    padding-block: 1.5rem;
-  }
-
-  .m-link {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--rule);
-    font-size: 2rem;
-    animation: rise 0.5s var(--ease) both;
-    animation-delay: calc(var(--i) * 50ms);
-  }
-
-  .m-link .display {
-    font-style: italic;
-    font-size: 1.1rem;
-    color: var(--ink-3);
-  }
-
-  .m-link.active .cjk {
-    color: var(--sky);
-  }
-
-  @media (max-width: 860px) {
     .nav {
+      flex-direction: row;
+      margin: 0 auto 0 1.5rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      padding: 0 0.9rem;
+    }
+
+    .tools {
+      flex-direction: row;
+      margin: 0;
+      padding: 0 calc(var(--pad) - 0.75rem) 0 0;
+      border: 0;
+    }
+
+    .tool {
+      justify-content: center;
+      min-width: 2.75rem;
+      padding: 0 0.75rem;
+    }
+
+    .tool kbd {
       display: none;
     }
+
+    .tool :global(svg) + .word {
+      display: none;
+    }
+  }
+
+  /* ---- a phone: the nav folds into six cells under the bar ---- */
+  @media (max-width: 719px) {
+    .site-header {
+      flex-wrap: wrap;
+      height: auto;
+      padding-left: 0;
+    }
+
+    .brand {
+      height: 3.5rem;
+      margin-right: auto;
+      padding-left: var(--pad);
+    }
+
+    .tools {
+      height: 3.5rem;
+    }
+
     .menu-btn {
+      display: flex;
+    }
+
+    .nav {
+      order: 3;
+      display: none;
+      width: 100%;
+      margin: 0;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--rule);
+      border-top: 1px solid var(--rule);
+    }
+
+    .site-header[data-nav-open] .nav {
       display: grid;
     }
-    .search-btn {
-      padding: 0;
-      width: 2.1rem;
+
+    .nav-link {
       justify-content: center;
-      border-color: transparent;
-      background: none;
+      min-height: 3rem;
+      padding: 0;
+      background: var(--paper);
     }
-    .search-btn .hint,
-    .search-btn kbd {
+
+    .nav-link.active {
+      background: var(--signal);
+    }
+
+    /* Six cells, as planned; 关于 is in the footer on a phone. */
+    .nav-link:nth-child(n + 7) {
       display: none;
     }
   }

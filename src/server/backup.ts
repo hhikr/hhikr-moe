@@ -74,7 +74,7 @@ function setSetting(key: string, value: string | undefined): void {
 
 // Rows that are only meaningful while the site is running, or that would make
 // every backup differ from the last. Their tables are still created on restore.
-const NOT_EXPORTED = new Set(['sessions', 'rate_limits', 'login_links', 'used_challenges', 'stats_seen', 'backup_runs']);
+const NOT_EXPORTED = new Set(['sessions', 'rate_limits', 'login_links', 'used_challenges', 'stats_seen', 'backup_runs', 'cosmo_codes', 'cosmo_grants', 'vps_samples']);
 
 function literal(value: unknown): string {
   if (value === null || value === undefined) return 'NULL';

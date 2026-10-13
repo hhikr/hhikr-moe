@@ -13,7 +13,7 @@ const items = all.filter((h) => h.depth <= top + 1);
 {
   items.length > 1 && (
     <nav class="toc" aria-label="目录">
-      <p class="label">目录 · Contents</p>
+      <p class="mono">目录</p>
       <ol data-toc>
         {items.map((h) => (
           <li class:list={[{ sub: h.depth > top }]}>
@@ -26,7 +26,7 @@ const items = all.filter((h) => h.depth <= top + 1);
 }
 
 <style>
-  .toc .label {
+  .toc .mono {
     margin: 0 0 0.75rem;
   }
 
@@ -34,7 +34,7 @@ const items = all.filter((h) => h.depth <= top + 1);
     list-style: none;
     margin: 0;
     padding: 0;
-    max-height: calc(100dvh - 12rem);
+    max-height: calc(100dvh - 10rem);
     overflow-y: auto;
     scrollbar-width: thin;
     border-left: 1px solid var(--rule);
@@ -44,16 +44,15 @@ const items = all.filter((h) => h.depth <= top + 1);
     display: block;
     padding: 0.28rem 0 0.28rem 0.9rem;
     margin-left: -1px;
-    border-left: 2px solid transparent;
-    font-size: 0.86rem;
+    border-left: 3px solid transparent;
+    font-size: 0.875rem;
     line-height: 1.45;
-    color: var(--ink-3);
-    transition: color 0.2s, border-color 0.2s;
+    color: var(--ink-2);
+    transition: color 0.15s;
   }
 
   li.sub a {
     padding-left: 1.7rem;
-    font-size: 0.8rem;
   }
 
   li a:hover {
@@ -61,7 +60,7 @@ const items = all.filter((h) => h.depth <= top + 1);
   }
 
   li a:global(.active) {
-    color: var(--sky-ink);
-    border-left-color: var(--sky);
+    color: var(--ink);
+    border-left-color: var(--trace);
   }
 </style>

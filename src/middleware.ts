@@ -1,6 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { CSP_HEADER } from '@/lib/csp';
 import { siteOrigin } from '@/server/config.ts';
+import { startMonitor } from '@/server/monitor.ts';
 import { readSession, sessionCookieName, sessionCookieOptions } from '@/server/sessions.ts';
 
 // Pages live at addresses ending in "/". Routing itself accepts both forms
@@ -41,6 +42,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.viewer = { role: 'guest' };
     return next();
   }
+  startMonitor();
 
   if (reading && !pathname.endsWith('/') && isPage(pathname)) {
     return context.redirect(`${pathname}/${search}`, 301);
@@ -48,7 +50,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Anything that changes state must come from our own pages. JSON requests
   // are not covered by Astro's built-in form check, so this is done here.
-  if (!reading) {
+  // /api/internal/ is called by services on this machine, not by pages; those
+  // routes check a shared secret instead and use no cookies.
+  if (!reading && !pathname.startsWith('/api/internal/')) {
     if (!sameOrigin(context.request)) {
       return new Response(JSON.stringify({ error: { code: 'bad_origin', message: '请求来源不正确' } }), {
         status: 403,

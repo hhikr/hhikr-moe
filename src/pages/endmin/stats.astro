@@ -37,11 +37,11 @@ if (days > 31) {
 }
 
 // Chart geometry, in SVG units.
-const W = 720;
-const H = 230;
-const LEFT = 40;
+const W = 960;
+const H = 260;
+const LEFT = 44;
 const TOP = 12;
-const BOTTOM = 26;
+const BOTTOM = 28;
 const innerW = W - LEFT - 6;
 const innerH = H - TOP - BOTTOM;
 const niceMax = (value: number) => {
@@ -79,7 +79,7 @@ const lists = [
   <div class="em-filters" role="toolbar" aria-label="时间范围">
     {
       RANGES.map((r) => (
-        <a class="chip" href={`/endmin/stats/?days=${r.days}`} aria-current={r.days === days ? 'true' : undefined}>
+        <a class:list={['chip', { 'is-active': r.days === days }]} href={`/endmin/stats/?days=${r.days}`} aria-current={r.days === days ? 'true' : undefined}>
           最近 {r.label}
         </a>
       ))
@@ -87,17 +87,18 @@ const lists = [
   </div>
 
   <div class="em-tiles">
-    <div class="em-tile"><span class="n">{n(today.views)}</span><span class="cjk">今日浏览</span></div>
-    <div class="em-tile"><span class="n">{n(today.visitors)}</span><span class="cjk">今日访客</span></div>
-    <div class="em-tile"><span class="n">{n(report.views)}</span><span class="cjk">{days} 天浏览</span></div>
-    <div class="em-tile"><span class="n">{n(report.visitors)}</span><span class="cjk">{days} 天访客</span></div>
+    <div class="em-tile"><span class="n" data-fx-load>{n(today.views)}</span><span class="k">今日浏览</span></div>
+    <div class="em-tile"><span class="n" data-fx-load>{n(today.visitors)}</span><span class="k">今日访客</span></div>
+    <div class="em-tile"><span class="n" data-fx-load>{n(report.views)}</span><span class="k">{days} 天浏览</span></div>
+    <div class="em-tile"><span class="n" data-fx-load>{n(report.visitors)}</span><span class="k">{days} 天访客</span></div>
   </div>
 
   <section class="em-panel chart-panel">
     <h2>
       趋势
-      <span class="legend"><i class="k-views"></i>浏览 <i class="k-visitors"></i>访客</span>
+      <span class="legend aside"><i class="k-views"></i>浏览 <i class="k-visitors"></i>访客</span>
     </h2>
+    <div class="chart-wrap">
     <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`最近 ${days} 天的浏览次数和访客数`}>
       {
         ticks.map((t) => (
@@ -120,7 +121,8 @@ const lists = [
       <polyline class="line" points={line} />
       {points.length <= 31 && points.map((p, i) => <circle class="dot" cx={x(i)} cy={y(p.visitors)} r="2.6" />)}
     </svg>
-    <p class="note">访客按天计算：同一个人一天内只算一次，隔天再来会再算一次。{days > 31 && '一年的图按月汇总。'}</p>
+    </div>
+    <p class="em-note">访客按天计算：同一个人一天内只算一次，隔天再来会再算一次。{days > 31 && '一年的图按月汇总。'}</p>
   </section>
 
   <div class="em-cols">
@@ -166,25 +168,18 @@ const lists = [
   </div>
 </Endmin>
 
+<script>
+  import { wireReadouts } from '@/scripts/fx';
+
+  wireReadouts();
+</script>
+
 <style>
-  .em-filters a.chip[aria-current] {
-    border-color: var(--ink);
-    background: var(--ink);
-    color: var(--paper);
-  }
-
-  .chart-panel {
-    padding-top: 2rem;
-  }
-
   .legend {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    margin-left: auto;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--ink-3);
   }
 
   .legend i {
@@ -195,8 +190,8 @@ const lists = [
   .k-views {
     width: 0.7rem;
     height: 0.7rem;
-    background: var(--sky);
-    opacity: 0.55;
+    background: var(--ink-2);
+    opacity: 0.5;
   }
 
   .k-visitors {
@@ -205,11 +200,17 @@ const lists = [
     background: var(--ink);
   }
 
+  /* On a narrow screen the chart keeps a readable size and scrolls inside its plate. */
+  .chart-wrap {
+    overflow-x: auto;
+    border-top: 1px solid var(--rule);
+  }
+
   .chart {
     display: block;
     width: 100%;
+    min-width: 46rem;
     height: auto;
-    border-top: 1px solid var(--rule);
     padding-top: 0.75rem;
   }
 
@@ -219,15 +220,18 @@ const lists = [
   }
 
   .chart .axis {
-    fill: var(--ink-3);
+    fill: var(--ink-2);
     font-family: var(--font-mono);
-    font-size: 10.5px;
+    font-size: 11px;
   }
 
+  /* grey bars; the one pointed at lights up in the colour of "here" */
   .chart .bar {
-    fill: var(--sky);
-    opacity: 0.55;
-    transition: opacity 0.15s;
+    fill: var(--ink-2);
+    opacity: 0.5;
+    transition:
+      opacity 0.12s,
+      fill 0.12s;
   }
 
   .chart .hover {
@@ -235,6 +239,7 @@ const lists = [
   }
 
   .chart g:hover .bar {
+    fill: var(--trace);
     opacity: 1;
   }
 
@@ -246,18 +251,13 @@ const lists = [
   }
 
   .chart .dot {
-    fill: var(--paper);
+    fill: var(--panel);
     stroke: var(--ink);
     stroke-width: 1.5;
     pointer-events: none;
   }
 
-  .note {
-    margin: 0.75rem 0 0;
-    color: var(--ink-3);
-    font-size: 0.85rem;
-  }
-
+  /* Ranked lists: each row carries a bar for its share, ink over the chip grey. */
   .rank {
     list-style: none;
     margin: 0;
@@ -281,8 +281,7 @@ const lists = [
     position: absolute;
     inset: 0 auto 0 0;
     width: var(--w);
-    background: var(--sky-soft);
-    opacity: 0.6;
+    background: var(--chip);
     z-index: -1;
   }
 
@@ -294,7 +293,8 @@ const lists = [
   }
 
   .rank a:hover {
-    color: var(--sky-ink);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
   }
 
   .rank .v {
@@ -304,6 +304,10 @@ const lists = [
   }
 
   .rank .v small {
-    color: var(--ink-3);
+    color: var(--ink-2);
+  }
+
+  .em-cols > div > .em-panel + .em-panel {
+    margin-top: 1.25rem;
   }
 </style>

@@ -3,10 +3,14 @@ import Endmin from '@/layouts/Endmin.astro';
 import { fmtDate } from '@/lib/posts';
 import { backupStatus } from '@/server/backup.ts';
 import { commentCounts, listAllComments } from '@/server/comments.ts';
+import { cosmoOrigin } from '@/server/cosmo.ts';
+import { cronCalendars, hermesInternal, hermesStatus } from '@/server/hermes.ts';
 import { listAllPosts } from '@/server/posts.ts';
+import { listProjects } from '@/server/projects.ts';
 import { statsReport } from '@/server/stats.ts';
 import { formatBytes, systemStatus } from '@/server/system.ts';
 import { listUsers } from '@/server/users.ts';
+import { vpsReport } from '@/server/vps.ts';
 
 export const prerender = false;
 
@@ -28,157 +32,1313 @@ const peak = Math.max(1, ...visits.series.map((d) => d.views));
 const count = (views: number, visitors: number) => `${views.toLocaleString('zh-CN')} 次 · ${visitors.toLocaleString('zh-CN')} 人`;
 
 const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-const duration = (s: number) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} 分钟` : s < 86400 ? `${Math.round(s / 3600)} 小时` : `${Math.round(s / 86400)} 天`);
+const hour = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hour12: false });
+const span = (s: number): [number, string] => (s < 3600 ? [Math.max(1, Math.round(s / 60)), '分钟'] : s < 86400 ? [Math.round(s / 3600), '小时'] : [Math.round(s / 86400), '天']);
+const duration = (s: number) => span(s).join(' ');
 const diskUsed = sys.diskTotalBytes && sys.diskFreeBytes !== null ? 1 - sys.diskFreeBytes / sys.diskTotalBytes : null;
 
-const tiles = [
-  { n: published.length, label: '已发布', href: '/endmin/posts/' },
-  { n: hidden.length, label: '隐藏', href: '/endmin/posts/' },
-  { n: drafts.length, label: '草稿', href: '/endmin/posts/' },
-  { n: comments.total, label: '评论', href: '/endmin/comments/', note: comments.hidden ? `${comments.hidden} 待审` : '' },
-  { n: users.length, label: '用户', href: '/endmin/users/' },
+// ── The machine, as a dial ───────────────────────────────────────────────
+// Three arcs for what is in use right now, inside a 24-hour clock face whose
+// ticks are the last day: outwards the processor, inwards the memory.
+const vps = vpsReport(24, 96);
+const now = vps.latest;
+const percent = (share: number | null | undefined) => (share === null || share === undefined ? '—' : `${Math.round(share * 100)}%`);
+const rate = (bytes: number | null) => (bytes === null ? '—' : `${formatBytes(Math.round(bytes))}/s`);
+const memoryShare = now && now.memTotal ? now.memUsed / now.memTotal : null;
+const rings = [
+  { label: '处理器', tone: 'cpu', share: now?.cpu ?? null, r: 126 },
+  { label: '内存', tone: 'mem', share: memoryShare, r: 108 },
+  { label: '磁盘', tone: 'disk', share: diskUsed, r: 90 },
 ];
+const C = 200;
+const FACE = 160;
+const SWEEP = 75; // the arcs run three quarters of the way round; their names sit in the open quarter
+const at = (r: number, turn: number) => {
+  const a = turn * 2 * Math.PI;
+  return { x: +(C + r * Math.sin(a)).toFixed(1), y: +(C - r * Math.cos(a)).toFixed(1) };
+};
+/** Where a moment falls on a 24-hour face with midnight (Beijing) at the top. */
+const turnOf = (seconds: number) => (((seconds + 8 * 3600) % 86400) + 86400) % 86400 / 86400;
+// The processor idles most of the day: a full-length tick is the smallest of 25%, 50% and 100% that holds the day's peak.
+const cpuTop = vps.cpuPeak === null || vps.cpuPeak <= 0.25 ? 0.25 : vps.cpuPeak <= 0.5 ? 0.5 : 1;
+const slot = vps.series.length > 1 ? vps.series[1].at - vps.series[0].at : 900;
+const ticks = vps.series.map((p) => {
+  const turn = turnOf(p.at + slot / 2);
+  return {
+    turn,
+    read: p.memory !== null,
+    cpu: p.cpu === null ? null : [at(FACE + 3, turn), at(FACE + 3 + Math.max(1, 21 * Math.min(1, p.cpu / cpuTop)), turn)],
+    mem: p.memory === null ? null : [at(FACE - 3, turn), at(FACE - 3 - Math.max(1, 17 * p.memory), turn)],
+    hit: [at(FACE - 21, turn), at(FACE + 25, turn)],
+    dot: at(FACE, turn),
+    title: `${hour.format(new Date(p.at * 1000))}–${hour.format(new Date((p.at + slot) * 1000))}：${p.memory === null ? '没有读数' : `处理器 ${percent(p.cpu)}，内存 ${percent(p.memory)}`}`,
+  };
+});
+const readings = ticks.filter((t) => t.read).length;
+const nowTurn = turnOf(Date.now() / 1000);
+const hand = [at(FACE - 22, nowTurn), at(FACE + 27, nowTurn)];
+// The hand is named, except where the name would sit on one of the four hour marks.
+const handName = Math.abs(((nowTurn * 4 + 0.5) % 1) - 0.5) > 0.12 ? at(FACE + 36, nowTurn) : null;
+const up = span(vps.uptimeSeconds);
+const dialLabel = `处理器 ${percent(now?.cpu)}，内存 ${percent(memoryShare)}，磁盘 ${percent(diskUsed)}，系统已运行 ${up.join(' ')}`;
+
+// ── Hermes ───────────────────────────────────────────────────────────────
+const cosmo = cosmoOrigin();
+const watched = !!hermesInternal();
+const hermes = hermesStatus();
+const WEEKS = 26;
+const calendars = watched ? cronCalendars(WEEKS) : [];
+const CELL = 11;
+const STEP = 14;
+const GRID_LEFT = 18;
+const GRID_TOP = 14;
+const level = (runs: number, busiest: number) => (runs === 0 ? 0 : Math.max(1, Math.ceil((runs / busiest) * 3)));
+const monthMarks = (weeks: (typeof calendars)[number]['weeks']) =>
+  weeks.flatMap((week, w) => {
+    const month = week[0]?.day.slice(5, 7);
+    const before = w > 0 ? weeks[w - 1][0]?.day.slice(5, 7) : undefined;
+    return month && month !== before && w < weeks.length - 1 ? [{ w, text: `${Number(month)}月` }] : [];
+  })
+    // The period rarely starts on the first of a month: a label a week or two before the next one would run into it.
+    .filter((mark, n, marks) => !marks[n + 1] || marks[n + 1].w - mark.w >= 3);
+const dayTitle = (d: { day: string; runs: number; failed: number }) =>
+  `${Number(d.day.slice(5, 7))}月${Number(d.day.slice(8))}日：${d.runs === 0 ? '没有运行' : `运行 ${d.runs} 次${d.failed ? `，其中 ${d.failed} 次失败` : ''}`}`;
+const liveJobs = calendars.filter((job) => !job.removed).length;
+const showHermes = !!cosmo || watched;
+
+// ── The wheel ────────────────────────────────────────────────────────────
+// The eight sections of the management area as eight blocks of a ring around
+// the dial. Each is a link; pointing at one puts its figures in the centre.
+const works = listProjects({ role: 'endmin' });
+const W = 300;
+const wAt = (r: number, deg: number) => {
+  const a = (deg * Math.PI) / 180;
+  return { x: +(W + r * Math.sin(a)).toFixed(1), y: +(W - r * Math.cos(a)).toFixed(1) };
+};
+const [R1, R2, GAP] = [228, 288, 1.6];
+const block = (mid: number) => {
+  const [a0, a1] = [mid - 22.5 + GAP, mid + 22.5 - GAP];
+  const [o0, o1, i1, i0] = [wAt(R2, a0), wAt(R2, a1), wAt(R1, a1), wAt(R1, a0)];
+  return `M${o0.x} ${o0.y}A${R2} ${R2} 0 0 1 ${o1.x} ${o1.y}L${i1.x} ${i1.y}A${R1} ${R1} 0 0 0 ${i0.x} ${i0.y}Z`;
+};
+const wheel = [
+  { k: 'overview', href: '/endmin/', zh: '概览', en: 'Overview', big: up[0], unit: up[1], sub: now ? `读数 ${hour.format(new Date(now.at * 1000))}` : '还没有读数' },
+  { k: 'posts', href: '/endmin/posts/', zh: '文章', en: 'Posts', big: published.length, unit: '篇已发布', sub: `草稿 ${drafts.length}` },
+  { k: 'works', href: '/endmin/works/', zh: '作品', en: 'Works', big: works.length, unit: '件作品', sub: `下载 ${works.reduce((total, w) => total + w.downloads, 0)}` },
+  { k: 'media', href: '/endmin/media/', zh: '媒体', en: 'Media', big: sys.mediaFiles, unit: '个文件', sub: formatBytes(sys.mediaBytes) },
+  { k: 'comments', href: '/endmin/comments/', zh: '评论', en: 'Comments', big: comments.total, unit: '条评论', sub: `待审 ${comments.hidden}`, alert: comments.hidden > 0 },
+  { k: 'users', href: '/endmin/users/', zh: '用户', en: 'Users', big: users.length, unit: '位用户', sub: '' },
+  { k: 'stats', href: '/endmin/stats/', zh: '统计', en: 'Stats', big: today.views, unit: '次浏览', sub: '今天' },
+  {
+    k: 'backup',
+    href: '/endmin/backup/',
+    zh: '备份',
+    en: 'Backup',
+    big: backupRed > 0 ? backupRed : backup.lastOk ? '正常' : '—',
+    unit: backupRed > 0 ? '个问题' : !backup.configured ? '尚未配置' : backup.lastOk ? when.format(new Date(backup.lastOk.startedAt)) : '还没有成功过',
+    sub: '',
+    alert: backupRed > 0,
+  },
+].map((s, i) => {
+  const mid = i * 45;
+  const [l0, l1] = [wAt(R2 + 8, mid - 22.5 + GAP), wAt(R2 + 8, mid + 22.5 - GAP)];
+  return {
+    ...s,
+    i,
+    d: block(mid),
+    at: wAt((R1 + R2) / 2, mid),
+    flag: wAt(R2 - 14, mid + 15),
+    // Pointing at a block: a bracket closes round its outer edge, and a beam runs from it in to the dial.
+    lock: `M${l0.x} ${l0.y}A${R2 + 8} ${R2 + 8} 0 0 1 ${l1.x} ${l1.y}`,
+    beam: [wAt(R1 - 3, mid), wAt(196, mid)],
+  };
+});
 ---
 
-<Endmin title="概览" en="Overview">
-  <div class="em-tiles">
-    {
-      tiles.map((t) => (
-        <a class="em-tile" href={t.href}>
-          <span class="n">
-            {t.n}
-            {t.note && <small>{t.note}</small>}
-          </span>
-          <span class="cjk">{t.label}</span>
-        </a>
-      ))
-    }
+<Endmin title="概览" en="Overview" plain>
+  <div class="board">
+    <div class="orbit">
+      <figure class="hub">
+        <h1 class="sr-only">概览</h1>
+        <svg class="wheel" viewBox="0 0 600 600" aria-label={`管理分区，以及机器现在的状态：${dialLabel}`}>
+          <circle class="orbit-line" cx={W} cy={W} r="296" />
+          {
+            wheel.map((s) => (
+              <a
+                href={s.href}
+                class:list={['seg', { here: s.k === 'overview', alert: s.alert }]}
+                data-k={s.k}
+                data-fx-host={s.k}
+                style={`--i:${s.i}`}
+                aria-label={`${s.zh}：${s.big} ${s.unit}${s.sub ? `，${s.sub}` : ''}`}
+              >
+                <path class="lock" d={s.lock} pathLength="100" />
+                <line class="beam" x1={s.beam[0].x} y1={s.beam[0].y} x2={s.beam[1].x} y2={s.beam[1].y} pathLength="100" />
+                <path class="plate" d={s.d} />
+                <text class="seg-zh" x={s.at.x} y={s.at.y - 4} text-anchor="middle">{s.zh}</text>
+                <text class="seg-en" x={s.at.x} y={s.at.y + 13} text-anchor="middle">{s.en}</text>
+                {s.alert && <rect class="seg-flag" x={s.flag.x - 7} y={s.flag.y - 7} width="14" height="14" />}
+              </a>
+            ))
+          }
+          <g transform="translate(100 100)">
+          <circle class="face" cx={C} cy={C} r={FACE} />
+          {
+            [0, 6, 12, 18].map((h) => (
+              <text class="axis" x={at(FACE + 33, h / 24).x} y={at(FACE + 33, h / 24).y} text-anchor="middle" dominant-baseline="central">
+                {String(h).padStart(2, '0')}
+              </text>
+            ))
+          }
+          {
+            ticks.map((t) => (
+              <g class="tick">
+                {!t.read && <circle class="blank" cx={t.dot.x} cy={t.dot.y} r="1.3" />}
+                {t.cpu && <line class="t-cpu" x1={t.cpu[0].x} y1={t.cpu[0].y} x2={t.cpu[1].x} y2={t.cpu[1].y} />}
+                {t.mem && <line class="t-mem" x1={t.mem[0].x} y1={t.mem[0].y} x2={t.mem[1].x} y2={t.mem[1].y} />}
+                <line class="hit" x1={t.hit[0].x} y1={t.hit[0].y} x2={t.hit[1].x} y2={t.hit[1].y}>
+                  <title>{t.title}</title>
+                </line>
+              </g>
+            ))
+          }
+          <line class="hand" x1={hand[0].x} y1={hand[0].y} x2={hand[1].x} y2={hand[1].y} />
+          {handName && <text class="hand-name" x={handName.x} y={handName.y} text-anchor="middle" dominant-baseline="central">现在</text>}
+
+          {
+            rings.map((ring) => (
+              <g class:list={['ring', ring.tone, { warn: (ring.share ?? 0) > 0.85 }]}>
+                <circle class="track" cx={C} cy={C} r={ring.r} pathLength="100" stroke-dasharray={`${SWEEP} 100`} transform={`rotate(-90 ${C} ${C})`} />
+                {ring.share !== null && (
+                  <circle
+                    class="arc"
+                    cx={C}
+                    cy={C}
+                    r={ring.r}
+                    pathLength="100"
+                    stroke-dasharray={`${(SWEEP * Math.max(0.004, Math.min(1, ring.share))).toFixed(2)} 100`}
+                    transform={`rotate(-90 ${C} ${C})`}
+                  />
+                )}
+                {(ring.share ?? 0) > 0.85 && <rect class="ring-flag" x={C - 86} y={C - ring.r - 8} width="80" height="16" />}
+                <text x={C - 10} y={C - ring.r} text-anchor="end" dominant-baseline="central">
+                  {ring.label} <tspan class="v">{percent(ring.share)}</tspan>
+                </text>
+              </g>
+            ))
+          }
+
+          {/* The centre reads out whichever block of the ring is pointed at; left alone, the machine's uptime. */}
+          {
+            wheel.map((s) => (
+              <g class="read" data-k={s.k} aria-hidden="true">
+                <polygon class="core-tag" points={`${C - 40},${C - 30} ${C + 40},${C - 30} ${C + 40},${C - 17} ${C + 34},${C - 11} ${C - 40},${C - 11}`} />
+                <text class="core-label on-tag" x={C} y={C - 16.5} text-anchor="middle">{s.k === 'overview' ? '系统已运行' : s.zh}</text>
+                <text class:list={['core', { long: String(s.big).length > 4 }]} x={C} y={C + 28} text-anchor="middle">
+                  <tspan data-fx-of={s.k}>{s.big}</tspan>{s.k === 'overview' && <tspan class="unit" dx="5">{s.unit}</tspan>}
+                </text>
+                <text class="core-label" x={C} y={C + 50} text-anchor="middle">{s.k === 'overview' ? s.sub : [s.unit, s.sub].filter(Boolean).join(' | ')}</text>
+              </g>
+            ))
+          }
+          </g>
+        </svg>
+        <figcaption>
+          <span><i class="k-cpu"></i>外圈向外 处理器（满格 {cpuTop * 100}%{vps.cpuPeak !== null && `，24 小时峰值 ${percent(vps.cpuPeak)}`}）</span>
+          <span><i class="k-mem"></i>向内 内存</span>
+          <span><i class="k-now"></i>现在</span>
+          <span class="wide">外圈是 24 小时钟面，每 15 分钟一格；空点是还没有读数的时段{readings < 90 && '，读数是从上线那一刻开始记的'}。</span>
+        </figcaption>
+      </figure>
+
+      <section class="sat l1">
+        <h2>文章 <a href="/endmin/posts/">全部</a></h2>
+        <div class="figs">
+          <a href="/endmin/posts/"><b data-fx-load>{published.length}</b><span class="cjk">已发布</span></a>
+          <a href="/endmin/posts/"><b data-fx-load>{hidden.length}</b><span class="cjk">隐藏</span></a>
+          <a href="/endmin/posts/"><b data-fx-load>{drafts.length}</b><span class="cjk">草稿</span></a>
+        </div>
+      </section>
+
+      <section class="sat r1">
+        <h2>访问 <a href="/endmin/stats/">详情</a></h2>
+        <div class="figs">
+          <a href="/endmin/stats/"><b data-fx-load>{today.views.toLocaleString('zh-CN')}</b><span class="cjk">今天</span><small>{today.visitors.toLocaleString('zh-CN')} 人</small></a>
+          <a href="/endmin/stats/"><b data-fx-load>{sum(lastWeek, 'views').toLocaleString('zh-CN')}</b><span class="cjk">7 天</span><small>{sum(lastWeek, 'visitors').toLocaleString('zh-CN')} 人</small></a>
+          <a href="/endmin/stats/"><b data-fx-load>{visits.views.toLocaleString('zh-CN')}</b><span class="cjk">30 天</span><small>{visits.visitors.toLocaleString('zh-CN')} 人</small></a>
+        </div>
+        <svg class="spark" viewBox="0 0 300 48" preserveAspectRatio="none" role="img" aria-label="最近 30 天每天的浏览次数">
+          {visits.series.map((d, i) => <rect x={i * 10 + 1} y={48 - Math.max(1, (d.views / peak) * 46)} width="8" height={Math.max(1, (d.views / peak) * 46)}><title>{`${d.day}：${d.views} 次`}</title></rect>)}
+        </svg>
+      </section>
+
+      <section class="sat l2">
+        <h2>互动 <a href="/endmin/comments/">评论</a></h2>
+        <div class="figs">
+          <a href="/endmin/comments/"><b data-fx-load>{comments.total}</b><span class="cjk">评论</span></a>
+          <a href="/endmin/comments/" class:list={{ bad: comments.hidden > 0 }}><b data-fx-load>{comments.hidden}</b><span class="cjk">待审</span></a>
+          <a href="/endmin/users/"><b data-fx-load>{users.length}</b><span class="cjk">用户</span></a>
+        </div>
+      </section>
+
+      {/* Three panels a side, always: where Hermes is not set up, the works and media stand in its place. */}
+      {
+        !showHermes && (
+          <section class="sat r2">
+            <h2>作品与媒体 <a href="/endmin/works/">作品</a></h2>
+            <div class="figs">
+              <a href="/endmin/works/"><b data-fx-load>{works.length}</b><span class="cjk">作品</span></a>
+              <a href="/endmin/works/"><b data-fx-load>{works.reduce((total, w) => total + w.downloads, 0).toLocaleString('zh-CN')}</b><span class="cjk">下载</span></a>
+              <a href="/endmin/media/"><b data-fx-load>{sys.mediaFiles}</b><span class="cjk">媒体文件</span></a>
+            </div>
+          </section>
+        )
+      }
+      {
+        showHermes && (
+          <section class="sat r2">
+            <h2>
+              Hermes
+              {watched && (
+                <span class:list={['state', { off: hermes.checkedAt !== null && !hermes.online, idle: hermes.checkedAt === null }]}>
+                  {hermes.checkedAt === null ? '还没有问过' : hermes.online ? `在线${hermes.version ? ` · v${hermes.version}` : ''}` : '没有应答'}
+                </span>
+              )}
+            </h2>
+            <div class="figs">
+              {watched && <a href={cosmo ? `${cosmo}/` : '#cron'}><b data-fx-load>{hermes.online ? (hermes.activeSessions ?? 0) : '—'}</b><span class="cjk">会话</span></a>}
+              {watched && <a href="#cron"><b data-fx-load>{liveJobs}</b><span class="cjk">定时任务</span></a>}
+              {cosmo && (
+                <p class="doors">
+                  <a class="em-btn go" href={`${cosmo}/`} target="_blank" rel="noopener">对话</a>
+                  <a class="em-btn" href={`${cosmo}/admin/`} target="_blank" rel="noopener">管理页</a>
+                </p>
+              )}
+            </div>
+          </section>
+        )
+      }
+
+      <section class="sat l3">
+        <h2>网站 <a href="/endmin/backup/">备份</a></h2>
+        <dl class="em-facts">
+          <div>
+            <dt>数据库</dt>
+            <dd>{formatBytes(sys.databaseBytes)}</dd>
+          </div>
+          <div>
+            <dt>媒体</dt>
+            <dd>{sys.mediaFiles} 个 · {formatBytes(sys.mediaBytes)}</dd>
+          </div>
+          <div>
+            <dt>搜索索引</dt>
+            <dd class:list={{ warn: !sys.searchIndexedAt }}>{sys.searchIndexedAt ? when.format(sys.searchIndexedAt) : '尚未建立'}</dd>
+          </div>
+          <div>
+            <dt>备份</dt>
+            <dd class:list={{ warn: backupRed > 0 || !backup.lastOk }}>
+              {!backup.configured ? '尚未配置' : backup.running ? '正在备份…' : backup.lastOk ? when.format(new Date(backup.lastOk.startedAt)) : '还没有成功过'}
+              {backupRed > 0 && ` · ${backupRed} 个问题`}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="sat r3">
+        <h2>机器 <span class="state idle">每分钟一次</span></h2>
+        <dl class="em-facts">
+          <div>
+            <dt>负载</dt>
+            <dd>{now ? `${now.load1.toFixed(2)} · ${vps.cores} 核` : '—'}</dd>
+          </div>
+          <div>
+            <dt>内存</dt>
+            <dd>{now ? `${formatBytes(now.memUsed)} / ${formatBytes(now.memTotal)}` : '—'}</dd>
+          </div>
+          <div>
+            <dt>磁盘</dt>
+            <dd class:list={{ warn: (diskUsed ?? 0) > 0.85 }}>{sys.diskFreeBytes === null ? '—' : `剩余 ${formatBytes(sys.diskFreeBytes)}`}</dd>
+          </div>
+          <div>
+            <dt>网络</dt>
+            <dd>↓ {rate(now?.rxRate ?? null)} ↑ {rate(now?.txRate ?? null)}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
   </div>
 
+  {
+    watched && (
+      <section class="em-panel wide" id="cron">
+        <h2 class="em-mid"><span>定时任务</span></h2>
+        {cosmo && <p class="mid-link"><a href={`${cosmo}/admin/cron`} target="_blank" rel="noopener">在 Hermes 里管理</a></p>}
+        {calendars.length === 0 ? (
+          <p class="em-empty mid-empty">Hermes 里还没有定时任务。建一个之后，它每运行一次，这里就点亮一格。</p>
+        ) : (
+          <>
+            <ul class="habits">
+              {calendars.map((job) => (
+                <li>
+                  <div class="habit-head">
+                    <span class="t">{job.name}</span>
+                    {job.removed ? <span class="em-state draft">已删除</span> : !job.enabled && <span class="em-state draft">已暂停</span>}
+                    <span class="em-meta">
+                      {job.schedule && <span>{job.schedule}</span>}
+                      <span>{job.activeDays} 天 · {job.runs} 次</span>
+                      {job.failed > 0 && <span class="bad">失败 {job.failed} 次</span>}
+                      {job.lastRunAt && <span>上次 {when.format(new Date(job.lastRunAt * 1000))}</span>}
+                    </span>
+                  </div>
+                  <svg class="heat" viewBox={`0 0 ${GRID_LEFT + WEEKS * STEP} ${GRID_TOP + 7 * STEP}`} role="img" aria-label={`${job.name}：最近 ${WEEKS} 周每天的运行次数`}>
+                    {monthMarks(job.weeks).map((m) => <text class="axis" x={GRID_LEFT + m.w * STEP} y="9">{m.text}</text>)}
+                    {['一', '三', '五'].map((name, n) => <text class="axis" x="0" y={GRID_TOP + n * 2 * STEP + 9}>{name}</text>)}
+                    {job.weeks.map((week, w) =>
+                      week.map(
+                        (d, n) =>
+                          d && (
+                            <rect class:list={[`l${level(d.runs, job.busiest)}`, { bad: d.failed > 0 }]} x={GRID_LEFT + w * STEP} y={GRID_TOP + n * STEP} width={CELL} height={CELL}>
+                              <title>{dayTitle(d)}</title>
+                            </rect>
+                          ),
+                      ),
+                    )}
+                  </svg>
+                </li>
+              ))}
+            </ul>
+            <p class="heat-key">
+              <i class="l0"></i>没有运行 <i class="l1"></i><i class="l2"></i><i class="l3"></i>运行，越深次数越多 <i class="l3 bad"></i>当天有失败
+            </p>
+          </>
+        )}
+      </section>
+    )
+  }
+
   <div class="em-cols">
-    <div>
-      <section class="em-panel">
-        <h2>最新评论 <a href="/endmin/comments/">全部 →</a></h2>
-        {
-          recent.length === 0 ? (
-            <p class="em-empty">还没有评论。</p>
-          ) : (
-            <ul class="em-rows">
-              {recent.map((c) => (
-                <li>
+    <section class="em-panel">
+      <h2>最新评论 <a href="/endmin/comments/">全部</a></h2>
+      {
+        recent.length === 0 ? (
+          <p class="em-empty">还没有评论。</p>
+        ) : (
+          <ul class="em-rows">
+            {recent.map((c) => (
+              <li>
+                <div class="em-meta">
+                  <span>{c.author?.handle ?? '已删除的用户'}</span>
+                  <span>{when.format(new Date(c.createdAt))}</span>
+                  <a href={`/posts/${c.postSlug}/#comment-${c.id}`}>{c.postTitle}</a>
+                </div>
+                {c.status === 'hidden' && <span class="em-state hidden">待审</span>}
+                <div class="em-quote clip" set:html={c.html} />
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+
+    <section class="em-panel">
+      <h2>草稿 <a href="/endmin/posts/">全部文章</a></h2>
+      {
+        drafts.length === 0 ? (
+          <p class="em-empty">没有草稿。</p>
+        ) : (
+          <ul class="em-rows">
+            {drafts.map((p) => (
+              <li>
+                <div>
+                  <div class="t"><a href={`/endmin/posts/${p.id}/`}>{p.title}</a></div>
                   <div class="em-meta">
-                    <span>{c.author?.handle ?? '已删除的用户'}</span>
-                    <span>{when.format(new Date(c.createdAt))}</span>
-                    <a href={`/posts/${c.postSlug}/#comment-${c.id}`}>{c.postTitle}</a>
+                    <span>{p.slug}</span>
+                    <span>{p.words.toLocaleString('zh-CN')} 字</span>
+                    <span>{fmtDate(p.publishedAt)}</span>
                   </div>
-                  {c.status === 'hidden' && <span class="em-state hidden">待审</span>}
-                  <div class="em-quote clip" set:html={c.html} />
-                </li>
-              ))}
-            </ul>
-          )
-        }
-      </section>
-
-      <section class="em-panel">
-        <h2>草稿 <a href="/endmin/posts/">全部文章 →</a></h2>
-        {
-          drafts.length === 0 ? (
-            <p class="em-empty">没有草稿。</p>
-          ) : (
-            <ul class="em-rows">
-              {drafts.map((p) => (
-                <li>
-                  <div>
-                    <div class="t"><a href={`/endmin/posts/${p.id}/`}>{p.title}</a></div>
-                    <div class="em-meta">
-                      <span>{p.slug}</span>
-                      <span>{p.words.toLocaleString('zh-CN')} 字</span>
-                      <span>{fmtDate(p.publishedAt)}</span>
-                    </div>
-                  </div>
-                  <div class="em-acts">
-                    <a class="em-btn" href={`/endmin/posts/${p.id}/`}>编辑</a>
-                    <button class="em-btn go" data-api={`/api/endmin/posts/${p.id}`} data-body='{"status":"published"}' data-confirm={`发布「${p.title}」？所有人都能看到它。`}>
-                      发布
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-      </section>
-    </div>
-
-    <div>
-    <section class="em-panel">
-      <h2>访问 <a href="/endmin/stats/">详情 →</a></h2>
-      <svg class="spark" viewBox="0 0 300 48" preserveAspectRatio="none" role="img" aria-label="最近 30 天每天的浏览次数">
-        {visits.series.map((d, i) => <rect x={i * 10 + 1} y={48 - Math.max(1, (d.views / peak) * 46)} width="8" height={Math.max(1, (d.views / peak) * 46)}><title>{`${d.day}：${d.views} 次`}</title></rect>)}
-      </svg>
-      <dl class="em-facts">
-        <div>
-          <dt>今天</dt>
-          <dd>{count(today.views, today.visitors)}</dd>
-        </div>
-        <div>
-          <dt>最近 7 天</dt>
-          <dd>{count(sum(lastWeek, 'views'), sum(lastWeek, 'visitors'))}</dd>
-        </div>
-        <div>
-          <dt>最近 30 天</dt>
-          <dd>{count(visits.views, visits.visitors)}</dd>
-        </div>
-      </dl>
+                </div>
+                <div class="em-acts">
+                  <a class="em-btn" href={`/endmin/posts/${p.id}/`}>编辑</a>
+                  <button class="em-btn go" data-api={`/api/endmin/posts/${p.id}`} data-body='{"status":"published"}' data-confirm={`发布「${p.title}」？所有人都能看到它。`}>
+                    发布
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      }
     </section>
-
-    <section class="em-panel">
-      <h2>服务器</h2>
-      <dl class="em-facts">
-        <div>
-          <dt>磁盘</dt>
-          <dd class:list={{ warn: diskUsed !== null && diskUsed > 0.85 }}>
-            {sys.diskFreeBytes === null ? '未知' : `剩余 ${formatBytes(sys.diskFreeBytes)}`}
-            {diskUsed !== null && ` · 已用 ${Math.round(diskUsed * 100)}%`}
-          </dd>
-        </div>
-        <div>
-          <dt>数据库</dt>
-          <dd>{formatBytes(sys.databaseBytes)}</dd>
-        </div>
-        <div>
-          <dt>图片与头像</dt>
-          <dd>{sys.mediaFiles} 个文件 · {formatBytes(sys.mediaBytes)}</dd>
-        </div>
-        <div>
-          <dt>搜索索引</dt>
-          <dd class:list={{ warn: !sys.searchIndexedAt }}>{sys.searchIndexedAt ? `更新于 ${when.format(sys.searchIndexedAt)}` : '尚未建立'}</dd>
-        </div>
-        <div>
-          <dt><a href="/endmin/backup/">备份</a></dt>
-          <dd class:list={{ warn: backupRed > 0 || !backup.lastOk }}>
-            {!backup.configured ? '尚未配置' : backup.running ? '正在备份…' : backup.lastOk ? `上次成功 ${when.format(new Date(backup.lastOk.startedAt))}` : '还没有成功过'}
-            {backupRed > 0 && ` · ${backupRed} 个问题`}
-          </dd>
-        </div>
-        <div>
-          <dt>已运行</dt>
-          <dd>{duration(sys.uptimeSeconds)} · Node {sys.node}</dd>
-        </div>
-      </dl>
-    </section>
-    </div>
   </div>
 </Endmin>
 
+<script>
+  import { wireReadouts } from '@/scripts/fx';
+
+  wireReadouts();
+</script>
+
 <style>
+  /* ---------- the board: the wheel, and the panels either side of it ---------- */
+  .board {
+    container: board / inline-size;
+    margin-inline: calc(var(--pad) * -1);
+    padding: 0.5rem var(--pad) 2rem;
+  }
+
+  .orbit {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  .hub {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: min(100%, 36rem);
+    margin: 0;
+  }
+
+  .wheel {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* A dashed line around the lot, turning slowly: the board is live. */
+  .orbit-line {
+    fill: none;
+    stroke: var(--ink-2);
+    stroke-width: 1;
+    stroke-dasharray: 2 10;
+    transform-box: view-box;
+    transform-origin: 300px 300px;
+    animation: turn 120s linear infinite;
+  }
+
+  @keyframes turn {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* --- the ring of sections: every block is a link --- */
+  .seg .plate {
+    fill: var(--panel);
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    transition: fill 0.12s;
+  }
+
+  /* Pointing at a block locks on to it: a bracket is drawn round its outer
+     edge from both ends, and a beam runs from it in to the dial, where the
+     readout settles on that block's figures (fx.ts). */
+  .seg .lock,
+  .seg .beam {
+    fill: none;
+    stroke: var(--trace);
+    stroke-width: 3;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: stroke-dashoffset 0.16s var(--mech);
+  }
+
+  .seg .beam {
+    stroke-width: 2;
+    stroke-dasharray: 8 6;
+    stroke-dashoffset: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .seg:hover .lock,
+  .seg:focus-visible .lock {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.34s var(--mech);
+  }
+
+  .seg:hover .beam,
+  .seg:focus-visible .beam {
+    opacity: 1;
+    animation: feed 0.5s linear infinite;
+  }
+
+  @keyframes feed {
+    to {
+      stroke-dashoffset: -14;
+    }
+  }
+
+  .seg {
+    transform-box: view-box;
+    transform-origin: 300px 300px;
+    transition: transform 0.22s var(--snap);
+    outline: none;
+  }
+
+  /* Opening the page: the ring is assembled a block at a time, clockwise. */
+  @media (prefers-reduced-motion: no-preference) {
+    .seg {
+      animation: seat 460ms var(--snap) backwards;
+      animation-delay: calc(var(--i) * 55ms + 80ms);
+    }
+    @keyframes seat {
+      from {
+        opacity: 0;
+        transform: scale(1.12) rotate(-9deg);
+      }
+    }
+  }
+
+  .seg-zh {
+    fill: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 19px;
+    font-weight: 700;
+    transition: fill 0.15s;
+  }
+
+  .seg-en {
+    fill: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    transition: fill 0.15s;
+  }
+
+  /* where you are */
+  .seg.here .plate {
+    fill: var(--ink);
+  }
+
+  .seg.here .seg-zh,
+  .seg.here .seg-en {
+    fill: var(--panel);
+  }
+
+  /* something waits there: a heavier edge, and a yellow flag on it */
+  .seg.alert .plate {
+    stroke-width: 3.5;
+  }
+
+  .seg-flag {
+    fill: var(--signal);
+    stroke: var(--on-signal);
+    stroke-width: 1.5;
+  }
+
+  .seg:hover,
+  .seg:focus-visible {
+    transform: scale(1.035);
+  }
+
+  .seg:hover .plate,
+  .seg:focus-visible .plate {
+    fill: var(--signal);
+    stroke: var(--on-signal);
+  }
+
+  .seg:hover .seg-zh,
+  .seg:hover .seg-en,
+  .seg:focus-visible .seg-zh,
+  .seg:focus-visible .seg-en {
+    fill: var(--on-signal);
+  }
+
+  .seg:focus-visible .plate {
+    stroke-width: 4;
+  }
+
+  /* --- the centre: one readout at a time --- */
+  .read {
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .read[data-k='overview'] {
+    opacity: 1;
+  }
+
+  .wheel:has(.seg:not(.here):is(:hover, :focus-visible)) .read[data-k='overview'] {
+    opacity: 0;
+  }
+
+  .wheel:has(.seg[data-k='posts']:is(:hover, :focus-visible)) .read[data-k='posts'],
+  .wheel:has(.seg[data-k='works']:is(:hover, :focus-visible)) .read[data-k='works'],
+  .wheel:has(.seg[data-k='media']:is(:hover, :focus-visible)) .read[data-k='media'],
+  .wheel:has(.seg[data-k='comments']:is(:hover, :focus-visible)) .read[data-k='comments'],
+  .wheel:has(.seg[data-k='users']:is(:hover, :focus-visible)) .read[data-k='users'],
+  .wheel:has(.seg[data-k='stats']:is(:hover, :focus-visible)) .read[data-k='stats'],
+  .wheel:has(.seg[data-k='backup']:is(:hover, :focus-visible)) .read[data-k='backup'] {
+    opacity: 1;
+  }
+
+  .core-tag {
+    fill: var(--signal);
+  }
+
+  .core-label {
+    fill: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: 11px;
+  }
+
+  .core-label.on-tag {
+    fill: var(--on-signal);
+    font-weight: 700;
+  }
+
+  .core {
+    fill: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 52px;
+    font-weight: 800;
+  }
+
+  .core.long {
+    font-size: 34px;
+  }
+
+  .core .unit {
+    fill: var(--ink-2);
+    font-size: 17px;
+    font-weight: 600;
+  }
+
+  /* --- the machine: a 24-hour face and three arcs --- */
+  .face {
+    fill: none;
+    stroke: var(--rule);
+    stroke-width: 1;
+  }
+
+  .axis {
+    fill: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .t-cpu,
+  .t-mem {
+    stroke-width: 4;
+  }
+
+  /* Ink by day, yellow by night: yellow is no line on a white page. */
+  .t-cpu {
+    stroke: var(--trace);
+  }
+
+  .t-mem {
+    stroke: var(--ink-2);
+    opacity: 0.7;
+  }
+
+  .blank {
+    fill: var(--ink-2);
+    opacity: 0.6;
+  }
+
+  .hand-name {
+    fill: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .hit {
+    stroke: var(--ink);
+    stroke-width: 10;
+    opacity: 0;
+  }
+
+  .tick:hover .hit {
+    opacity: 0.1;
+  }
+
+  .hand {
+    stroke: var(--tri-a);
+    stroke-width: 2;
+  }
+
+  .ring circle {
+    fill: none;
+    stroke-width: 11;
+  }
+
+  .ring .track {
+    stroke: var(--chip);
+  }
+
+  .ring .arc {
+    animation: sweep 0.9s var(--ease) backwards;
+  }
+
+  /* The three arcs are quiet greys. One that is nearly full turns to the
+     strongest mark the theme has (ink by day, yellow by night) and its name
+     gets a yellow flag: no fourth colour is brought in for it. */
+  .ring .arc {
+    stroke: var(--ink-2);
+  }
+
+  .ring.mem .arc {
+    opacity: 0.75;
+    animation-delay: 0.08s;
+  }
+
+  .ring.disk .arc {
+    opacity: 0.5;
+    animation-delay: 0.16s;
+  }
+
+  .ring.warn .arc {
+    stroke: var(--trace);
+    opacity: 1;
+  }
+
+  .ring-flag {
+    fill: var(--signal);
+  }
+
+  .ring text {
+    fill: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: 12px;
+  }
+
+  .ring .v {
+    fill: var(--ink);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ring.warn text,
+  .ring.warn .v {
+    fill: var(--on-signal);
+    font-weight: 700;
+  }
+
+  @keyframes sweep {
+    from {
+      stroke-dasharray: 0 100;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ring .arc,
+    .orbit-line,
+    .seg .beam {
+      animation: none !important;
+    }
+    .seg {
+      transition: none;
+    }
+  }
+
+  .hub figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem 1rem;
+    margin-top: 0.75rem;
+    color: var(--ink-2);
+    font-size: 0.72rem;
+  }
+
+  .hub figcaption .wide {
+    flex-basis: 100%;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .hub figcaption i {
+    display: inline-block;
+    width: 4px;
+    height: 0.75rem;
+    margin-right: 0.4rem;
+    vertical-align: -0.1rem;
+  }
+
+  .k-cpu {
+    background: var(--trace);
+  }
+
+  .k-mem {
+    background: var(--ink-2);
+    opacity: 0.7;
+  }
+
+  .hub figcaption .k-now {
+    width: 0.75rem;
+    height: 2px;
+    vertical-align: 0.2rem;
+    background: var(--tri-a);
+  }
+
+  /* ---------- the panels ---------- */
+  .sat {
+    position: relative;
+    min-width: 0;
+    padding: 1rem 1.15rem 1.15rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+  }
+
+  /* The six panels round the wheel are not boxes in a table. Each is an open
+     plate with the corner nearest the wheel cut away, so the three on a side
+     follow its curve; the top pair lead, the bottom pair are the small print. */
+  .sat {
+    --cutaway: 1.6rem;
+    border: 0;
+  }
+
+  .l1 {
+    background: linear-gradient(-45deg, transparent var(--cutaway), var(--panel) calc(var(--cutaway) + 0.5px));
+  }
+
+  .l3 {
+    background: linear-gradient(-135deg, transparent var(--cutaway), var(--panel) calc(var(--cutaway) + 0.5px));
+  }
+
+  .r1 {
+    background: linear-gradient(45deg, transparent var(--cutaway), var(--panel) calc(var(--cutaway) + 0.5px));
+  }
+
+  .r3 {
+    background: linear-gradient(135deg, transparent var(--cutaway), var(--panel) calc(var(--cutaway) + 0.5px));
+  }
+
+  /* on the right the tab sits at the outer end too, so the two sides mirror */
+  .r1::before,
+  .r2::before,
+  .r3::before {
+    transform-origin: right;
+  }
+
+  .l1 .figs b,
+  .r1 .figs b {
+    font-size: 3.1rem;
+  }
+
+  .l2 .figs b,
+  .r2 .figs b {
+    font-size: 2rem;
+  }
+
+  .l3 .figs,
+  .r3 .figs {
+    border-top: 0;
+  }
+
+  /* A heavy tab on the top edge of every panel. Pointing at the panel runs it
+     out along the whole edge. */
+  .sat::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    height: 5px;
+    background: var(--ink);
+    transform: scaleX(0.14);
+    transform-origin: left;
+    transition: transform 0.4s var(--mech);
+  }
+
+  .sat:hover::before,
+  .sat:focus-within::before {
+    transform: none;
+  }
+
+  /* Opening the page: the panels are switched on from the top row down. */
+  @media (prefers-reduced-motion: no-preference) {
+    .sat {
+      animation: power 520ms var(--mech) backwards;
+    }
+    .l1,
+    .r1 {
+      animation-delay: 120ms;
+    }
+    .l2,
+    .r2 {
+      animation-delay: 220ms;
+    }
+    .l3,
+    .r3 {
+      animation-delay: 320ms;
+    }
+    @keyframes power {
+      from {
+        opacity: 0;
+        clip-path: inset(0 0 100% 0);
+      }
+      to {
+        opacity: 1;
+        clip-path: inset(-6px);
+      }
+    }
+  }
+
+  .sat h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .sat h2 a,
+  .state {
+    margin-left: auto;
+    color: var(--ink-2);
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .sat h2 a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+
+  .state::before {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-right: 0.4rem;
+    background: var(--trace);
+  }
+
+  .state.idle::before {
+    background: var(--ink-2);
+  }
+
+  .state.off {
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-weight: 700;
+  }
+
+  .state.off::before {
+    background: var(--on-signal);
+  }
+
+  .sat .em-facts dd {
+    font-size: 0.8rem;
+  }
+
+  .sat .em-facts div:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .figs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .figs a {
+    display: grid;
+    gap: 0.1rem;
+    align-content: start;
+    justify-items: start;
+  }
+
+  .figs b {
+    font-size: 2.4rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+
+  .figs .cjk {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    color: var(--ink-2);
+  }
+
+  .figs small {
+    color: var(--ink-2);
+    font-size: 0.72rem;
+  }
+
+  .figs b {
+    background: linear-gradient(var(--signal), var(--signal)) left / 0% 100% no-repeat;
+    transition: background-size 0.22s var(--mech);
+  }
+
+  .figs a:hover b,
+  .figs a:focus-visible b {
+    background-size: 100% 100%;
+    color: var(--on-signal);
+  }
+
+  .figs .bad b,
+  .em-meta .bad {
+    padding: 0 0.15em;
+    background: var(--signal);
+    color: var(--on-signal);
+  }
+
   .spark {
     display: block;
     width: 100%;
-    height: 3rem;
-    margin-bottom: 0.6rem;
-    fill: var(--sky);
-    opacity: 0.7;
+    height: 2rem;
+    margin-top: 0.75rem;
+    border-bottom: 1px solid var(--rule);
+    fill: var(--trace);
+  }
+
+  .doors {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    margin: 0;
+  }
+
+  /* Wide enough for the panels to stand either side of the wheel. */
+  @container board (min-width: 62rem) {
+    .orbit {
+      grid-template-columns: minmax(0, 1fr) clamp(27rem, 44cqi, 38rem) minmax(0, 1fr);
+      grid-template-rows: repeat(3, auto);
+      /* each pair of panels, left and right, is as tall as the taller of the two */
+      align-items: stretch;
+      --gap: clamp(1.25rem, 3cqi, 2.5rem);
+      gap: 1.25rem var(--gap);
+    }
+
+    /* The wheel bulges at its middle and falls away above and below, and the
+       panels give way to it: the middle pair stand back, and the top and
+       bottom pairs lean in under and over its shoulders. */
+    .l1,
+    .l3 {
+      margin-right: -1rem;
+    }
+
+    .r1,
+    .r3 {
+      margin-left: -1rem;
+    }
+
+    .l2 {
+      margin: 0 1.75rem 0 -0.75rem;
+    }
+
+    .r2 {
+      margin: 0 -0.75rem 0 1.75rem;
+    }
+
+    /* From each of the middle pair a lead runs in to the wheel's rim. */
+    .l2::after,
+    .r2::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: calc(1.75rem + var(--gap) + 0.4rem);
+      height: 7px;
+      margin-top: -3.5px;
+      pointer-events: none;
+    }
+
+    .l2::after {
+      left: 100%;
+      background:
+        linear-gradient(var(--ink), var(--ink)) center / 100% 1px no-repeat,
+        linear-gradient(var(--ink), var(--ink)) right center / 7px 7px no-repeat;
+    }
+
+    .r2::after {
+      right: 100%;
+      background:
+        linear-gradient(var(--ink), var(--ink)) center / 100% 1px no-repeat,
+        linear-gradient(var(--ink), var(--ink)) left center / 7px 7px no-repeat;
+    }
+
+    .hub {
+      grid-column: 2;
+      grid-row: 1 / 4;
+      align-self: center;
+      width: 100%;
+    }
+
+    .l1,
+    .l2,
+    .l3 {
+      grid-column: 1;
+    }
+
+    .r1,
+    .r2,
+    .r3 {
+      grid-column: 3;
+    }
+
+    .l1,
+    .r1 {
+      grid-row: 1;
+    }
+
+    .l2,
+    .r2 {
+      grid-row: 2;
+    }
+
+    .l3,
+    .r3 {
+      grid-row: 3;
+    }
+  }
+
+  /* A phone: bigger names on the ring, and no small print in it. */
+  @container board (max-width: 34rem) {
+    .seg-zh {
+      font-size: 25px;
+    }
+    .seg-en {
+      display: none;
+    }
+  }
+
+  /* ---------- the scheduled jobs ---------- */
+  .em-panel.wide {
+    margin-top: 1.5rem;
+  }
+
+  .em-panel h2.em-mid {
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+  }
+
+  .mid-link {
+    margin: 0 0 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .mid-link a {
+    color: var(--ink-2);
+  }
+
+  .mid-link a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+
+  .mid-empty {
+    border-top: 0;
+  }
+
+  .habits {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+    gap: 1.5rem 2.5rem;
+    margin: 0;
+    padding: 0.6rem 0 0;
+    list-style: none;
+  }
+
+  .habit-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2rem 0.6rem;
+  }
+
+  .habit-head .t {
+    font-weight: 700;
+  }
+
+  .habit-head .em-state {
+    margin-left: 0;
+  }
+
+  .habit-head .em-meta {
+    flex-basis: 100%;
+  }
+
+  .heat {
+    display: block;
+    width: 100%;
+    max-width: 27rem;
+    height: auto;
+    margin-top: 0.5rem;
+  }
+
+  .heat .axis {
+    font-size: 10px;
+  }
+
+  .heat rect,
+  .heat-key i {
+    fill: var(--trace);
+    background: var(--trace);
+  }
+
+  .heat .l0,
+  .heat-key .l0 {
+    fill: var(--chip);
+    background: var(--chip);
+  }
+
+  .heat .l1,
+  .heat-key .l1 {
+    opacity: 0.35;
+  }
+
+  .heat .l2,
+  .heat-key .l2 {
+    opacity: 0.65;
+  }
+
+  .heat .bad,
+  .heat-key .bad {
+    fill: var(--tri-a);
+    background: var(--tri-a);
+    opacity: 1;
+  }
+
+  .heat-key {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0.8rem 0 0;
+    color: var(--ink-2);
+    font-size: 0.75rem;
+  }
+
+  .heat-key i {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-left: 0.7rem;
+  }
+
+  .heat-key i + i {
+    margin-left: 0;
+  }
+
+  .em-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+    padding-top: 0;
+  }
+
+  .em-cols .em-panel + .em-panel {
+    margin-top: 0;
+  }
+
+  @media (max-width: 860px) {
+    .em-cols {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

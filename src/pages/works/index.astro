@@ -1,130 +1,171 @@
 ---
 import Base from '@/layouts/Base.astro';
 import { fmtDate, viewerOf } from '@/lib/posts';
-import { listProjects, PROJECT_KINDS } from '@/server/projects.ts';
+import { listProjects, PROJECT_KINDS, type ProjectKind } from '@/server/projects.ts';
 
 export const prerender = false;
 
 const works = listProjects(viewerOf(Astro.locals));
 Astro.response.headers.set('Cache-Control', works.some((w) => w.hidden) ? 'private, no-store' : 'no-cache');
+
+const kinds = (Object.keys(PROJECT_KINDS) as ProjectKind[]).map((kind) => ({ name: PROJECT_KINDS[kind], count: works.filter((w) => w.kind === kind).length }));
+const downloads = works.reduce((n, w) => n + w.downloads, 0);
 ---
 
 <Base title="作品" description="hhikr 做的 mod 和其他可以下载的东西。">
-  <div class="wrap">
-    <header class="page-head">
-      <p class="label kicker">Works · {works.length}</p>
-      <h1>作品<span class="en">Works</span></h1>
-    </header>
+  <div class="spread">
+    <div class="sheet">
+      <header class="sheet-head">
+        <h1>作品</h1>
+        <p class="mono">共 {works.length} 件</p>
+      </header>
 
-    {
-      works.length === 0 ? (
-        <p class="none">还没有发布作品。</p>
-      ) : (
-        <ul class="works">
-          {works.map((w) => (
+      {
+        works.length === 0 ? (
+          <p class="empty">还没有发布作品。做好的 mod 和小工具会放在这里，可以直接下载。</p>
+        ) : (
+          <ul class="works">
+            {works.map((w) => (
+              <li>
+                <a href={`/works/${w.slug}/`} class="work">
+                  <span class="thumb">{w.cover && <img src={w.cover.src} srcset={w.cover.srcset} sizes="(max-width: 560px) 94vw, 13rem" alt="" loading="lazy" decoding="async" />}</span>
+                  <span class="about">
+                    <span class="ids">
+                      <span class="kv">
+                        <span>类型</span>
+                        <span>{PROJECT_KINDS[w.kind]}</span>
+                      </span>
+                      {w.latestVersion && <span class="mono">{w.latestVersion}</span>}
+                      {w.hidden && <span class="badge-draft">隐藏</span>}
+                    </span>
+                    <span class="name">{w.title}</span>
+                    {w.summary && <span class="summary">{w.summary}</span>}
+                    <span class="facts mono">
+                      <span>更新 {fmtDate(w.updatedAt)}</span>
+                      {w.fileCount > 0 && <span>{w.fileCount} 个文件</span>}
+                      {w.fileCount > 0 && <span>下载 {w.downloads.toLocaleString('zh-CN')} 次</span>}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+
+    <aside class="margin" aria-label="作品统计">
+      <h2 class="margin-h mono">按类型</h2>
+      <ul class="ledger">
+        {
+          kinds.map((k) => (
             <li>
-              <a href={`/works/${w.slug}/`} class="work">
-                <div class="thumb">
-                  {w.cover ? <img src={w.cover.src} srcset={w.cover.srcset} sizes="(max-width: 700px) 94vw, 24rem" alt="" loading="lazy" decoding="async" /> : <span class="display" aria-hidden="true">{w.title.slice(0, 1)}</span>}
-                </div>
-                <div class="about">
-                  <p class="label">
-                    {PROJECT_KINDS[w.kind]}
-                    {w.latestVersion && <span> · {w.latestVersion}</span>}
-                    {w.hidden && <span class="badge-draft">隐藏 · HIDDEN</span>}
-                  </p>
-                  <h2 class="cjk">{w.title}</h2>
-                  {w.summary && <p class="summary">{w.summary}</p>}
-                  <p class="meta">
-                    <span>更新 {fmtDate(w.updatedAt)}</span>
-                    {w.fileCount > 0 && <span>下载 {w.downloads.toLocaleString('zh-CN')}</span>}
-                  </p>
-                </div>
-              </a>
+              <span>{k.name}</span>
+              <span class="mono">{k.count} 件</span>
             </li>
-          ))}
-        </ul>
-      )
-    }
+          ))
+        }
+        <li>
+          <span>下载合计</span>
+          <span class="mono">{downloads.toLocaleString('zh-CN')} 次</span>
+        </li>
+      </ul>
+    </aside>
   </div>
 </Base>
 
 <style>
-  .none {
-    padding: 2rem 0 6rem;
-    border-top: 1.5px solid var(--rule-strong);
-    color: var(--ink-3);
+  .works {
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .works {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-    gap: 2rem 1.5rem;
-    list-style: none;
-    margin: 0;
-    padding: 2rem 0 5rem;
-    border-top: 1.5px solid var(--rule-strong);
+  .works li {
+    border-bottom: 1px solid var(--rule);
   }
 
   .work {
     display: grid;
-    gap: 0.9rem;
+    grid-template-columns: 13rem minmax(0, 1fr);
+    gap: 1.5rem;
+    margin-inline: calc(var(--pad) * -1);
+    padding: 1.5rem var(--pad);
+    transition: background-color 0.15s;
   }
 
+  .work:hover {
+    background: var(--paper);
+  }
+
+  /* A work without a picture keeps its place: an empty ruled frame. */
   .thumb {
-    display: grid;
-    place-items: center;
+    display: block;
     aspect-ratio: 16 / 9;
+    align-self: start;
     border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: var(--paper-2);
+    background: var(--paper);
     overflow: hidden;
   }
 
   .thumb img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s var(--ease);
   }
 
-  .work:hover .thumb img {
-    transform: scale(1.03);
+  .about {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
   }
 
-  .thumb .display {
-    font-size: 4rem;
-    font-style: italic;
-    color: var(--ink-3);
+  .ids {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .about p {
+  .ids .badge-draft {
     margin: 0;
   }
 
-  .about h2 {
-    margin: 0.3rem 0 0.4rem;
-    font-size: 1.5rem;
-    line-height: 1.25;
-    transition: color 0.2s;
+  .work:hover .kv {
+    --fill: var(--signal);
+    color: var(--on-signal);
   }
 
-  .work:hover h2 {
-    color: var(--sky-ink);
+  .work:hover .kv > :first-child {
+    color: var(--on-signal);
+  }
+
+  .name {
+    margin-top: 0.6rem;
+    font-size: var(--t-h2);
+    line-height: 1.45;
   }
 
   .summary {
+    margin-top: 0.25rem;
+    line-height: 1.7;
     color: var(--ink-2);
-    font-size: 0.95rem;
-    line-height: 1.6;
   }
 
-  .meta {
-    display: flex;
-    gap: 1rem;
-    margin-top: 0.6rem !important;
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    color: var(--ink-3);
+  .about .facts {
+    margin-top: 0.9rem;
+  }
+
+  @media (max-width: 560px) {
+    .work {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1rem;
+    }
+    /* Stacked, an empty frame is only a blank box. */
+    .thumb:empty {
+      display: none;
+    }
   }
 </style>

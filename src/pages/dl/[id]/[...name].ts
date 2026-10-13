@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { Readable } from 'node:stream';
 import type { APIRoute } from 'astro';
+import { isPrefetch } from '@/server/prefetch.ts';
 import { countDownload, findDownload, parseRange } from '@/server/projects.ts';
 
 export const prerender = false;
@@ -11,6 +12,9 @@ export const prerender = false;
  * beginning, so resumed pieces are not counted again.
  */
 const send: APIRoute = ({ params, request, locals }) => {
+  // Hovering over a download link must not fetch the file or count as a download.
+  if (isPrefetch(request.headers)) return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+
   const id = Number(params.id);
   const found = Number.isInteger(id) ? findDownload(id, locals.viewer) : undefined;
   if (!found) return new Response(null, { status: 404 });

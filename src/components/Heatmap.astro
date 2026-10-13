@@ -50,7 +50,7 @@ const level = (n: number) => (n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : 3);
           weeks.map((w) =>
             w.map((c) =>
               c.count ? (
-                <a href={c.href} class={`c l${level(c.count)}`} title={`${c.day} · ${c.titles.join(' / ')}`} />
+                <a href={c.href} class={`c l${level(c.count)}`} title={`${c.day}：${c.titles.join(' / ')}`} />
               ) : (
                 <span class="c" title={c.day} />
               ),
@@ -60,8 +60,8 @@ const level = (n: number) => (n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : 3);
       </div>
     </div>
   </div>
-  <figcaption class="label">
-    <span>写作日历 · {posts.length} 篇，{byDay.size} 天</span>
+  <figcaption class="mono">
+    <span>{posts.length} 篇，写于 {byDay.size} 天</span>
     <span class="legend" aria-hidden="true">少 <i class="c"></i><i class="c l1"></i><i class="c l2"></i><i class="c l3"></i> 多</span>
   </figcaption>
 </figure>
@@ -93,8 +93,8 @@ const level = (n: number) => (n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : 3);
     grid-template-columns: repeat(var(--weeks), var(--cell));
     column-gap: var(--gap);
     font-family: var(--font-mono);
-    font-size: 0.62rem;
-    color: var(--ink-3);
+    font-size: 0.66rem;
+    color: var(--ink-2);
     white-space: nowrap;
   }
 
@@ -110,20 +110,19 @@ const level = (n: number) => (n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : 3);
     display: inline-block;
     width: var(--cell, 11px);
     height: var(--cell, 11px);
-    border-radius: 2px;
-    background: var(--paper-3);
+    background: var(--chip);
   }
 
   .l1 {
-    background: color-mix(in srgb, var(--sky) 45%, var(--paper-3));
+    background: color-mix(in srgb, var(--trace) 40%, var(--chip));
   }
 
   .l2 {
-    background: color-mix(in srgb, var(--sky) 75%, var(--paper-3));
+    background: color-mix(in srgb, var(--trace) 70%, var(--chip));
   }
 
   .l3 {
-    background: var(--sky);
+    background: var(--trace);
   }
 
   a.c:hover {
@@ -136,7 +135,6 @@ const level = (n: number) => (n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : 3);
     justify-content: space-between;
     gap: 1rem;
     margin-top: 0.75rem;
-    text-transform: none;
   }
 
   .legend {

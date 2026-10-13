@@ -1,18 +1,24 @@
 ---
-// Shell of the management area: a side rail with the sections and a work
-// surface beside it. The middleware has already made sure the visitor is the
+// Shell of the management area: a command bar with the sections across the
+// top, and the work surface under it. The site's own navigation is left out. The middleware has already made sure the visitor is the
 // endministrator before any page using this layout renders.
 import Base from './Base.astro';
+import Icon from '@/components/Icon.astro';
 import { backupStatus } from '@/server/backup.ts';
 import { commentCounts } from '@/server/comments.ts';
+import { cosmoOrigin } from '@/server/cosmo.ts';
 
 interface Props {
   title: string;
   en: string;
   /** Short line under the title saying what this screen is for. */
   lead?: string;
+  /** The page draws its own title: leave the heading out. */
+  plain?: boolean;
+  /** Use the whole width of the window, for the editor. */
+  wide?: boolean;
 }
-const { title, en, lead } = Astro.props;
+const { title, en, lead, plain, wide } = Astro.props;
 const user = Astro.locals.user!;
 const path = Astro.url.pathname;
 const pending = commentCounts().hidden;
@@ -28,48 +34,58 @@ const sections = [
   { href: '/endmin/stats/', label: '统计', en: 'Stats' },
   { href: '/endmin/backup/', label: '备份', en: 'Backup', badge: backupProblems },
 ];
+// Hermes has its own two front ends on the Cosmo subdomain; both take the same sign-in.
+const cosmo = cosmoOrigin();
+const hermes = cosmo
+  ? [
+      { href: `${cosmo}/`, label: '对话', en: 'Cosmo' },
+      { href: `${cosmo}/admin/`, label: '管理页', en: 'Dashboard' },
+    ]
+  : [];
 const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
 ---
 
-<Base title={`${title} · 管理`} noindex>
-  <div class="wrap em">
-    <aside class="em-rail">
-      <div class="em-who">
-        <span class="em-seal display" aria-hidden="true">E</span>
-        <div>
-          <p class="label">Endministrator</p>
-          <p class="em-name">{user.nickname}</p>
-        </div>
-      </div>
+<Base title={`${title} · 管理`} noindex bare>
+  <div class="em">
+    <header class="em-bar">
+      <a class="em-brand" href="/endmin/" aria-label="管理概览">
+        <span class="em-seal" aria-hidden="true">E</span>
+        <span class="em-word">
+          ENDMIN
+          <small>{user.nickname}</small>
+        </span>
+      </a>
 
-      <nav aria-label="管理">
-        <ul>
-          {
-            sections.map((s) => (
-              <li>
-                <a href={s.href} aria-current={isCurrent(s.href) ? 'page' : undefined}>
-                  <span class="cjk">{s.label}</span>
-                  <span class="label">{s.en}</span>
-                  {!!s.badge && <span class="em-count">{s.badge}</span>}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
+      <nav class="em-nav" aria-label="管理">
+        {
+          sections.map((s) => (
+            <a href={s.href} aria-current={isCurrent(s.href) ? 'page' : undefined}>
+              <span class="zh">{s.label}</span>
+              <span class="en">{s.en}</span>
+              {!!s.badge && <span class="em-count">{s.badge}</span>}
+            </a>
+          ))
+        }
       </nav>
 
-      <div class="em-foot">
-        <a href="/">查看网站 →</a>
-        <button type="button" data-view-as>以游客视角浏览</button>
-        <button type="button" data-logout>退出登录</button>
+      <div class="em-util">
+        {hermes.map((s) => <a href={s.href} target="_blank" rel="noopener">Hermes {s.label}</a>)}
+        <a href="/">查看网站</a>
+        <button type="button" data-view-as>游客视角</button>
+        <button type="button" data-logout>退出</button>
+        <button type="button" class="em-theme" data-theme-toggle aria-label="切换主题"><Icon name="auto" size={16} /></button>
       </div>
-    </aside>
+    </header>
 
-    <section class="em-main">
-      <header class="em-head">
-        <h1 class="cjk">{title}<span class="display">{en}</span></h1>
-        {lead && <p>{lead}</p>}
-      </header>
+    <section class:list={['em-main', { wide }]}>
+      {
+        !plain && (
+          <header class="em-head">
+            <h1>{title}<span class="en">{en}</span></h1>
+            {lead && <p>{lead}</p>}
+          </header>
+        )
+      }
       <p class="em-flash" data-flash role="status" hidden></p>
       <slot />
     </section>
@@ -109,6 +125,13 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     }
   });
 
+  // Under a filtered list, <p data-filter-empty hidden> says so when nothing is left.
+  const showFilterEmpty = () => {
+    const any = [...document.querySelectorAll<HTMLElement>('[data-group]')].some((row) => !row.hidden);
+    document.querySelectorAll<HTMLElement>('[data-filter-empty]').forEach((note) => (note.hidden = any));
+  };
+  (window as { showFilterEmpty?: () => void }).showFilterEmpty = showFilterEmpty;
+
   // Filter chips: <button data-filter="…"> shows rows whose data-group matches.
   const filters = document.querySelector('[data-filters]');
   filters?.addEventListener('click', (e) => {
@@ -118,246 +141,422 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     document.querySelectorAll<HTMLElement>('[data-group]').forEach((row) => {
       row.hidden = chip.dataset.filter !== 'all' && row.dataset.group !== chip.dataset.filter;
     });
+    showFilterEmpty();
   });
 </script>
 
 <style is:global>
   .em {
-    display: grid;
-    grid-template-columns: 13.5rem minmax(0, 1fr);
-    gap: clamp(1.5rem, 4vw, 3.5rem);
-    align-items: start;
-    padding-block: clamp(1.5rem, 4vw, 3rem) 5rem;
+    width: 100%;
+    font-family: var(--font-ui);
   }
 
-  /* ---------- rail ---------- */
-  .em-rail {
+  /* ---------- the command bar: the only navigation here ---------- */
+  /* Dark in both themes, so the yellow block of "where you are" reads the same. */
+  .em-bar {
     position: sticky;
-    top: 5.5rem;
-    display: grid;
-    gap: 1.75rem;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0 1.5rem;
+    padding-inline: var(--pad);
+    background: #161616;
+    color: #ededed;
   }
 
-  .em-who {
+  .em-brand {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    padding-bottom: 1.25rem;
-    border-bottom: 1.5px solid var(--rule-strong);
-  }
-
-  .em-who p {
-    margin: 0;
+    gap: 0.7rem;
+    padding-block: 0.6rem;
   }
 
   .em-seal {
     display: grid;
     place-items: center;
-    width: 2.6rem;
-    height: 2.6rem;
-    border-radius: 50%;
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 1.6rem;
-    font-style: italic;
+    width: 2.25rem;
+    height: 2.25rem;
+    background: linear-gradient(-45deg, transparent 0.45rem, var(--signal) calc(0.45rem + 0.5px));
+    color: var(--on-signal);
+    font-size: 1.3rem;
+    font-weight: 800;
     line-height: 1;
   }
 
-  .em-name {
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    line-height: 1.1;
-  }
-
-  .em-rail ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .em-rail nav a {
+  .em-word {
     display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
-    padding: 0.55rem 0.75rem;
-    border-left: 2px solid transparent;
-    color: var(--ink-2);
+    flex-direction: column;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+  }
+
+  .em-word small {
+    font-size: 0.68rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: #a3a3a3;
+  }
+
+  .em-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    margin-right: auto;
+  }
+
+  .em-nav a {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 3.4rem;
+    padding: 0.3rem 1.15rem 0.3rem 0.8rem;
+    color: #b8b8b8;
     transition:
-      background 0.2s,
-      color 0.2s,
-      border-color 0.2s;
+      color 0.15s,
+      background-color 0.15s;
   }
 
-  .em-rail nav a .cjk {
-    font-size: 1.12rem;
+  .em-nav a .zh {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
   }
 
-  .em-rail nav a:hover {
-    background: var(--paper-2);
-    color: var(--ink);
+  .em-nav a .en {
+    font-size: 0.66rem;
+    line-height: 1.3;
+    opacity: 0.75;
   }
 
-  .em-rail nav a[aria-current='page'] {
-    border-left-color: var(--sky);
-    background: var(--paper-2);
-    color: var(--ink);
-  }
-
-  .em-count {
-    margin-left: auto;
-    min-width: 1.5em;
-    padding: 0 0.4em;
-    border-radius: 999px;
+  /* Pointing at a section: a yellow line is driven along its foot. */
+  .em-nav a::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 3px;
     background: var(--signal);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.22s var(--mech);
+  }
+
+  .em-nav a:hover,
+  .em-nav a:focus-visible {
     color: #fff;
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    line-height: 1.6;
+    background: #232323;
+  }
+
+  .em-nav a:not([aria-current='page']):hover::after,
+  .em-nav a:not([aria-current='page']):focus-visible::after {
+    transform: none;
+  }
+
+  .em-nav a[aria-current='page'] {
+    color: var(--on-signal);
+    background: linear-gradient(-45deg, transparent calc(var(--cut) + 2px), var(--signal) calc(var(--cut) + 2.5px));
+    view-transition-name: em-current;
+  }
+
+  /* Something is waiting: comments to review, a backup that failed. */
+  .em-count {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.3rem;
+    min-width: 1.4em;
+    padding: 0 0.3em;
+    background: var(--signal);
+    color: var(--on-signal);
+    outline: 2px solid #161616;
+    font-size: 0.66rem;
+    font-weight: 700;
+    line-height: 1.5;
     text-align: center;
   }
 
-  .em-later {
-    margin: 1.5rem 0 0.4rem;
-    padding-left: 0.75rem;
+  .em-util {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 1.1rem;
+    font-size: 0.78rem;
   }
 
-  .em-soon li {
-    padding: 0.3rem 0.75rem;
-    border-left: 2px solid transparent;
-    color: var(--ink-3);
-    opacity: 0.7;
-  }
-
-  .em-foot {
-    display: grid;
-    gap: 0.5rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--rule);
-    font-size: 0.88rem;
-  }
-
-  .em-foot a,
-  .em-foot button {
-    padding: 0;
+  .em-util a,
+  .em-util button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0;
     border: 0;
     background: none;
-    color: var(--ink-2);
+    color: #b8b8b8;
     font: inherit;
-    text-align: left;
-    cursor: pointer;
   }
 
-  .em-foot a:hover,
-  .em-foot button:hover {
-    color: var(--sky-ink);
+  .em-util a:hover,
+  .em-util button:hover {
+    color: var(--signal);
   }
 
   /* ---------- work surface ---------- */
+  .em-main {
+    max-width: 88rem;
+    margin-inline: auto;
+    padding: clamp(1.25rem, 3vw, 2.25rem) var(--pad) 5rem;
+  }
+
+  .em-main.wide {
+    max-width: 112rem;
+  }
+
+  /* A page's name, heavy, with a hatched bar running off beside it. */
   .em-head {
-    padding-bottom: 1.5rem;
-    border-bottom: 1.5px solid var(--rule-strong);
+    display: grid;
+    grid-template-columns: auto minmax(2rem, 1fr);
+    align-items: center;
+    gap: 0.4rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .em-head::after {
+    content: '';
+    grid-column: 2;
+    grid-row: 1;
+    height: 0.9rem;
+    background: var(--hatch);
+    border-left: 0.9rem solid var(--ink);
   }
 
   .em-head h1 {
     display: flex;
-    flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.25rem 1rem;
+    gap: 0.75rem;
     margin: 0;
-    font-size: clamp(2rem, 4vw, 2.9rem);
-    line-height: 1.1;
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
   }
 
-  .em-head h1 .display {
-    font-size: 0.55em;
-    font-style: italic;
-    color: var(--ink-3);
-  }
-
-  .em-head p {
-    margin: 0.6rem 0 0;
+  .em-head h1 .en {
+    font-size: var(--t-mono);
+    font-weight: 400;
+    letter-spacing: 0;
     color: var(--ink-2);
   }
 
-  .em-flash {
-    margin: 1rem 0 0;
-    padding: 0.6rem 0.9rem;
-    border: 1px solid var(--signal);
-    border-radius: var(--radius);
-    color: var(--signal);
+  .em-head p {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--ink-2);
   }
 
+  .em-mid {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    font-weight: 800;
+  }
+
+  .em-mid::after {
+    content: '';
+    flex: 1;
+    height: 0.7rem;
+    background: var(--hatch);
+    border-left: 0.7rem solid var(--ink);
+  }
+
+  /* Something went wrong: flagged in yellow, like everything that needs a look. */
+  .em-flash {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--ink);
+    background: var(--panel);
+    color: var(--ink);
+  }
+
+  .em-flash::before {
+    content: '出错';
+    flex: none;
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .em-flash[hidden] {
+    display: none;
+  }
+
+  /* A row of big figures on one plate, divided by hairlines however it wraps. */
   .em-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    border-bottom: 1px solid var(--rule);
+    gap: 1px;
+    margin-bottom: 1.25rem;
+    background: var(--rule);
+    border: 1px solid var(--rule);
   }
 
   .em-tile {
     display: grid;
-    gap: 0.2rem;
-    padding: 1.4rem 1rem 1.4rem 0;
-  }
-
-  .em-tile + .em-tile {
-    padding-left: 1.25rem;
-    border-left: 1px solid var(--rule);
+    gap: 0.15rem;
+    padding: 1.2rem 1.15rem;
+    background: var(--panel);
   }
 
   .em-tile .n {
-    font-family: var(--font-display);
-    font-size: 3rem;
-    line-height: 1;
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
   }
 
-  .em-tile .n small {
-    margin-left: 0.3em;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--signal);
-  }
-
-  .em-tile a:hover .cjk {
-    color: var(--sky-ink);
+  .em-tile .k {
+    font-size: 0.85rem;
+    color: var(--ink-2);
   }
 
   .em-cols {
     display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    gap: 2.5rem;
-    padding-top: 2rem;
+    align-items: start;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
   }
 
-  .em-panel h2 {
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    margin: 0 0 0.5rem;
-    font-family: var(--font-cjk);
-    font-size: 1.3rem;
-    font-weight: 400;
+  .em-cols > .em-panel + .em-panel {
+    margin-top: 0;
   }
 
-  .em-panel h2 a {
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--ink-3);
+  /* A plate on the paper, with a heavy ink tab on its top edge that runs out
+     along the whole edge when the plate is pointed at. The same as the
+     overview's panels. */
+  .em-panel {
+    position: relative;
+    min-width: 0;
+    padding: 1rem 1.15rem 1.15rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
   }
 
-  .em-panel h2 a:hover {
-    color: var(--sky-ink);
+  .em-panel::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    height: 5px;
+    background: var(--ink);
+    transform: scaleX(0.14);
+    transform-origin: left;
+    transition: transform 0.4s var(--mech);
+    pointer-events: none;
+  }
+
+  .em-panel:hover::before,
+  .em-panel:focus-within::before {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .em-panel::before {
+      transition: none;
+    }
   }
 
   .em-panel + .em-panel {
-    margin-top: 2.25rem;
+    margin-top: 1.25rem;
+  }
+
+  .em-panel > h2,
+  .em-panel > header > h2 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem 0.75rem;
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .em-panel h2 > a,
+  .em-panel h2 > .aside {
+    margin-left: auto;
+    color: var(--ink-2);
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .em-panel h2 > a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+
+  .em-panel h2 > .em-btn {
+    margin-left: auto;
+    font-weight: 400;
+  }
+
+  .em-panel h2 > .em-btn + .em-btn {
+    margin-left: 0;
+  }
+
+  /* A list that fills a plate runs to its edges. */
+  .em-panel > .em-rows {
+    margin-inline: -1.15rem;
+  }
+
+  .em-panel > .em-rows > li {
+    padding-inline: 1.15rem;
+  }
+
+  .em-panel > .em-rows:last-child > li:last-child,
+  .em-panel > .em-rows:has(+ .em-empty[hidden]:last-child) > li:last-child {
+    border-bottom: 0;
+  }
+
+  .em-panel > .em-rows:first-child {
+    margin-top: -1rem;
+    border-top: 0;
+  }
+
+  .em-panel > .em-rows:last-child,
+  .em-panel > .em-rows:has(+ .em-empty[hidden]:last-child) {
+    margin-bottom: -1.15rem;
+  }
+
+  .em-note {
+    margin: 0.75rem 0 0;
+    color: var(--ink-2);
+    font-size: 0.85rem;
+    line-height: 1.7;
   }
 
   .em-empty {
     margin: 0;
     padding: 1rem 0;
     border-top: 1px solid var(--rule);
-    color: var(--ink-3);
+    color: var(--ink-2);
+  }
+
+  .em-empty[hidden] {
+    display: none;
+  }
+
+  .em-panel > .em-empty:first-child {
+    border-top: 0;
+    padding-top: 0.5rem;
   }
 
   .em-rows {
@@ -380,13 +579,45 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     display: none;
   }
 
+  /* Pointing at a row: a bar comes down its left edge, as in the site's lists. */
+  .em-rows > li {
+    position: relative;
+    transition: background-color 0.15s;
+  }
+
+  .em-rows > li::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--trace);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.2s var(--snap);
+  }
+
+  .em-rows > li:hover {
+    background: var(--paper);
+  }
+
+  .em-rows > li:hover::before,
+  .em-rows > li:focus-within::before {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .em-rows > li::before {
+      transition: none;
+    }
+  }
+
   .em-rows .t {
-    font-family: var(--font-cjk);
-    font-size: 1.08rem;
+    font-size: var(--t-body);
   }
 
   .em-rows .t a:hover {
-    color: var(--sky-ink);
+    background: var(--signal);
+    color: var(--on-signal);
   }
 
   .em-meta {
@@ -394,12 +625,12 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     flex-wrap: wrap;
     gap: 0.2rem 0.9rem;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--ink-3);
+    font-size: 0.75rem;
+    color: var(--ink-2);
   }
 
   .em-meta a:hover {
-    color: var(--sky-ink);
+    color: var(--ink);
   }
 
   .em-acts {
@@ -409,72 +640,122 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     gap: 0.35rem;
   }
 
+  /* A button is a cut block, like every other thing that can be pressed. */
   .em-btn {
-    padding: 0.25em 0.8em;
-    border: 1px solid var(--rule);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--ink-2);
+    --fill: var(--chip);
+    --wipe: var(--signal);
+    position: relative;
+    isolation: isolate;
+    display: inline-block;
+    padding: 0.2em 1em 0.2em 0.75em;
+    border: 0;
+    background: var(--fill);
+    -webkit-mask: linear-gradient(-45deg, transparent calc(var(--cut) - 0.5px), #000 var(--cut));
+    mask: linear-gradient(-45deg, transparent calc(var(--cut) - 0.5px), #000 var(--cut));
+    color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     line-height: 1.7;
     white-space: nowrap;
-    cursor: pointer;
     transition:
-      border-color 0.2s,
-      color 0.2s,
-      background 0.2s;
+      color 0.1s 0.05s,
+      transform 0.1s;
   }
 
-  .em-btn:hover {
-    border-color: var(--ink);
-    color: var(--ink);
+  /* The cut corner is a mask, so the focus ring is drawn inside the block. */
+  .em-btn:focus-visible {
+    outline-offset: -3px;
+  }
+
+  /* Pointing at a button drives its colour across it from the left. */
+  .em-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--wipe);
+    transform: translateX(-101%);
+    transition: transform 0.24s var(--mech);
+  }
+
+  .em-btn:hover,
+  .em-btn:focus-visible {
+    color: var(--on-signal);
+  }
+
+  .em-btn:hover::before,
+  .em-btn:focus-visible::before {
+    transform: none;
+  }
+
+  .em-btn:active {
+    transform: translateY(1px) scale(0.98);
   }
 
   .em-btn.go {
-    border-color: var(--ink);
-    background: var(--ink);
-    color: var(--paper);
+    --fill: var(--ink);
+    color: var(--panel);
   }
 
-  .em-btn.go:hover {
-    border-color: var(--sky-ink);
-    background: var(--sky-ink);
+  .em-btn.go:hover,
+  .em-btn.go:focus-visible {
+    color: var(--on-signal);
   }
 
-  .em-btn.danger:hover {
-    border-color: var(--signal);
-    color: var(--signal);
+  .em-btn.danger {
+    --wipe: var(--danger);
   }
 
+  .em-btn.danger:hover,
+  .em-btn.danger:focus-visible {
+    color: var(--panel);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .em-btn::before {
+      transition: none;
+    }
+  }
   .em-btn:disabled {
     opacity: 0.5;
     cursor: progress;
   }
 
+  /* What state a thing is in. Live is solid ink, waiting in the wings is
+     dashed, and what needs a look is a yellow block. No red: red is for
+     deleting. */
   .em-state {
+    display: inline-block;
     margin-left: 0.6em;
     padding: 0 0.5em;
     border: 1px solid currentColor;
-    border-radius: 2px;
     font-family: var(--font-mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.05em;
+    font-size: 0.7rem;
     line-height: 1.6;
     vertical-align: 0.15em;
+    white-space: nowrap;
   }
 
   .em-state.published {
-    color: var(--sky-ink);
+    color: var(--ink);
   }
-  .em-state.hidden,
-  .em-state.banned {
-    color: var(--signal);
+
+  .em-state.hidden {
+    color: var(--ink);
     border-style: dashed;
   }
+
   .em-state.draft {
-    color: var(--ink-3);
+    color: var(--ink-2);
     border-style: dashed;
+  }
+
+  .em-state.banned,
+  .em-state.alert {
+    border-color: var(--signal);
+    background: var(--signal);
+    color: var(--on-signal);
+    font-weight: 700;
   }
 
   .em-filters {
@@ -486,14 +767,16 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
   }
 
   .em-filters .chip {
-    padding: 0.3em 0.9em;
-    cursor: pointer;
+    padding: 0.2em 1em 0.2em 0.75em;
   }
 
-  .em-filters .chip[aria-pressed='true'] {
-    border-color: var(--ink);
-    background: var(--ink);
-    color: var(--paper);
+  /* The thing to do on this screen sits at the right end of the filters. */
+  .em-filters > .end {
+    margin-left: auto;
+  }
+
+  .em-filters + .em-panel {
+    margin-top: 0;
   }
 
   .em-facts {
@@ -505,7 +788,7 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0.55rem 0;
+    padding: 0.5rem 0;
     border-bottom: 1px solid var(--rule);
   }
 
@@ -516,12 +799,17 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
   .em-facts dd {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: 0.82rem;
+    font-size: var(--t-mono);
+    font-variant-numeric: tabular-nums;
     text-align: right;
   }
 
+  /* Needs a look: marked the way this site marks things, in yellow. */
   .em-facts .warn {
-    color: var(--signal);
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-weight: 700;
   }
 
   .em-quote {
@@ -530,7 +818,6 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     padding-left: 0.8rem;
     border-left: 2px solid var(--rule);
     color: var(--ink-2);
-    font-size: 0.94rem;
     line-height: 1.65;
     overflow-wrap: anywhere;
   }
@@ -538,13 +825,12 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
   .em-quote img {
     max-width: 10rem;
     max-height: 7rem;
-    border-radius: var(--radius);
   }
 
   .em-quote pre {
     margin: 0.3rem 0;
     padding: 0.5rem 0.7rem;
-    background: var(--code-bg);
+    background: var(--paper);
     font-size: 0.8rem;
     overflow-x: auto;
   }
@@ -565,17 +851,19 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
 
   .em-user img,
   .em-user .ph {
+    flex: none;
     width: 2rem;
     height: 2rem;
-    border-radius: 50%;
     object-fit: cover;
-    background: var(--paper-3);
+    background: var(--chip);
   }
 
   .em-user .tag {
     font-family: var(--font-mono);
     font-size: 0.8em;
-    color: var(--ink-3);
+    color: var(--ink-2);
+    background: none;
+    padding: 0;
   }
 
   .em-switch {
@@ -584,42 +872,22 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
     gap: 0.6rem;
     margin-left: auto;
     color: var(--ink-2);
-    font-size: 0.88rem;
   }
 
   @media (max-width: 860px) {
-    .em {
-      grid-template-columns: 1fr;
-    }
-    .em-rail {
+    /* The bar wraps to several lines here: let it scroll away with the page. */
+    .em-bar {
       position: static;
-      gap: 1rem;
     }
-    .em-rail nav ul {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.25rem;
-    }
-    .em-rail nav a {
-      border-left: 0;
-      border-bottom: 2px solid transparent;
-    }
-    .em-rail nav a[aria-current='page'] {
-      border-bottom-color: var(--sky);
-    }
-    .em-later,
-    .em-soon {
+    .em-nav a .en {
       display: none;
     }
-    .em-foot {
-      display: flex;
-      gap: 1.5rem;
+    .em-nav a {
+      min-height: 2.75rem;
+      padding-inline: 0.7rem 0.9rem;
     }
     .em-cols {
       grid-template-columns: 1fr;
-    }
-    .em-tile + .em-tile {
-      padding-left: 1rem;
     }
   }
 </style>

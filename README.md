@@ -12,10 +12,11 @@ npm run dev          # http://localhost:4321
 npm run build        # 类型检查 + 构建 + 生成搜索索引
 npm run preview      # 预览构建结果（搜索只在构建后可用）
 npm run test:server  # 服务端逻辑的测试（账号、评论、文章、备份、Markdown 渲染等）
+npm run test:cosmo   # Cosmo 网关的测试（登录交接、转发、来源检查）
 npm run import:posts # 把 src/content/posts 导入本机数据库（.data/），供开发使用
 ```
 
-网站已部署到 ByteVirt VPS，通过 NameSilo 管理 `hhikr.moe` 解析，使用 Caddy 提供 HTTPS。构建、上传、服务器配置、证书、验收和回滚的流程，以及服务器上的配置文件和脚本，放在 `tools/deploy/`。这个目录写有服务器的地址和端口，所以不进入仓库，只保存在站长的电脑上。
+网站已部署到 ByteVirt VPS，通过 NameSilo 管理 `hhikr.moe` 解析，使用 Caddy 提供 HTTPS。构建、上传、服务器配置、证书、验收和回滚的流程，以及服务器上的配置文件和脚本，放在 `tools/deploy/`。这个目录写有服务器的地址和端口，所以不进入仓库，只保存在站长的电脑上。同一台服务器上的 Cosmo（`cosmo.hhikr.moe`）单独构建和发布，见 [tools/cosmo/README.md](tools/cosmo/README.md)。
 
 ## Hot 100 学习区
 
@@ -63,6 +64,7 @@ Markdown 扩展语法（与 Obsidian 兼容）：
 - 作品（`/works/`）：发布 mod 等可下载的文件，每个作品有介绍、图库、链接、相关文章和按版本整理的文件，下载支持断点续传
 - 每天自动备份到 GitHub 私有仓库，大文件走 Release 附件，可以从备份恢复
 - 自建访问统计：不保存 IP 地址，文章页显示阅读数，管理面板里有趋势、页面、来源和设备的统计
+- Cosmo（`cosmo.hhikr.moe`）：站长的 Hermes 助手网页界面，复用 Hermes Desktop 的渲染层，凭本站的 endministrator 登录进入，见 [tools/cosmo/README.md](tools/cosmo/README.md)
 - RSS（`/rss.xml`，旧地址 `/index.xml` 仍可用）、sitemap、Open Graph
 - 中文标题使用霞鹜文楷，所有字体本地托管，不依赖 Google Fonts
 

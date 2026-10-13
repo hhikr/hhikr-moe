@@ -170,7 +170,7 @@ function init(root: HTMLElement) {
     const note = el('p', { class: 'c-status', role: 'status' });
     const input = (name: string, type: string, autocomplete: string) => el('input', { name, type, autocomplete: autocomplete as AutoFill, maxLength: 200 });
     const field = (label: string, control: HTMLElement, hint?: string) =>
-      el('label', {}, el('span', { class: 'label' }, label), control, ...(hint ? [el('small', {}, hint)] : []));
+      el('label', { class: 'field' }, el('span', { class: 'label' }, label), control, ...(hint ? [el('small', {}, hint)] : []));
     const section = (title: string, ...children: (Node | string)[]) => el('section', {}, el('h4', { class: 'label' }, title), ...children);
     // Runs a request from a form's submit button, showing what went wrong next to it.
     const submitTo = (form: HTMLFormElement, run: () => Promise<string | undefined>) =>
@@ -182,12 +182,12 @@ function init(root: HTMLElement) {
         button.disabled = false;
       });
 
-    dialog.append(close, el('h3', { class: 'cjk' }, '账号'), el('p', { class: 'c-hint' }, '你的完整名字是 ', el('strong', {}, user.handle), '。'));
+    dialog.append(close, el('h3', {}, '账号'), el('p', { class: 'c-hint' }, '你的完整名字是 ', el('strong', {}, user.handle), '。'));
 
     if (user.login === 'password') {
       const current = input('current', 'password', 'current-password');
       const next = input('next', 'password', 'new-password');
-      const form = el('form', { noValidate: true }, field('当前密码', current), field('新密码', next, '至少 10 个字符。修改后，其他设备上的登录会失效。'), el('button', { type: 'submit', class: 'chip' }, '修改密码'));
+      const form = el('form', { class: 'form', noValidate: true }, field('当前密码', current), field('新密码', next, '至少 10 个字符。修改后，其他设备上的登录会失效。'), el('button', { type: 'submit', class: 'btn' }, '修改密码'));
       submitTo(form, async () => {
         const res = await api('/api/me/password', { current: current.value, next: next.value });
         if (!res.ok) return res.error.message;
@@ -197,7 +197,7 @@ function init(root: HTMLElement) {
       dialog.append(section('密码', form));
     }
 
-    const elsewhere = el('button', { type: 'button', class: 'chip' }, '退出其他设备');
+    const elsewhere = el('button', { type: 'button', class: 'btn' }, '退出其他设备');
     elsewhere.addEventListener('click', async () => {
       const res = await api('/api/me/sessions', undefined, 'DELETE');
       note.textContent = res.ok ? '其他设备上的登录已全部退出。' : res.error.message;
@@ -206,7 +206,7 @@ function init(root: HTMLElement) {
 
     const byPassword = user.login === 'password';
     const proof = input('proof', byPassword ? 'password' : 'text', byPassword ? 'current-password' : 'off');
-    const remove = el('form', { noValidate: true }, field(byPassword ? '输入密码以确认' : `输入完整的名字 ${user.handle} 以确认`, proof), el('button', { type: 'submit', class: 'chip c-danger' }, '永久删除账号'));
+    const remove = el('form', { class: 'form', noValidate: true }, field(byPassword ? '输入密码以确认' : `输入完整的名字 ${user.handle} 以确认`, proof), el('button', { type: 'submit', class: 'btn danger' }, '永久删除账号'));
     submitTo(remove, async () => {
       if (!confirm('删除账号后，你发表的所有评论会一并删除，无法恢复。继续？')) return undefined;
       const res = await api('/api/me', { proof: proof.value }, 'DELETE');

@@ -1,0 +1,33 @@
+---
+// One post as a row of a .records list: its number, date, title and length.
+import { fmtDate, postUrl, type Post } from '@/lib/posts';
+
+interface Props {
+  post: Post;
+  /** Its number, from postNumbers(); a draft has none. */
+  number?: string;
+  /** What goes in the first column instead of the post's number, such as its place in a series. */
+  lead?: string;
+  [attr: `data-${string}`]: string | undefined;
+}
+
+const { post, number, lead, ...attrs } = Astro.props;
+---
+
+<li {...attrs}>
+  <a class="record" href={postUrl(post)}>
+    {lead ? <span class="mono lead">{lead}</span> : number ? <span class="tag">{number}</span> : <span />}
+    <time class="mono" datetime={post.data.date.toISOString()}>{fmtDate(post.data.date)}</time>
+    <span class="name">
+      {post.data.title}
+      {post.data.hidden && <span class="badge-draft">隐藏</span>}
+    </span>
+    <span class="mono">{post.words.toLocaleString('zh-CN')} 字</span>
+  </a>
+</li>
+
+<style>
+  .lead {
+    min-width: 2ch;
+  }
+</style>

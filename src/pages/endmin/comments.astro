@@ -15,7 +15,7 @@ const hidden = comments.filter((c) => c.status === 'hidden').length;
     <button type="button" class="chip" data-filter="all" aria-pressed="true">全部 {comments.length}</button>
     <button type="button" class="chip" data-filter="hidden" aria-pressed="false">隐藏与待审 {hidden}</button>
     <button type="button" class="chip" data-filter="visible" aria-pressed="false">公开 {comments.length - hidden}</button>
-    <label class="em-switch">
+    <label class="em-switch end">
       <input type="checkbox" data-moderate checked={moderating} />
       新用户的第一条评论先审核
     </label>
@@ -23,8 +23,11 @@ const hidden = comments.filter((c) => c.status === 'hidden').length;
 
   {
     comments.length === 0 ? (
-      <p class="em-empty">还没有评论。</p>
+      <section class="em-panel">
+        <p class="em-empty">还没有评论。读者在文章下发表评论后，会按时间从新到旧列在这里。</p>
+      </section>
     ) : (
+      <section class="em-panel">
       <ul class="em-rows">
         {comments.map((c) => (
           <li data-group={c.status}>
@@ -33,7 +36,7 @@ const hidden = comments.filter((c) => c.status === 'hidden').length;
               <span>{when.format(new Date(c.createdAt))}</span>
               <a href={`/posts/${c.postSlug}/#comment-${c.id}`}>{c.postTitle}</a>
               {c.parentId && <span>回复</span>}
-              {c.status === 'hidden' && <span class="em-state hidden">隐藏</span>}
+              {c.status === 'hidden' && <span class="em-state alert">隐藏</span>}
             </div>
             <div class="em-acts">
               {c.status === 'hidden' ? (
@@ -53,6 +56,8 @@ const hidden = comments.filter((c) => c.status === 'hidden').length;
           </li>
         ))}
       </ul>
+      <p class="em-empty" data-filter-empty hidden>没有这个状态的评论。</p>
+      </section>
     )
   }
 </Endmin>

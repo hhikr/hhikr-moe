@@ -68,12 +68,10 @@ $('[data-to-top]')?.addEventListener('click', () => scrollTo({ top: 0 }));
 
 /* ---------- mobile menu ---------- */
 const menuBtn = $('[data-menu-toggle]');
-const menu = $('#mobile-menu');
 menuBtn?.addEventListener('click', () => {
-  const open = menu!.hidden;
-  menu!.hidden = !open;
+  const open = !header!.hasAttribute('data-nav-open');
+  header!.toggleAttribute('data-nav-open', open);
   menuBtn.setAttribute('aria-expanded', String(open));
-  document.body.style.overflow = open ? 'hidden' : '';
 });
 
 /* ---------- search (Pagefind) ---------- */
