@@ -24,14 +24,14 @@ const data = {
 
 <Endmin title={work.title} en="Work">
   <div class="em-filters">
-    <a class="label" href="/endmin/works/">← 全部作品</a>
+    <a class="back mono" href="/endmin/works/">全部作品</a>
     <span class={`em-state ${work.hidden ? 'hidden' : 'published'}`}>{work.hidden ? '隐藏' : '公开'}</span>
     <span class="saved" data-saved role="status"></span>
     <a class="em-btn view" href={`/works/${work.slug}/`} target="_blank" data-view>查看页面</a>
     <button type="button" class="em-btn go" data-save>保存</button>
   </div>
 
-  <form class="wk" data-form data-scripted novalidate>
+  <form class="wk form" data-form data-scripted novalidate>
     <section class="em-panel">
       <h2>基本信息</h2>
       <div class="grid">
@@ -85,7 +85,7 @@ const data = {
     </section>
   </form>
 
-  <section class="em-panel versions">
+  <section class="em-panel versions form">
     <h2>版本与文件</h2>
     <p class="hint">这里的操作立即生效，不需要点「保存」。单个文件上限 {formatBytes(maxFileBytes())}。</p>
 
@@ -103,7 +103,7 @@ const data = {
           <article class="version" data-release={release.id}>
             <header>
               <input name="version" value={release.version} maxlength="40" aria-label="版本号" />
-              <span class="label">{i === 0 ? '最新 · ' : ''}{fmtDate(release.createdAt)}</span>
+              <span class="label">{i === 0 ? '最新 | ' : ''}{fmtDate(release.createdAt)}</span>
               <button type="button" class="em-btn" data-save-release>保存版本号和说明</button>
               <button type="button" class="em-btn danger" data-api={`/api/endmin/releases/${release.id}`} data-method="DELETE" data-confirm={`删除版本 ${release.version} 和它的 ${release.files.length} 个文件？无法恢复。`}>
                 删除版本
@@ -181,7 +181,7 @@ const data = {
   const linkList = document.querySelector<HTMLElement>('[data-links]')!;
   function addLinkRow(link: Link = { label: '', url: '' }) {
     const li = document.createElement('li');
-    li.innerHTML = '<input placeholder="名称，例如 GitHub" maxlength="40" aria-label="链接名称"><input placeholder="https://…" maxlength="500" aria-label="链接地址" spellcheck="false"><button type="button" class="em-btn danger">移除</button>';
+    li.innerHTML = '<input placeholder="名称，例如 GitHub" maxlength="40" aria-label="链接名称"><input placeholder="https://…" maxlength="500" aria-label="链接地址" spellcheck="false"><button type="button" class="em-btn">移除</button>';
     const [label, url] = li.querySelectorAll('input');
     label.value = link.label;
     url.value = link.url;
@@ -205,7 +205,7 @@ const data = {
       ...shots.map((shot, i) => {
         const li = document.createElement('li');
         li.classList.toggle('is-cover', shot.id === cover);
-        li.innerHTML = `<img alt="" loading="lazy"><div class="em-acts"><button type="button" class="em-btn" data-act="cover"></button><button type="button" class="em-btn" data-act="left" aria-label="前移">←</button><button type="button" class="em-btn" data-act="right" aria-label="后移">→</button><button type="button" class="em-btn danger" data-act="remove">移除</button></div>`;
+        li.innerHTML = `<img alt="" loading="lazy"><div class="em-acts"><button type="button" class="em-btn" data-act="cover"></button><button type="button" class="em-btn" data-act="left" aria-label="前移">←</button><button type="button" class="em-btn" data-act="right" aria-label="后移">→</button><button type="button" class="em-btn" data-act="remove">移除</button></div>`;
         li.querySelector('img')!.src = shot.url;
         li.querySelector('[data-act="cover"]')!.textContent = shot.id === cover ? '封面 ✓' : '设为封面';
         li.addEventListener('click', (e) => {
@@ -375,20 +375,24 @@ const data = {
 </script>
 
 <style>
+  .back {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .back:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+
+  .em-filters .em-state {
+    margin-left: 0;
+  }
+
   .saved {
     margin-left: auto;
     font-family: var(--font-mono);
     font-size: 0.74rem;
-    color: var(--ink-3);
-  }
-
-  .wk .em-panel,
-  .versions {
-    padding-top: 1.75rem;
-  }
-
-  .em-panel h2 .em-btn {
-    margin-left: auto;
+    color: var(--ink-2);
   }
 
   .grid {
@@ -416,33 +420,18 @@ const data = {
     color: var(--ink-2);
   }
 
-  :is(.wk, .versions) :is(input:not([type='checkbox']), select, textarea) {
-    width: 100%;
-    padding: 0.5rem 0.65rem;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: var(--card);
-    color: var(--ink);
-    font: inherit;
-  }
-
-  :is(.wk, .versions) :is(input, select, textarea):focus-visible {
-    outline: 2px solid var(--sky);
-    outline-offset: 1px;
-  }
-
   .slug {
     display: flex;
     align-items: center;
     gap: 0.3rem;
     font-family: var(--font-mono);
     font-size: 0.85rem;
-    color: var(--ink-3);
+    color: var(--ink-2);
   }
 
   .hint {
     margin: 0.6rem 0 0;
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-size: 0.85rem;
   }
 
@@ -451,7 +440,6 @@ const data = {
     font-family: var(--font-mono) !important;
     font-size: 0.86rem !important;
     line-height: 1.7;
-    resize: vertical;
   }
 
   .links {
@@ -463,9 +451,14 @@ const data = {
     border-top: 1px solid var(--rule);
   }
 
+  .links:empty {
+    display: none;
+  }
+
   .links :global(li) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+    align-items: center;
     gap: 0.5rem;
   }
 
@@ -479,23 +472,27 @@ const data = {
     border-top: 1px solid var(--rule);
   }
 
+  .shots:empty {
+    display: none;
+  }
+
   .shots :global(img) {
     display: block;
     width: 100%;
     aspect-ratio: 16 / 10;
     object-fit: cover;
     border: 1px solid var(--rule);
-    border-radius: var(--radius);
   }
 
+  /* the cover: ringed in the colour of "here" */
   .shots :global(.is-cover img) {
-    outline: 2px solid var(--sky);
+    outline: 3px solid var(--trace);
     outline-offset: 2px;
   }
 
   .shots :global(.em-acts) {
     justify-content: flex-start;
-    margin-top: 0.4rem;
+    margin-top: 0.5rem;
   }
 
   .new-version {
@@ -508,11 +505,13 @@ const data = {
     border-block: 1px solid var(--rule);
   }
 
+  /* each version is a sheet inside the plate, ruled in ink down its left */
   .version {
-    margin-top: 1.5rem;
-    padding: 1rem 1.1rem;
+    margin-top: 1.25rem;
+    padding: 0.9rem 1rem 1rem;
     border: 1px solid var(--rule);
-    border-radius: var(--radius);
+    border-left: 4px solid var(--ink);
+    background: var(--paper);
   }
 
   .version header {
@@ -524,8 +523,8 @@ const data = {
   }
 
   .version header input {
-    width: 11rem;
-    font-family: var(--font-mono);
+    width: 11rem !important;
+    font-family: var(--font-mono) !important;
   }
 
   .version header .label {
@@ -534,6 +533,14 @@ const data = {
 
   .version .em-rows {
     margin-top: 0.75rem;
+  }
+
+  .version .em-rows:empty {
+    display: none;
+  }
+
+  .version .em-rows > li:hover {
+    background: var(--panel);
   }
 
   .fname {
@@ -551,12 +558,12 @@ const data = {
   }
 
   .upload input[name='note'] {
-    width: min(100%, 20rem);
+    width: min(100%, 20rem) !important;
   }
 
   .upload progress {
     width: 10rem;
-    accent-color: var(--sky);
+    accent-color: var(--ink);
   }
 
   @media (max-width: 700px) {

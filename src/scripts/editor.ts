@@ -83,25 +83,25 @@ function collect(): Fields {
 /* ---------- the editor ---------- */
 // Colours come from the site's own variables, so the editor follows the light and dark themes.
 const theme = EditorView.theme({
-  '&': { height: '100%', fontSize: '0.95rem', backgroundColor: 'var(--card)', color: 'var(--ink)' },
+  '&': { height: '100%', fontSize: '0.95rem', backgroundColor: 'var(--panel)', color: 'var(--ink)' },
   '.cm-scroller': { fontFamily: 'var(--font-mono)', lineHeight: '1.75' },
-  '.cm-content': { padding: '1rem 0', caretColor: 'var(--sky)' },
+  '.cm-content': { padding: '1rem 0', caretColor: 'var(--ink)' },
   '.cm-line': { padding: '0 1rem' },
-  '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--ink-3)', border: 'none' },
-  '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--paper-2)' },
+  '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--ink-2)', border: 'none' },
+  '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--paper)' },
   '&.cm-focused': { outline: 'none' },
-  '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--sky)' },
+  '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--ink)', borderLeftWidth: '2px' },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': { backgroundColor: 'var(--mark) !important' },
 });
 const highlight = HighlightStyle.define([
-  { tag: tags.heading, fontWeight: '700', color: 'var(--sky-ink)' },
+  { tag: tags.heading, fontWeight: '800', color: 'var(--ink)' },
   { tag: tags.strong, fontWeight: '700' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
-  { tag: [tags.link, tags.url], color: 'var(--sky-ink)' },
-  { tag: tags.monospace, color: 'var(--danger)' },
+  { tag: [tags.link, tags.url], color: 'var(--ink)', textDecoration: 'underline' },
+  { tag: tags.monospace, color: 'var(--ink)', backgroundColor: 'var(--chip)' },
   { tag: tags.quote, color: 'var(--ink-2)' },
-  { tag: [tags.processingInstruction, tags.meta, tags.contentSeparator], color: 'var(--ink-3)' },
+  { tag: [tags.processingInstruction, tags.meta, tags.contentSeparator], color: 'var(--ink-2)' },
 ]);
 
 let dirty = false;

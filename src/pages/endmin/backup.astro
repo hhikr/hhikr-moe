@@ -17,8 +17,8 @@ const repoBytes = status.lastOk?.repoBytes;
 
 <Endmin title="备份" en="Backup" lead="每天凌晨 4 点（新加坡时间）自动备份到 GitHub 上的私有仓库，也可以随时手动备份。">
   <div class="em-filters">
-    {status.running ? <span class="em-state published" data-running>正在备份…</span> : <span class:list={['em-state', !status.configured ? 'draft' : red.length ? 'hidden' : 'published']}>{!status.configured ? '未配置' : red.length ? '需要处理' : '正常'}</span>}
-    <button class="em-btn go run" data-api="/api/endmin/backup/run" data-method="POST" disabled={!status.configured || status.running}>立即备份</button>
+    {status.running ? <span class="em-state published" data-running>正在备份…</span> : <span class:list={['em-state', !status.configured ? 'draft' : red.length ? 'alert' : 'published']}>{!status.configured ? '未配置' : red.length ? '需要处理' : '正常'}</span>}
+    <button class="em-btn go end" data-api="/api/endmin/backup/run" data-method="POST" disabled={!status.configured || status.running}>立即备份</button>
   </div>
 
   {
@@ -49,7 +49,7 @@ const repoBytes = status.lastOk?.repoBytes;
                     ) : run.ok ? (
                       <span class="em-state published">成功</span>
                     ) : (
-                      <span class="em-state hidden">失败</span>
+                      <span class="em-state alert">失败</span>
                     )}
                   </div>
                   <div class="em-meta">
@@ -73,7 +73,7 @@ const repoBytes = status.lastOk?.repoBytes;
       <dl class="em-facts">
         <div>
           <dt>仓库</dt>
-          <dd>{status.repo ? <a href={`https://github.com/${status.repo}`} rel="noreferrer">{status.repo}</a> : '尚未配置'}</dd>
+          <dd>{status.repo ? <a href={`https://github.com/${status.repo}`} rel="noreferrer">{status.repo}</a> : <span class="warn">尚未配置</span>}</dd>
         </div>
         <div>
           <dt>上次成功</dt>
@@ -92,7 +92,7 @@ const repoBytes = status.lastOk?.repoBytes;
           <dd>{status.tokenExpires ? `到 ${day.format(status.tokenExpires)}` : status.lastOk ? '不过期' : '—'}</dd>
         </div>
       </dl>
-      <p class="note">
+      <p class="em-note">
         数据库和文章以文本形式进入 git，图片也是；超过 {formatBytes(BACKUP_LIMITS.gitFile)} 的文件和所有可下载的文件作为 Release 附件上传，单个上限 {formatBytes(BACKUP_LIMITS.asset)}。登录状态不备份，恢复后所有人需要重新登录。
       </p>
     </section>
@@ -105,44 +105,57 @@ const repoBytes = status.lastOk?.repoBytes;
 </script>
 
 <style>
-  .run {
-    margin-left: auto;
-  }
-
   .alerts {
     list-style: none;
-    margin: 0 0 0.5rem;
+    margin: 0 0 1.25rem;
     padding: 0;
     display: grid;
     gap: 0.5rem;
   }
 
+  /* A problem is flagged in yellow; a caution is the same box without the flag. */
   .alerts li {
-    padding: 0.65rem 0.9rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
     border: 1px solid var(--rule);
-    border-left-width: 3px;
-    border-radius: var(--radius);
+    background: var(--panel);
     overflow-wrap: anywhere;
   }
 
   .alerts .red {
-    border-color: var(--danger);
-    color: var(--danger);
+    border-color: var(--ink);
+  }
+
+  .alerts .red::before {
+    content: '需要处理';
+    flex: none;
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-size: 0.75rem;
+    font-weight: 700;
   }
 
   .alerts .yellow {
-    border-left-color: var(--ink-3);
     color: var(--ink-2);
   }
 
-  .note {
-    margin: 1rem 0 0;
-    color: var(--ink-3);
-    font-size: 0.85rem;
-    line-height: 1.7;
+  .alerts .yellow::before {
+    content: '提醒';
+    flex: none;
+    padding: 0 0.4em;
+    border: 1px solid currentColor;
+    font-size: 0.75rem;
+  }
+
+  .em-facts a {
+    border-bottom: 1px solid var(--rule);
   }
 
   .em-facts a:hover {
-    color: var(--sky-ink);
+    color: var(--ink);
+    border-color: var(--ink);
   }
 </style>

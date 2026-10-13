@@ -1,7 +1,7 @@
 ---
-// The editor. Wider than the other management screens, so it brings its own layout.
+// The editor. It uses the whole width of the window, and draws its own head.
 import '@/styles/prose.css';
-import Base from '@/layouts/Base.astro';
+import Endmin from '@/layouts/Endmin.astro';
 import { CATEGORIES } from '@/site.config';
 import { coverOf, mediaById } from '@/server/media.ts';
 import { getEditablePost, getWorkingCopy, listRevisions } from '@/server/posts.ts';
@@ -24,11 +24,11 @@ const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year:
 const data = { id, status: post.status, fields, sourceMd, cover };
 ---
 
-<Base title={`${post.fields.title} · 编辑`} noindex>
+<Endmin title={`编辑：${post.fields.title}`} en="Editor" plain wide>
   <div class="ed">
     <header class="ed-bar">
-      <a class="back label" href="/endmin/posts/">← 文章</a>
-      <span class={`ed-state ${published ? (post.fields.hidden ? 'hidden' : 'published') : 'draft'}`}>
+      <a class="back mono" href="/endmin/posts/">全部文章</a>
+      <span class={`em-state ${published ? (post.fields.hidden ? 'hidden' : 'published') : 'draft'}`}>
         {published ? (post.fields.hidden ? '隐藏' : '已发布') : '草稿'}
       </span>
       <p class="ed-status" data-save-state role="status">
@@ -39,16 +39,17 @@ const data = { id, status: post.status, fields, sourceMd, cover };
         <button type="button" class="em-btn" data-do="preview">预览</button>
         {published && <a class="em-btn" href={`/posts/${post.fields.slug}/`} target="_blank">查看</a>}
         {!published && <button type="button" class="em-btn" data-do="save-draft">保存草稿</button>}
-        {published && <button type="button" class="em-btn danger" data-do="withdraw">撤回为草稿</button>}
+        {published && <button type="button" class="em-btn" data-do="withdraw">撤回为草稿</button>}
         <button type="button" class="em-btn go" data-do="publish">{published ? '更新' : '发布'}</button>
       </div>
     </header>
 
     <form class="ed-fields" data-fields data-scripted novalidate>
-      <input class="ed-title cjk" name="title" placeholder="标题" aria-label="标题" maxlength="200" />
+      <h1 class="sr-only">编辑文章</h1>
+      <input class="ed-title" name="title" placeholder="标题" aria-label="标题" maxlength="200" />
       <details open={!published}>
         <summary class="label">文章属性</summary>
-        <div class="grid">
+        <div class="grid form">
           <label class="wide">
             <span class="label">地址</span>
             <span class="slug"><span>/posts/</span><input name="slug" maxlength="80" spellcheck="false" /><span>/</span></span>
@@ -95,7 +96,7 @@ const data = { id, status: post.status, fields, sourceMd, cover };
             <input name="coverMediaId" type="hidden" />
             <div class="thumb" data-cover></div>
             <button type="button" class="em-btn" data-do="cover">选择图片</button>
-            <button type="button" class="em-btn danger" data-do="cover-remove" hidden>移除</button>
+            <button type="button" class="em-btn" data-do="cover-remove" hidden>移除</button>
           </div>
         </div>
       </details>
@@ -120,7 +121,7 @@ const data = { id, status: post.status, fields, sourceMd, cover };
 
     <footer class="ed-foot">
       <details>
-        <summary class="label">修订记录 · {revisions.length}</summary>
+        <summary class="label">修订记录 {revisions.length}</summary>
         {
           revisions.length === 0 ? (
             <p class="none">每次发布或更新都会留下一个版本。</p>
@@ -129,7 +130,7 @@ const data = { id, status: post.status, fields, sourceMd, cover };
               {revisions.map((r) => (
                 <li data-revision={r.id} data-when={when.format(new Date(r.createdAt))}>
                   <span>{when.format(new Date(r.createdAt))}</span>
-                  <span class="cjk">{r.title}</span>
+                  <span>{r.title}</span>
                   <span class="label">{r.characters.toLocaleString('zh-CN')} 字符</span>
                   <button type="button" class="em-btn" data-do="compare" data-id={r.id}>对比</button>
                   <button type="button" class="em-btn" data-do="revision" data-id={r.id}>载入</button>
@@ -144,8 +145,8 @@ const data = { id, status: post.status, fields, sourceMd, cover };
 
     <dialog class="ed-diff" data-diff aria-label="版本对比">
       <header>
-        <h2 class="cjk">版本对比</h2>
-        <label>
+        <h2>版本对比</h2>
+        <label class="form">
           <span class="label">把这个版本与</span>
           <select data-diff-against>
             <option value="current">编辑器里现在的内容</option>
@@ -165,7 +166,7 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     <input type="file" data-cover-input accept="image/*" hidden />
     <script type="application/json" id="editor-data" set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
   </div>
-</Base>
+</Endmin>
 
 <script>
   import '@/scripts/editor';
@@ -175,9 +176,6 @@ const data = { id, status: post.status, fields, sourceMd, cover };
   .ed {
     display: grid;
     gap: 1rem;
-    width: min(100% - 2 * var(--gutter), 104rem);
-    margin-inline: auto;
-    padding-block: 1.25rem 3rem;
   }
 
   .ed-bar {
@@ -186,32 +184,20 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     align-items: center;
     gap: 0.5rem 1rem;
     padding-bottom: 1rem;
-    border-bottom: 1.5px solid var(--rule-strong);
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .ed-bar .back {
+    border-bottom: 1px solid var(--rule);
   }
 
   .ed-bar .back:hover {
-    color: var(--sky-ink);
+    color: var(--ink);
+    border-color: var(--ink);
   }
 
-  .ed-state {
-    padding: 0 0.55em;
-    border: 1px solid currentColor;
-    border-radius: 2px;
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    line-height: 1.7;
-  }
-
-  .ed-state.published {
-    color: var(--sky-ink);
-  }
-  .ed-state.hidden,
-  .ed-state.draft {
-    border-style: dashed;
-    color: var(--danger);
-  }
-  .ed-state.draft {
-    color: var(--ink-3);
+  .ed-bar .em-state {
+    margin-left: 0;
   }
 
   .ed-status {
@@ -224,47 +210,14 @@ const data = { id, status: post.status, fields, sourceMd, cover };
   .ed-acts {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .ed .em-btn {
-    padding: 0.3em 0.95em;
-    border: 1px solid var(--rule);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--ink-2);
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    line-height: 1.7;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-
-  .ed .em-btn:hover {
-    border-color: var(--ink);
-    color: var(--ink);
-  }
-
-  .ed .em-btn.go {
-    border-color: var(--ink);
-    background: var(--ink);
-    color: var(--paper);
-  }
-
-  .ed .em-btn.go:hover {
-    border-color: var(--sky-ink);
-    background: var(--sky-ink);
-  }
-
-  .ed .em-btn.danger:hover {
-    border-color: var(--danger);
-    color: var(--danger);
+    gap: 0.35rem;
   }
 
   .ed .em-btn[hidden] {
     display: none;
   }
 
+  /* the title is what readers will read, so it is set in the reading face */
   .ed-title {
     width: 100%;
     padding: 0.2rem 0;
@@ -272,12 +225,17 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     border-bottom: 1px solid transparent;
     background: transparent;
     color: var(--ink);
+    font-family: var(--font-text);
     font-size: clamp(1.8rem, 3.5vw, 2.6rem);
     line-height: 1.2;
   }
 
-  .ed-title:focus-visible {
+  .ed-title:hover {
     border-bottom-color: var(--rule);
+  }
+
+  .ed-title:focus-visible {
+    border-bottom-color: var(--ink);
     outline: none;
   }
 
@@ -287,11 +245,19 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     cursor: pointer;
   }
 
+  .ed-fields summary:hover,
+  .ed-foot summary:hover {
+    color: var(--ink);
+  }
+
   .ed-fields .grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.9rem 1.25rem;
-    padding: 0.75rem 0 0.5rem;
+    margin-top: 0.5rem;
+    padding: 1rem 1.15rem 1.15rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
   }
 
   .ed-fields label {
@@ -304,26 +270,8 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     grid-column: span 2;
   }
 
-  .ed-fields input:not([type='checkbox'], .ed-title),
-  .ed-fields select,
-  .ed-fields textarea {
-    width: 100%;
-    padding: 0.45rem 0.65rem;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: var(--card);
-    color: var(--ink);
-    font: inherit;
-    font-size: 0.92rem;
-  }
-
-  .ed-fields :is(input, select, textarea):focus-visible {
-    border-color: var(--sky);
-    outline: none;
-  }
-
   .ed-fields small {
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-size: 0.78rem;
   }
 
@@ -334,7 +282,7 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     gap: 0.4rem;
     font-family: var(--font-mono);
     font-size: 0.86rem;
-    color: var(--ink-3);
+    color: var(--ink-2);
   }
 
   .ed-fields .checks {
@@ -361,7 +309,7 @@ const data = { id, status: post.status, fields, sourceMd, cover };
   .ed-fields .thumb img {
     display: block;
     height: 3.5rem;
-    border-radius: var(--radius);
+    border: 1px solid var(--rule);
   }
 
   .ed-panes {
@@ -371,14 +319,39 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     height: max(32rem, calc(100dvh - 9rem));
   }
 
+  /* each half is a plate with the ink tab, like the panels elsewhere here */
   .pane {
+    position: relative;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
     border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: var(--card);
-    overflow: hidden;
+    background: var(--panel);
+  }
+
+  .pane::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    z-index: 1;
+    height: 5px;
+    background: var(--ink);
+    transform: scaleX(0.14);
+    transform-origin: left;
+    transition: transform 0.4s var(--mech);
+    pointer-events: none;
+  }
+
+  .pane:focus-within::before {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pane::before {
+      transition: none;
+    }
   }
 
   .pane-head {
@@ -386,10 +359,9 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    min-height: 2.6rem;
-    padding: 0.35rem 0.9rem;
+    min-height: 2.75rem;
+    padding: 0.4rem 0.9rem 0.35rem;
     border-bottom: 1px solid var(--rule);
-    background: var(--paper-2);
   }
 
   .pane .editor {
@@ -401,10 +373,11 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     height: 100%;
   }
 
+  /* what readers will see, so in the article's own face */
   .pane .result {
     padding: 1.25rem 1.5rem 3rem;
     overflow-y: auto;
-    background: var(--paper);
+    font-family: var(--font-text);
   }
 
   .ed-foot {
@@ -437,6 +410,12 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     font-size: 0.9rem;
   }
 
+  .ed-foot li > :first-child {
+    font-family: var(--font-mono);
+    font-size: var(--t-mono);
+    color: var(--ink-2);
+  }
+
   .ed-foot li .em-btn {
     margin-left: auto;
   }
@@ -445,29 +424,21 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     margin-left: 0;
   }
 
-  /* ---------- comparing versions ---------- */
+  /* ---------- comparing versions ----------
+     What was added is marked in yellow, what was taken out is struck through
+     in grey: the site's own marks, rather than green and red. */
   .ed-diff {
-    --diff-add-ink: #1a7f37;
-    --diff-del-ink: #cf222e;
-    --diff-add: color-mix(in srgb, #2da44e 16%, transparent);
-    --diff-add-strong: color-mix(in srgb, #2da44e 40%, transparent);
-    --diff-del: color-mix(in srgb, #cf222e 13%, transparent);
-    --diff-del-strong: color-mix(in srgb, #cf222e 36%, transparent);
+    --diff-add: var(--mark);
+    --diff-add-strong: var(--signal);
+    --diff-del: var(--chip);
+    --diff-del-strong: color-mix(in srgb, var(--ink) 22%, transparent);
     width: min(100vw - 2rem, 72rem);
     max-height: calc(100dvh - 2rem);
     padding: 0;
-    border: 1px solid var(--rule-strong);
-    border-radius: 6px;
-    background: var(--paper);
+    border: 1px solid var(--ink);
+    border-top-width: 5px;
+    background: var(--panel);
     color: var(--ink);
-    box-shadow:
-      8px 8px 0 var(--sky-soft),
-      var(--shadow);
-  }
-
-  [data-theme='dark'] .ed-diff {
-    --diff-add-ink: #56d364;
-    --diff-del-ink: #ff7b72;
   }
 
   .ed-diff[open] {
@@ -476,8 +447,7 @@ const data = { id, status: post.status, fields, sourceMd, cover };
   }
 
   .ed-diff::backdrop {
-    background: color-mix(in srgb, var(--paper) 40%, rgb(10 12 18 / 0.45));
-    backdrop-filter: blur(3px);
+    background: color-mix(in srgb, var(--paper) 55%, rgb(10 10 10 / 0.5));
   }
 
   .ed-diff header {
@@ -486,12 +456,13 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     align-items: center;
     gap: 0.5rem 1.25rem;
     padding: 1rem 1.25rem;
-    border-bottom: 1.5px solid var(--rule-strong);
+    border-bottom: 1px solid var(--ink);
   }
 
   .ed-diff h2 {
     margin: 0;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
+    font-weight: 800;
   }
 
   .ed-diff header label {
@@ -501,12 +472,8 @@ const data = { id, status: post.status, fields, sourceMd, cover };
   }
 
   .ed-diff select {
-    padding: 0.3rem 0.5rem;
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    background: var(--card);
-    color: var(--ink);
-    font: inherit;
+    width: auto !important;
+    padding: 0.3rem 0.5rem !important;
     font-size: 0.9rem;
   }
 
@@ -517,12 +484,15 @@ const data = { id, status: post.status, fields, sourceMd, cover };
   }
 
   .ed-diff-stats .plus {
-    color: var(--diff-add-ink);
+    padding: 0 0.3em;
+    background: var(--signal);
+    color: var(--on-signal);
   }
 
   .ed-diff-stats .minus {
     margin-left: 0.6em;
-    color: var(--diff-del-ink);
+    color: var(--ink-2);
+    text-decoration: line-through;
   }
 
   .ed-diff-sides {
@@ -549,17 +519,19 @@ const data = { id, status: post.status, fields, sourceMd, cover };
   }
 
   .ed-diff-fields del {
-    color: var(--diff-del-ink);
+    color: var(--ink-2);
   }
 
   .ed-diff-fields ins {
-    color: var(--diff-add-ink);
+    padding: 0 0.2em;
+    background: var(--mark);
+    color: var(--ink);
     text-decoration: none;
   }
 
   .ed-diff-body {
     border-top: 1px solid var(--rule);
-    background: var(--card);
+    background: var(--panel);
     font-family: var(--font-mono);
     font-size: 0.82rem;
     line-height: 1.7;
@@ -573,13 +545,13 @@ const data = { id, status: post.status, fields, sourceMd, cover };
 
   .ed-diff-body .n {
     padding-right: 0.6rem;
-    color: var(--ink-3);
+    color: var(--ink-2);
     text-align: right;
     user-select: none;
   }
 
   .ed-diff-body .sign {
-    color: var(--ink-3);
+    color: var(--ink-2);
     text-align: center;
     user-select: none;
   }
@@ -594,13 +566,24 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     background: var(--diff-add);
   }
 
+  .ed-diff-body .add .sign {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
   .ed-diff-body .del {
     background: var(--diff-del);
   }
 
+  .ed-diff-body .del .text {
+    color: var(--ink-2);
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--ink) 45%, transparent);
+  }
+
   .ed-diff-body .add mark {
     background: var(--diff-add-strong);
-    color: inherit;
+    color: var(--on-signal);
   }
 
   .ed-diff-body .del mark {
@@ -612,21 +595,21 @@ const data = { id, status: post.status, fields, sourceMd, cover };
   .ed-diff-body .none {
     margin: 0;
     padding: 0.3rem 1rem;
-    background: var(--paper-2);
-    color: var(--ink-3);
+    background: var(--paper);
+    color: var(--ink-2);
     text-align: center;
   }
 
   .ed-diff-body .none {
     padding: 2rem 1rem;
     background: none;
-    font-family: var(--font-cjk);
+    font-family: var(--font-ui);
     font-size: 1rem;
   }
 
   .ed-foot .none {
     margin: 0.5rem 0 0;
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-size: 0.9rem;
   }
 
@@ -640,6 +623,15 @@ const data = { id, status: post.status, fields, sourceMd, cover };
     }
     .pane {
       height: 70dvh;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .ed-fields .grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .ed-fields .wide {
+      grid-column: auto;
     }
   }
 </style>
