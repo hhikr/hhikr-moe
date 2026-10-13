@@ -566,6 +566,232 @@ a.kv:hover > :first-child {
   }
 }
 
+/* ---------- buttons ---------- */
+
+/* A button is a block with one corner cut, like every entrance on the site. */
+.btn {
+  --fill: var(--chip);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  position: relative;
+  isolation: isolate;
+  padding: 0.55rem 1.5rem 0.55rem 1rem;
+  background: var(--fill);
+  -webkit-mask: linear-gradient(-45deg, transparent 0.5rem, #000 calc(0.5rem + 0.5px));
+  mask: linear-gradient(-45deg, transparent 0.5rem, #000 calc(0.5rem + 0.5px));
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition:
+    color 0.12s 0.06s,
+    transform 0.1s;
+}
+
+/* The cut corner is a mask, so the focus ring is drawn inside the block. */
+.btn:focus-visible {
+  outline-offset: -4px;
+}
+
+.btn.go {
+  --fill: var(--ink);
+  color: var(--panel);
+}
+
+.btn .no {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+/* Pointing at a button: yellow is driven across it from the left, behind a
+   bright leading edge, and the label changes as the edge passes. */
+.btn::before,
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: translateX(-101%);
+  transition: transform 0.28s var(--mech);
+}
+
+.btn::before {
+  background: var(--signal);
+}
+
+.btn::after {
+  inset: 0 auto 0 0;
+  z-index: 0;
+  width: 3px;
+  background: var(--on-signal);
+  opacity: 0;
+}
+
+a.btn:hover,
+a.btn:focus-visible,
+button.btn:not(:disabled):hover,
+button.btn:focus-visible {
+  color: var(--on-signal);
+}
+
+a.btn:hover::before,
+a.btn:focus-visible::before,
+button.btn:not(:disabled):hover::before,
+button.btn:focus-visible::before {
+  transform: none;
+}
+
+a.btn:hover::after,
+button.btn:not(:disabled):hover::after {
+  animation: edge 0.3s var(--mech);
+}
+
+@keyframes edge {
+  0% {
+    left: 0;
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+a.btn:active,
+button.btn:not(:disabled):active {
+  transform: translateY(1px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn::before,
+  .btn::after {
+    transition: none;
+    animation: none !important;
+  }
+}
+
+
+/* Deleting things: the one place red is used. */
+.btn.danger::before {
+  background: var(--danger);
+}
+
+a.btn.danger:hover,
+button.btn.danger:not(:disabled):hover,
+.btn.danger:focus-visible {
+  color: var(--panel);
+}
+
+/* A smaller button, for rows of things. */
+.btn.small {
+  padding: 0.3rem 1.1rem 0.3rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* A row of buttons. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+button.btn {
+  border: 0;
+  cursor: pointer;
+}
+
+button.btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* ---------- forms ---------- */
+
+/* Inside a .form: a label over its control, with a hint under it. */
+.form .field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.form .field > .label {
+  color: var(--ink);
+}
+
+.form .field small {
+  color: var(--ink-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.form :is(input:not([type='checkbox'], [type='radio'], [type='file'], [type='range']), select, textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-ui);
+  transition: border-color 0.15s;
+}
+
+.form textarea {
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.form :is(input, select, textarea):hover {
+  border-color: var(--ink-2);
+}
+
+.form :is(input, select, textarea):focus-visible {
+  border-color: var(--ink);
+  outline: 2px solid var(--trace);
+  outline-offset: -1px;
+}
+
+.form :is(input[type='checkbox'], input[type='radio']) {
+  accent-color: var(--ink);
+}
+
+/* Something went wrong, or needs reading: a yellow flag before the words.
+   Red is kept for deleting things. */
+.notice {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--ink);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.notice::before {
+  content: '注意';
+  flex: none;
+  padding: 0 0.4em;
+  background: var(--signal);
+  color: var(--on-signal);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.notice[hidden],
+.notice:empty {
+  display: none;
+}
+
 /* ---------- the reading pages: a sheet with a head, lists, a margin ---------- */
 
 /* The way back up, above a page's name: 全部分类 / 学习. */

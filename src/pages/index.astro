@@ -305,115 +305,17 @@ const ticker = posts.slice(0, 10);
     font-family: var(--font-ui);
   }
 
-  /* A button is a block with one corner cut, like every entrance on the site. */
-  .btn {
-    --fill: var(--chip);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6em;
-    position: relative;
-    isolation: isolate;
-    padding: 0.55rem 1.5rem 0.55rem 1rem;
-    background: var(--fill);
-    -webkit-mask: linear-gradient(-45deg, transparent 0.5rem, #000 calc(0.5rem + 0.5px));
-    mask: linear-gradient(-45deg, transparent 0.5rem, #000 calc(0.5rem + 0.5px));
-    color: var(--ink);
-    font-size: 0.9rem;
-    font-weight: 700;
-    line-height: 1.4;
-    white-space: nowrap;
-    transition:
-      color 0.12s 0.06s,
-      transform 0.1s;
-  }
-
-  /* The cut corner is a mask, so the focus ring is drawn inside the block. */
-  .btn:focus-visible {
-    outline-offset: -4px;
-  }
-
-  .btn.go {
-    --fill: var(--ink);
-    color: var(--panel);
-  }
-
-  .btn .no {
-    font-weight: 400;
-    opacity: 0.75;
-  }
-
-  /* Pointing at a button: yellow is driven across it from the left, behind a
-     bright leading edge, and the label changes as the edge passes. */
-  .btn::before,
-  .btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    transform: translateX(-101%);
-    transition: transform 0.28s var(--mech);
-  }
-
-  .btn::before {
-    background: var(--signal);
-  }
-
-  .btn::after {
-    inset: 0 auto 0 0;
-    z-index: 0;
-    width: 3px;
-    background: var(--on-signal);
-    opacity: 0;
-  }
-
-  a.btn:hover,
-  a.btn:focus-visible,
+  /* The newest post is one big link: pointing anywhere on it works its button. */
   a:hover > .latest-body > .btn {
     color: var(--on-signal);
   }
 
-  a.btn:hover::before,
-  a.btn:focus-visible::before,
   a:hover > .latest-body > .btn::before {
     transform: none;
   }
 
-  a.btn:hover::after,
   a:hover > .latest-body > .btn::after {
     animation: edge 0.3s var(--mech);
-  }
-
-  @keyframes edge {
-    0% {
-      left: 0;
-      opacity: 1;
-    }
-    90% {
-      opacity: 1;
-    }
-    100% {
-      left: 100%;
-      opacity: 0;
-    }
-  }
-
-  a.btn:active {
-    transform: translateY(1px) scale(0.985);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .btn::before,
-    .btn::after {
-      transition: none;
-      animation: none !important;
-    }
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin: 0;
   }
 
   /* ---------- the opening ---------- */
