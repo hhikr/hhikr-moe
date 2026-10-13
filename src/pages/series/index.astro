@@ -1,31 +1,109 @@
 ---
 import Base from '@/layouts/Base.astro';
-import SeriesCard from '@/components/SeriesCard.astro';
-import { getPosts, groupBy, viewerOf } from '@/lib/posts';
+import { fmtDate, getPosts, groupBy, seriesName, seriesUrl, sortSeries, viewerOf } from '@/lib/posts';
 
 export const prerender = false;
 
-const series = [...groupBy(getPosts(viewerOf(Astro.locals)), (p) => p.data.series)].sort((a, b) => b[1].length - a[1].length);
+const series = [...groupBy(getPosts(viewerOf(Astro.locals)), (p) => p.data.series)]
+  .map(([name, list]) => ({
+    name,
+    posts: sortSeries(list),
+    words: list.reduce((n, p) => n + p.words, 0),
+    latest: new Date(Math.max(...list.map((p) => p.data.date.valueOf()))),
+  }))
+  .sort((a, b) => b.posts.length - a.posts.length);
+const words = series.reduce((n, s) => n + s.words, 0);
 ---
 
 <Base title="合订本" description="成系列的课程笔记与长篇记录。">
-  <div class="wrap">
-    <header class="page-head">
-      <p class="label kicker">Bound volumes · {series.length}</p>
-      <h1>合订本<span class="en">Series</span></h1>
-    </header>
-    <div class="grid">
-      {series.map(([name, posts], i) => <SeriesCard name={name} posts={posts} index={i} />)}
+  <div class="spread">
+    <div class="sheet">
+      <header class="sheet-head">
+        <h1>合订本</h1>
+        <p class="mono">共 {series.length} 本</p>
+      </header>
+
+      {
+        series.length === 0 ? (
+          <p class="empty">还没有合订本。成系列的笔记会按章节装订在这里。</p>
+        ) : (
+          <ol class="records volumes">
+            {series.map((s) => (
+              <li>
+                <a class="record volume" href={seriesUrl(s.name)}>
+                  <span class="name">{seriesName(s.name)}</span>
+                  {/* one segment per chapter, in order */}
+                  <span class="segs" aria-hidden="true">
+                    {s.posts.map((p) => (
+                      <i title={p.data.title} />
+                    ))}
+                  </span>
+                  <span class="facts mono">
+                    <span>{s.posts.length} 篇</span>
+                    <span>{s.words.toLocaleString('zh-CN')} 字</span>
+                    <span>更新 {fmtDate(s.latest)}</span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        )
+      }
     </div>
+
+    <aside class="margin" aria-label="合订本统计">
+      <h2 class="margin-h mono">统计</h2>
+      <ul class="ledger">
+        <li>
+          <span>合订本</span>
+          <span class="mono">{series.length} 本</span>
+        </li>
+        <li>
+          <span>收录文章</span>
+          <span class="mono">{series.reduce((n, s) => n + s.posts.length, 0)} 篇</span>
+        </li>
+        <li>
+          <span>字数合计</span>
+          <span class="mono">{words.toLocaleString('zh-CN')} 字</span>
+        </li>
+      </ul>
+    </aside>
   </div>
 </Base>
 
 <style>
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-    gap: 1.25rem;
-    padding-top: 2rem;
-    border-top: 1.5px solid var(--rule-strong);
+  .records a.volume {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+    padding-block: 1.1rem 1.2rem;
+  }
+
+  .volume .name {
+    font-size: var(--t-h2);
+    line-height: 1.4;
+  }
+
+  .segs {
+    display: flex;
+    gap: 3px;
+    max-width: 24rem;
+  }
+
+  .segs i {
+    flex: 1;
+    height: 6px;
+    background: var(--ink);
+    transition: background-color 0.15s;
+  }
+
+  .volume:hover .segs i {
+    background: var(--trace);
+  }
+
+  /* In the light theme the trace is ink already: the segments light up yellow instead. */
+  :global(:root:not([data-theme='dark'])) .volume:hover .segs i {
+    background: var(--signal);
+    outline: 1px solid var(--ink);
+    outline-offset: -1px;
   }
 </style>
