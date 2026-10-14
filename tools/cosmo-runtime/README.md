@@ -12,7 +12,7 @@
 npm run test:runtime       # 合成规则与临时记录，不读取个人历史
 npm run test:cosmo:native  # 现有网关 + 原生登录 + 实际后端鉴权函数
 $env:COSMO_TOOLCHAIN_PATHS = '外部 Android 工具链 paths.json 的绝对路径'
-npm run test:android      # 合成参数、当前源码、5 组 Java + 权限检查
+npm run test:android      # 合成参数下的 Java 与 Android 权限检查；需要可读取的外部 Android SDK
 ```
 
 ## 外部配置

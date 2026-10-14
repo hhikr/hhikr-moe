@@ -123,7 +123,7 @@ Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供�
 
 管理页挂在前缀下时（这里是 `/admin`），手机顶栏右边和桌面侧边栏顶部各有一个“返回聊天”，回到 Cosmo 的聊天页；聊天页标题栏的“打开管理页”则通向这里。
 
-管理页的页面由后端从它自己的构建产物提供，源码是 `tools/hermes/source/web/`。改了那里（比如手机顶栏让出状态栏、`theme-color` 跟随主题、“返回聊天”），需要重新构建管理页；`npm run cosmo:build` 只负责聊天渲染层。VPS 上的运行副本另按当前文件与具体授权同步，不覆盖配置和实时数据。本次迁移未发布或重启后端。
+管理页的页面由后端从它自己的构建产物提供，源码是 `tools/hermes/source/web/`。改了那里（比如手机顶栏让出状态栏、`theme-color` 跟随主题、“返回聊天”），需要重新构建管理页；`npm run cosmo:build` 只负责聊天渲染层。VPS 上的运行副本另按 [当前运维说明](../../docs/VPS_RUNBOOK.md) 核对和发布；源码构建不会自动更新服务。
 
 主题和字体是管理页自带的功能，在侧边栏左下角切换，选择保存在 Hermes 的配置里。自定义主题是 Hermes 数据目录下 `dashboard-themes/*.yaml`。
 
@@ -131,14 +131,14 @@ Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供�
 
 Hermes 前后端源码保存在 `tools/hermes/source/`，本地来源和目录说明见 [Hermes 本地源码](../hermes/README.md)。构建产物仍放在 `.deployment/` 下，不进仓库。
 
-渲染层的版本必须和后端一致。先核对后端版本和 `tools/hermes/source/HHIKR_SOURCE.json` 中记录的上游基线，再安装前端依赖：
+渲染层的版本必须和后端兼容。核对当前 Hermes 源码及 `tools/hermes/source/HHIKR_SOURCE.json` 中记录的上游基线后，按仓库依赖锁安装前端依赖：
 
 ```powershell
 npm --prefix tools/hermes/source ci --workspace apps/desktop --include-workspace-root --ignore-scripts
 npm run cosmo:build
 ```
 
-`--ignore-scripts` 跳过 Electron 和原生模块的安装，网页构建用不到它们。产物在 `.deployment/hermes/cosmo-web/dist`，约 41 MB，其中 `cosmo/build.json` 记录了所用的 Hermes 提交。
+`--ignore-scripts` 跳过 Electron 和原生模块的安装，网页构建用不到它们。产物在 `.deployment/hermes/cosmo-web/dist`，其中 `cosmo/build.json` 记录了所用的 Hermes 提交。构建产物留在 Windows checkout 的忽略目录，不会发布到 VPS。
 
 只改了 `shim/` 下的文件时，`npm run cosmo:build -- --skip-build` 把它们放进已有的产物，不重新构建渲染层。
 
@@ -146,9 +146,9 @@ Hermes 后端升级后，按新的提交重复上面的步骤并重新发布。�
 
 ## 发布
 
-产物和 `gate/` 目录一起打包，上传到服务器，由常驻的网关服务提供，前面是 Caddy。服务器上的脚本、服务单元、检查和回滚步骤在 `tools/deploy/`（第 8b 节）；那个目录写有服务器的地址，不进仓库。
+Cosmo 网页产物和完整 `gate/` 目录属于同一发布单元，由 VPS 上的网关服务提供，前置代理为 Caddy。发布步骤、服务目录和回滚要求见 [VPS 运维说明](../../docs/VPS_RUNBOOK.md)；本机私有部署材料在 `tools/deploy/`，不属于公开部署输入。
 
-**发布时 `gate/` 必须整组带上，不能只打 `server.mjs` 和 `auth.mjs`。** 2026 年 10 月 14 日的一次发布就是只打了这两个文件，把安卓原生登录的 `native.mjs` 和 `association/` 挤掉了，线上原生登录随之失效，后来才补回。发布脚本现在会拒绝缺少这些文件的压缩包，健康检查也会确认原生路由已挂载。
+**发布时 `gate/` 必须整组带上，不能只打 `server.mjs` 和 `auth.mjs`。** 完整目录还包括 Android 原生登录与关联文件；缺少它们会破坏现有登录流程。每次发布都要对照当前源码和运行版本验收，不能假定本机发布脚本或历史检查结果适用于当前环境。
 
 | 文件 | 说明 |
 | --- | --- |
@@ -169,15 +169,7 @@ Hermes 后端升级后，按新的提交重复上面的步骤并重新发布。�
 
 Android 源码和构建入口已收纳在 [`../cosmo-runtime/workspace/phone-control/android/`](../cosmo-runtime/workspace/phone-control/android/)。APK、原签名和本机工具链留在仓库外或 Git 忽略的构建目录。网关的原生登录仍使用本目录现有接口；下面的哈希保留为历史验收基线，后续以实际提交及构建核对。
 
-| 文件 | SHA-256 |
-| --- | --- |
-| `native.mjs` | `23555e06b1e4fb640aed1d948c906135c546c3fc0ed888f81fd43f64310d2baa` |
-| `association/assetlinks.json` | `6920f9261dc0d2bf22db7cc6705457e7b892d56757773f0831a4c24be7be9f83` |
-| `association/callback.html` | `ca4fae5e1b0d7a39846504e417d3f2d4f0632b25b07551d2abb66cc1af2e2101` |
-| `auth.mjs`（含原生登录续接） | `81cba0b66b39d4002ff6aee9cbab1bc8cdbd5dab8fcc66671b24a7986233e362` |
-| `server.mjs`（含原生登录与 `.webmanifest` 类型） | `1524c0709881643e201937e7ee3f5d159c413ec878643071ecc6ab7d34c892f5` |
-
-`server.mjs` 的哈希与“仅原生登录”版本不同，是因为要保留仓库里的 `.webmanifest` 类型。两者的差别只有这一行，不能用旧文件整文件覆盖。
+发布前检查这些文件与当前源码一致，并确认 `/.well-known/assetlinks.json` 与 Android 应用的公开签名声明相符。不要用历史校验值覆盖当前文件，也不要把私钥、签名 keystore 或密码放入仓库。
 
 ## 本机调试
 

@@ -1,4 +1,6 @@
-# 统一源码仓库与搬迁验收
+# 历史：统一源码仓库与搬迁验收
+
+> **历史记录。** 本文记录源码合并时的来源、迁移步骤和当时验收结果，不描述当前部署、当前分支状态或最新测试结果。当前源码以 `main` 和 [项目地图](PROJECT_MAP.md) 为准；当前 VPS 拓扑见 [VPS 运维](VPS_RUNBOOK.md)。重新执行检查后，以本次实际输出为准，不沿用下文历史结果。
 
 目标仓库为 `hhikr/hhikr-moe`。迁移分支 `chore/consolidate-source` 基于原网站 `redesign/endfield` 的 `569dd930`，完整保留原分支提交。原工作目录的未提交文件留在原处，迁移使用独立 worktree；没有重置或覆盖原分支。
 
@@ -47,7 +49,7 @@ Windows 承载源码编辑、网站与 Hermes 前端构建、Python/Java 测试�
 | `npm --prefix tools/hermes/source/web run build` | Hermes 管理页完成 |
 | `npm run hermes:cli -- --help` | 从统一源码运行 CLI 帮助成功 |
 | 搬迁后的 Android `build.py` / `verify_artifacts.py` | 原外部密钥构建成功；v2/v3、包名、版本、权限、精确 App Link、旧 APK 升级证书核对通过 |
-| `tests/verify_equivalence.py` | 原个人参数下，原/新 Python 34,569 次比较及 Java 230,400 组判断一致 |
+| `tools/cosmo-runtime/tests/verify_equivalence.py` | 原个人参数下，原/新 Python 34,569 次比较及 Java 230,400 组判断一致 |
 
 任务 API 测试从本仓库的 `hermes_cli/web_server.py` 提取原函数，绕开全服务初始化；HTTP 集成使用实际 FastAPI 处理器和合成凭据。没有用自拟认证替换实际函数，也没有连接真实 Google 账号或改线上会话。
 
@@ -57,4 +59,4 @@ Windows 承载源码编辑、网站与 Hermes 前端构建、Python/Java 测试�
 
 `tools/cosmo-runtime/SOURCE_MANIFEST.json` 记录 60 项源码来源及 3 项明确排除的历史暂存/未来认证测试。`ADAPTATIONS.json` 列出审核后的文本摘要和搬迁/参数提取理由，摘要将 CRLF 归一为 LF，适用于 Windows 与 VPS checkout。
 
-多做的 `tools/cosmo-focus/` 认证和策略改造已移出迁移内容，在本机忽略的缓存目录归档。现有 gate、后端 owner 鉴权、接口字段、网站变量和连接器权限代码保持不变。后续在统一目录修改源码，配置与实时数据继续放外部；发布另按目标文件、影响和恢复办法批准。
+迁移时发现的额外 Cosmo Focus 认证和策略改造已排除在迁移内容之外，并归档在当时的本机忽略缓存中；它们不是当前源码目录。现有 gate、后端 owner 鉴权、接口字段、网站变量和连接器权限代码保持不变。后续在统一目录修改源码，配置与实时数据继续放外部；发布另按目标文件、影响和恢复办法批准。
