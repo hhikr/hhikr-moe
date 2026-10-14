@@ -123,7 +123,7 @@ Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供�
 
 管理页挂在前缀下时（这里是 `/admin`），手机顶栏右边和桌面侧边栏顶部各有一个“返回聊天”，回到 Cosmo 的聊天页；聊天页标题栏的“打开管理页”则通向这里。
 
-管理页的页面由后端从它自己的构建产物提供，源码是 `tools/hermes/source/web/`。改了那里（比如手机顶栏让出状态栏、`theme-color` 跟随主题、“返回聊天”），要同步到服务器、重新构建并重启 Hermes 后端才会生效，`npm run cosmo:build` 不管这一部分。服务器上的源码副本不是 git 仓库，同步的步骤在 `tools/deploy/README.md` 的 8b 节（那个目录不进仓库）。2026 年 10 月 14 日已经同步过一次。
+管理页的页面由后端从它自己的构建产物提供，源码是 `tools/hermes/source/web/`。改了那里（比如手机顶栏让出状态栏、`theme-color` 跟随主题、“返回聊天”），需要重新构建管理页；`npm run cosmo:build` 只负责聊天渲染层。VPS 上的运行副本另按当前文件与具体授权同步，不覆盖配置和实时数据。本次迁移未发布或重启后端。
 
 主题和字体是管理页自带的功能，在侧边栏左下角切换，选择保存在 Hermes 的配置里。自定义主题是 Hermes 数据目录下 `dashboard-themes/*.yaml`。
 
@@ -167,7 +167,7 @@ Hermes 后端升级后，按新的提交重复上面的步骤并重新发布。�
 - Bearer 令牌只能访问 `/api/plugins/cosmo-tasks/` 下的三个接口（`GET rules`、`POST device-status`、`POST sleep/report`）。带 `Authorization` 头的请求只按这套规则判断，失败直接拒绝，不回退到 Cookie，也不转发给 Hermes。网页本身不发送这个头。
 - `/.well-known/assetlinks.json` 由网关直接提供，内容必须与安卓应用的签名一致。
 
-Android 应用的源码和构建产物在安卓 agent 的工作区里，不在本仓库。改动网关的原生登录部分前，先和那边的基线（`native.mjs` 等文件的 SHA-256）对齐。已验收的哈希：
+Android 源码和构建入口已收纳在 [`../cosmo-runtime/workspace/phone-control/android/`](../cosmo-runtime/workspace/phone-control/android/)。APK、原签名和本机工具链留在仓库外或 Git 忽略的构建目录。网关的原生登录仍使用本目录现有接口；下面的哈希保留为历史验收基线，后续以实际提交及构建核对。
 
 | 文件 | SHA-256 |
 | --- | --- |
@@ -198,7 +198,7 @@ npm run test:server   # 其中 tests/server/cosmo.test.mjs 覆盖主站的授权
 
 `tests/cosmo/gate.test.mjs` 中两处断言在原生登录合入后更新：state 用过一次即失效，重放返回 400（之前写的是 403）；页面自带的 `Authorization` 头返回 403，且不会转发（之前测试会带着它转发）。
 
-原生登录的测试在安卓 agent 的工作区（`backend-auth-work/tests/test_gate_native.mjs` 等），需要 Python 工具链和它的 `workspace/` 目录，不在本仓库里运行。改动原生登录后要在那边跑一遍。
+原生登录测试已随源码迁入 `tools/cosmo-runtime/workspace/phone-control/backend-auth-work/tests/`，运行 `npm run test:cosmo:native`。测试直接使用 `tools/cosmo/gate/`，后端鉴权测试从本仓库 Hermes 源码提取现有函数，用合成凭据和临时记录验证接口，不加载历史认证补丁。
 
 ## 网关的配置
 

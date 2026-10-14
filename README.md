@@ -1,6 +1,24 @@
-# hhikr.moe
+# hhikr-moe 统一源码仓库
 
-hhikr 的个人网站 —— <https://hhikr.moe>
+hhikr 的个人网站 —— <https://hhikr.moe>，以及配套的 Hermes/Cosmo 前后端、Android、任务系统和执行端源码。
+
+## 项目地图
+
+| 目录 | 内容 |
+| --- | --- |
+| `src/`、`public/`、`scripts/`、`tests/` | Astro 网站，保留原有开发入口 |
+| `tools/hermes/source/` | Hermes 完整前后端；包含 Telegram 任务卡片定制和定时发送路径 |
+| `tools/cosmo/` | Cosmo 网页适配、触屏样式及现有登录网关 |
+| `tools/hermes/windows-bridge/` | Windows MCP 文件、进程、浏览器连接器 |
+| `tools/cosmo-runtime/workspace/phone-control/android/` | Android 源码、构建与测试 |
+| `tools/cosmo-runtime/state/plugins/cosmo-tasks/` | 任务/设备接口与管理页插件 |
+| `tools/cosmo-runtime/state/scripts/` | 运动与作息执行脚本 |
+| `tools/hot100-java/` | 算法区本机 Java 执行端 |
+
+开发、测试和构建默认在 Windows；VPS 继续承载网站、Cosmo 网关、Hermes、定时任务与实时数据。个人配置、规则参数、签名、凭据和运行记录留在仓库外。本次只整理源码和入口，未发布或变更 VPS 服务。
+
+完整关系、外部配置和验证见 [源码迁移说明](docs/SOURCE_MIGRATION.md) 与 [任务/Android 开发入口](tools/cosmo-runtime/README.md)。
+
 
 v2 起使用 [Astro](https://astro.build) 构建，以 Node 服务的形式运行：`npm run build` 生成 `dist/client/`（预渲染页面和静态文件）与 `dist/server/`（服务入口）。
 

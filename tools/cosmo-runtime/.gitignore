@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+workspace/phone-control/android/build/
+workspace/phone-control/android/test-classes/
+workspace/phone-control/android/signing/
+workspace/phone-control/toolchain/
+workspace/phone-control/*.apk
+workspace/phone-control/*.apk.idsig
+workspace/phone-control/*.transfer.json
+workspace/phone-control/device-status.json
+workspace/activity-coach/state.json
+workspace/activity-coach/history/
+workspace/sleep-plan/settings.json
+workspace/task-ledger/
+state/cache/
+*.local.json
+# generated artifacts and synthetic test scratch
+workspace/phone-control/backend-auth-work/APK_SHA256.txt

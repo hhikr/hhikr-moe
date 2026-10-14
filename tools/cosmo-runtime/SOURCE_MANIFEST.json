@@ -1,0 +1,379 @@
+{
+  "source": "Windows hermes-dev development copy",
+  "files": [
+    {
+      "path": "compat/fcntl.py",
+      "source_sha256": "aabe67da55b52808bfdc6bc8b27488ba92c95a3de54648dcc6e3e1c21f24fee8",
+      "repository_path": "tools/cosmo-runtime/compat/fcntl.py",
+      "source_text_sha256": "aabe67da55b52808bfdc6bc8b27488ba92c95a3de54648dcc6e3e1c21f24fee8"
+    },
+    {
+      "path": "hermes_paths.py",
+      "source_sha256": "c04e156b990a8fb7352e150a8459e9c743afa7a0550bfd097940400f60759b48",
+      "repository_path": "tools/cosmo-runtime/hermes_paths.py",
+      "source_text_sha256": "c04e156b990a8fb7352e150a8459e9c743afa7a0550bfd097940400f60759b48"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/__init__.py",
+      "source_sha256": "1792e361eab0aea87bc38b61e2e200f55b885fcaf0ae1897d332d3bdffa722e6",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/__init__.py",
+      "source_text_sha256": "1792e361eab0aea87bc38b61e2e200f55b885fcaf0ae1897d332d3bdffa722e6"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/adapter.py",
+      "source_sha256": "a1130d96d9cb843d628ce8ca554591ec2de723d16683034769f64a7bda7da017",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/adapter.py",
+      "source_text_sha256": "a1130d96d9cb843d628ce8ca554591ec2de723d16683034769f64a7bda7da017"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/inline_picker.py",
+      "source_sha256": "5111dff2caa687ac2d18651608b6a773c0185ce24bdc32c7f1a778314006ede6",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/inline_picker.py",
+      "source_text_sha256": "5111dff2caa687ac2d18651608b6a773c0185ce24bdc32c7f1a778314006ede6"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/plugin.yaml",
+      "source_sha256": "4fbcc679a842d890332c822610a1ba0e2ef7db24467e1046be075addc1d3a558",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/plugin.yaml",
+      "source_text_sha256": "4fbcc679a842d890332c822610a1ba0e2ef7db24467e1046be075addc1d3a558"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/task_cards.py",
+      "source_sha256": "0534c56770b735a530a798f37d58865933f602278883e0c4b944193acbcdd4c5",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/task_cards.py",
+      "source_text_sha256": "ca5b17c85e9b08f2e0150e9942962b1378aa2a50b25fc96313b96ecc902d208b"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/task_store.py",
+      "source_sha256": "d4dacf50291cef9e5193fb6baba89c5d6e18bb0d181cc57ed5109c462cb0d5cf",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/task_store.py",
+      "source_text_sha256": "ac4333d5a772de59e26fb0f5bd07b787c2ab32aa3c513a43ac036ec42d505233"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/telegram_context.py",
+      "source_sha256": "9fae1f0c84d4895c2ee630c82ac30febfc1ec596503193f3779d6cb4ed5972ea",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_context.py",
+      "source_text_sha256": "9fae1f0c84d4895c2ee630c82ac30febfc1ec596503193f3779d6cb4ed5972ea"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/telegram_entities.py",
+      "source_sha256": "5693326e8ccd0db9918790df008ad02bdafefb6adf249e688efd10178f04aa2b",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_entities.py",
+      "source_text_sha256": "5693326e8ccd0db9918790df008ad02bdafefb6adf249e688efd10178f04aa2b"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/telegram_held_inbound.py",
+      "source_sha256": "2977add624c00606455f36e4eeacf322dd11a12c248a4022fe0f55c7df76c8b5",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_held_inbound.py",
+      "source_text_sha256": "2977add624c00606455f36e4eeacf322dd11a12c248a4022fe0f55c7df76c8b5"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/telegram_ids.py",
+      "source_sha256": "21ba9008248ea3cc0726eafce7d23096473e2d2419dd8756881f07d61af125b1",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_ids.py",
+      "source_text_sha256": "21ba9008248ea3cc0726eafce7d23096473e2d2419dd8756881f07d61af125b1"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/telegram_network.py",
+      "source_sha256": "2a151a21f501aa1c82c8e64a9bc405713602a3bae2a3e852c70bf0bcbdb5a9fb",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_network.py",
+      "source_text_sha256": "2a151a21f501aa1c82c8e64a9bc405713602a3bae2a3e852c70bf0bcbdb5a9fb"
+    },
+    {
+      "path": "source/plugins/platforms/telegram/update_admission.py",
+      "source_sha256": "ebb805a38ea2fc5f1c252f5e936db5f1badd2ec2dc4ab6145255d86343a1e002",
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/update_admission.py",
+      "source_text_sha256": "ebb805a38ea2fc5f1c252f5e936db5f1badd2ec2dc4ab6145255d86343a1e002"
+    },
+    {
+      "path": "state/plugins/cosmo-tasks/__init__.py",
+      "source_sha256": "4eb5559509025836cd2918b9bbcdbdcfceb6f5a5c3262f81fc37bfacd9e45dba",
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/__init__.py",
+      "source_text_sha256": "4eb5559509025836cd2918b9bbcdbdcfceb6f5a5c3262f81fc37bfacd9e45dba"
+    },
+    {
+      "path": "state/plugins/cosmo-tasks/dashboard/api.py",
+      "source_sha256": "b2ba865003323918180b9fe0bfcc1a6f39659179c273554af1bc80d61403cca3",
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/dashboard/api.py",
+      "source_text_sha256": "a992f1cb7b026eaa9b85a2e4960444147c9efa77dc9d8d10a83439f40174103b"
+    },
+    {
+      "path": "state/plugins/cosmo-tasks/dashboard/dist/index.js",
+      "source_sha256": "5999132273c18910450b1338baa17be8a6ed8c2c2a08255b2f3c65d7851488d4",
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/dashboard/dist/index.js",
+      "source_text_sha256": "5999132273c18910450b1338baa17be8a6ed8c2c2a08255b2f3c65d7851488d4"
+    },
+    {
+      "path": "state/plugins/cosmo-tasks/dashboard/manifest.json",
+      "source_sha256": "de74f037eb50ffd67b4e9e5d491205976f232b11133567089233ebb7b9099a49",
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/dashboard/manifest.json",
+      "source_text_sha256": "de74f037eb50ffd67b4e9e5d491205976f232b11133567089233ebb7b9099a49"
+    },
+    {
+      "path": "state/plugins/cosmo-tasks/plugin.yaml",
+      "source_sha256": "69ae070e26348805c030e44e7bfa07420749c906c93282e06cd707516bfbf977",
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/plugin.yaml",
+      "source_text_sha256": "69ae070e26348805c030e44e7bfa07420749c906c93282e06cd707516bfbf977"
+    },
+    {
+      "path": "state/scripts/activity_daily.py",
+      "source_sha256": "f900921c7b2321f32f35235459662b373813e7cb79dfc65e048833f44f79e254",
+      "repository_path": "tools/cosmo-runtime/state/scripts/activity_daily.py",
+      "source_text_sha256": "6fa66902d24fff47816a07aaedf4a37f5208f50deadb11a10f19964d21781cc7"
+    },
+    {
+      "path": "state/scripts/activity_encoding_probe.py",
+      "source_sha256": "ebb306c1d14b232feb43cf8c0eb9c5225fed1cee4c4bc3cc5574f970f21e05ef",
+      "repository_path": "tools/cosmo-runtime/state/scripts/activity_encoding_probe.py",
+      "source_text_sha256": "ebb306c1d14b232feb43cf8c0eb9c5225fed1cee4c4bc3cc5574f970f21e05ef"
+    },
+    {
+      "path": "state/scripts/activity_evening.py",
+      "source_sha256": "edfa2c01a6ae322a7dc691c17d2f506f30019cb1de5350aefc1aabaf043651c2",
+      "repository_path": "tools/cosmo-runtime/state/scripts/activity_evening.py",
+      "source_text_sha256": "af12baaedd87802b5aa21ad3c938813b391e409e643b90ed4a2463ce892758ac"
+    },
+    {
+      "path": "state/scripts/activity_morning.py",
+      "source_sha256": "5b9eae15a9e82bb727525d7235337f5d744b5ef672f597604c3350bff10310b9",
+      "repository_path": "tools/cosmo-runtime/state/scripts/activity_morning.py",
+      "source_text_sha256": "0b5c7669275ee47db0f59b121ed109e065490f047755b680b07e9d368f2e49c1"
+    },
+    {
+      "path": "state/scripts/sleep_daily.py",
+      "source_sha256": "c1f7af449df9a5f8004a00f9d760727c502ec7fe97e3de48e6527aad14259d2c",
+      "repository_path": "tools/cosmo-runtime/state/scripts/sleep_daily.py",
+      "source_text_sha256": "d576d59bcf9590c114135ff12f64bfa541a7318349dc9790be7d20a84877473b"
+    },
+    {
+      "path": "workspace/activity-coach/test_cron_encoding.py",
+      "source_sha256": "57051cffafac339bdeecd41851fae16145a5407f1136045a70bf1649f3b01cde",
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_cron_encoding.py",
+      "source_text_sha256": "17bbef2f76006bb20b54543df67cd944286ee2a96524699a843776abe939be79"
+    },
+    {
+      "path": "workspace/activity-coach/test_daily_task.py",
+      "source_sha256": "18fb69e5e94c544c153e6b919dc2e0264896319671c2f9e4aff93c9a8fd64887",
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_daily_task.py",
+      "source_text_sha256": "48733b8ec0296895e3d95d52d8f3e8e791ef081f930a4f26f8fa6ebc79a7c39b"
+    },
+    {
+      "path": "workspace/activity-coach/test_reminders.py",
+      "source_sha256": "6b25eca181ab4c54c575a56664521ccc0fd23e50645948c2ec762fd855722eb0",
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_reminders.py",
+      "source_text_sha256": "be982c24741440890ad8b30dd3d77e7998f343572773568d13c33ac4d7c66c0e"
+    },
+    {
+      "path": "workspace/activity-coach/test_task_cards.py",
+      "source_sha256": "99a40ab31d2012de18cc1c68e2dec26469ca9297317bf64e1165082074601c6c",
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_task_cards.py",
+      "source_text_sha256": "9f395f7f550987dc26111fbb10bce7d283b8c7d7e95ff532544b7acc79e1116e"
+    },
+    {
+      "path": "workspace/activity-coach/test_task_wording.py",
+      "source_sha256": "047816ce2bfe876ae2a80de96aa486de9c4f322bbe65a585a17e0c79cfed8f75",
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_task_wording.py",
+      "source_text_sha256": "a4287733cc08cc5eb3403a166854d9ac7c2eefa8d8c6a981f52d46cd45f6242f"
+    },
+    {
+      "path": "workspace/phone-control/android/AndroidManifest.xml",
+      "source_sha256": "47be8b8221d20c00c726ec2c31f61f3fe7670139ac4c685bd1c1ef17db7d9c32",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/AndroidManifest.xml",
+      "source_text_sha256": "47be8b8221d20c00c726ec2c31f61f3fe7670139ac4c685bd1c1ef17db7d9c32"
+    },
+    {
+      "path": "workspace/phone-control/android/build.py",
+      "source_sha256": "14f21067ce7c09405b891051165ed6281c305dde6fd1e16dcdd68dd54bd23e5b",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/build.py",
+      "source_text_sha256": "a711e3b1aa96075701960c83e4a8aeed57fbfb71a3b0da5209b2a229de1b9a07"
+    },
+    {
+      "path": "workspace/phone-control/android/res/values/strings.xml",
+      "source_sha256": "f141354acc2e7dfb348bfeafea921bc698f12261ab49678a00b7ac100349479b",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/res/values/strings.xml",
+      "source_text_sha256": "f141354acc2e7dfb348bfeafea921bc698f12261ab49678a00b7ac100349479b"
+    },
+    {
+      "path": "workspace/phone-control/android/res/xml/accessibility.xml",
+      "source_sha256": "f6fec442f48b3300e79e95be5827b38d3a92651116c09c9ff9eded54d28a25f4",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/res/xml/accessibility.xml",
+      "source_text_sha256": "f6fec442f48b3300e79e95be5827b38d3a92651116c09c9ff9eded54d28a25f4"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuth.java",
+      "source_sha256": "91cf94185a67418255d10cbc9e40c89e4b1f71843ef74d8b7504edee3bcbe486",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuth.java",
+      "source_text_sha256": "91cf94185a67418255d10cbc9e40c89e4b1f71843ef74d8b7504edee3bcbe486"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthDisabledTest.java",
+      "source_sha256": "c2bf7a9ca025b944d302bac9feecc0fdd6e0e6512a386d9dbd86708f6fd40b34",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthDisabledTest.java",
+      "source_text_sha256": "c2bf7a9ca025b944d302bac9feecc0fdd6e0e6512a386d9dbd86708f6fd40b34"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthPolicy.java",
+      "source_sha256": "140cf1ad8978bdb620a68c70793507e8783916c91286ba332afe6cc8e2700ba9",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthPolicy.java",
+      "source_text_sha256": "140cf1ad8978bdb620a68c70793507e8783916c91286ba332afe6cc8e2700ba9"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthPolicyTest.java",
+      "source_sha256": "640be4062a86c0366eb9186262d5bdab96be0ef8ae62a93f52c733153f35d6ad",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthPolicyTest.java",
+      "source_text_sha256": "640be4062a86c0366eb9186262d5bdab96be0ef8ae62a93f52c733153f35d6ad"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/FocusService.java",
+      "source_sha256": "0581da67e675be1589eebf5ada7156931fd06a61f5fcd5074cfb52315269a640",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/FocusService.java",
+      "source_text_sha256": "0581da67e675be1589eebf5ada7156931fd06a61f5fcd5074cfb52315269a640"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/LoginPolicy.java",
+      "source_sha256": "f28a47339dec73112d8c13b80de2a3b3e5a6eb3aa5106900a6250f1552ee132b",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/LoginPolicy.java",
+      "source_text_sha256": "f28a47339dec73112d8c13b80de2a3b3e5a6eb3aa5106900a6250f1552ee132b"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/LoginPolicyTest.java",
+      "source_sha256": "b47dcc5a264089a633a27693077f021951335eca7e1cd21d2909d2da38037c70",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/LoginPolicyTest.java",
+      "source_text_sha256": "b47dcc5a264089a633a27693077f021951335eca7e1cd21d2909d2da38037c70"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/MainActivity.java",
+      "source_sha256": "433c76a9e588547e9caef696e8748c4de8db556d36812fe46ba373c3edaea21c",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/MainActivity.java",
+      "source_text_sha256": "433c76a9e588547e9caef696e8748c4de8db556d36812fe46ba373c3edaea21c"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetup.java",
+      "source_sha256": "686991d1542c979e680ea42d0582c0279e42dce2d1d104697883916db11d880f",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetup.java",
+      "source_text_sha256": "686991d1542c979e680ea42d0582c0279e42dce2d1d104697883916db11d880f"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetupPolicy.java",
+      "source_sha256": "6ca2d370fa8f3c793ad818c456bd5d20419291a4dd770c12607fdbb2e9064e47",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetupPolicy.java",
+      "source_text_sha256": "6ca2d370fa8f3c793ad818c456bd5d20419291a4dd770c12607fdbb2e9064e47"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetupPolicyTest.java",
+      "source_sha256": "636dd26a35e665ebd11825dc21bdc958833ef1934c354a7d23e9ef4020980242",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetupPolicyTest.java",
+      "source_text_sha256": "636dd26a35e665ebd11825dc21bdc958833ef1934c354a7d23e9ef4020980242"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/RuleEngine.java",
+      "source_sha256": "686ea7eaba9f3dfa8061c8455c17ee88a041ec4827e8be5dff46ed4fd2b38cd6",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/RuleEngine.java",
+      "source_text_sha256": "686ea7eaba9f3dfa8061c8455c17ee88a041ec4827e8be5dff46ed4fd2b38cd6"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/RuleEngineTest.java",
+      "source_sha256": "ded4dcfbb117663295c086900d5b18684986ff0ab2e2d8c0ff41f03db84935cb",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/RuleEngineTest.java",
+      "source_text_sha256": "ded4dcfbb117663295c086900d5b18684986ff0ab2e2d8c0ff41f03db84935cb"
+    },
+    {
+      "path": "workspace/phone-control/android/src/moe/hhikr/cosmo/Sync.java",
+      "source_sha256": "293acc6b36bada6333f4858526373981250653852d33e066195e0102a41480e3",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/Sync.java",
+      "source_text_sha256": "293acc6b36bada6333f4858526373981250653852d33e066195e0102a41480e3"
+    },
+    {
+      "path": "workspace/phone-control/android/test_permission_setup.py",
+      "source_sha256": "c2d519cb705411ebc558284a00faba0d9cdd12000a07bdcd12ba05c018e76f8a",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/test_permission_setup.py",
+      "source_text_sha256": "c2d519cb705411ebc558284a00faba0d9cdd12000a07bdcd12ba05c018e76f8a"
+    },
+    {
+      "path": "workspace/phone-control/android/test_release.py",
+      "source_sha256": "c730d06393e467afb1f9aee01264f559654aeaaac4d55f6fc7c628052de1572f",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/test_release.py",
+      "source_text_sha256": "266af9671bf77e2e8b1a467634f8ca9a2079ade923f833d8fca4c59b2dad4e76"
+    },
+    {
+      "path": "workspace/phone-control/backend-auth-work/check_login_start.py",
+      "source_sha256": "41268789e991241d47b80eb85bfdca03497535c16f1d0e2acda2c613f054dabc",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/check_login_start.py",
+      "source_text_sha256": "41268789e991241d47b80eb85bfdca03497535c16f1d0e2acda2c613f054dabc"
+    },
+    {
+      "path": "workspace/phone-control/backend-auth-work/check_public_readiness.py",
+      "source_sha256": "3275a6d415cc449a77584b0eebd199bf95fb2516212c48d7752b65802455a31b",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/check_public_readiness.py",
+      "source_text_sha256": "3275a6d415cc449a77584b0eebd199bf95fb2516212c48d7752b65802455a31b"
+    },
+    {
+      "path": "workspace/phone-control/backend-auth-work/tests/test_gate_native.mjs",
+      "source_sha256": "03a2895779fbdfec4bb71d8d4c98eb5e01fb0eeae4cccad8234d82ac250f8835",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/tests/test_gate_native.mjs",
+      "source_text_sha256": "03a2895779fbdfec4bb71d8d4c98eb5e01fb0eeae4cccad8234d82ac250f8835"
+    },
+    {
+      "path": "workspace/phone-control/backend-auth-work/tests/test_gate_real_guard.mjs",
+      "source_sha256": "9102c2d1b4d4792f3d7f169f70f46710c7fa23cdb38e87039b0afbff0c036650",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/tests/test_gate_real_guard.mjs",
+      "source_text_sha256": "9102c2d1b4d4792f3d7f169f70f46710c7fa23cdb38e87039b0afbff0c036650"
+    },
+    {
+      "path": "workspace/phone-control/backend-auth-work/tests/test_public_readiness.py",
+      "source_sha256": "b4cb63106863f6a22cac736293207be43424105ad3ead3e77a2ebdee908a5eee",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/tests/test_public_readiness.py",
+      "source_text_sha256": "b4cb63106863f6a22cac736293207be43424105ad3ead3e77a2ebdee908a5eee"
+    },
+    {
+      "path": "workspace/phone-control/backend-auth-work/verify_artifacts.py",
+      "source_sha256": "f3b09cdb5485d843fd8f232dbeb6b80592bdbaeebfd0e0941bf5c943547c97aa",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/verify_artifacts.py",
+      "source_text_sha256": "2d4afe86721eb0485e513d2cc353e58dce99b524311c9f5b4bb096a9c44e55d6"
+    },
+    {
+      "path": "workspace/phone-control/policy.py",
+      "source_sha256": "412b4fb2c3eb41c8b59791c3011c3368646617fb21900016c415a20ed2b17f7d",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/policy.py",
+      "source_text_sha256": "715534c1aa4743d60f76a43cdc2bc9aea69ce8a4046c25be97f9c0e9b803fdba"
+    },
+    {
+      "path": "workspace/phone-control/test_api.py",
+      "source_sha256": "a0462e3d1532530f23420d9d8313e689d3341734a5c9a7d07e8644334a64b19e",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/test_api.py",
+      "source_text_sha256": "89a1fe9a3fb2918445bb4bd7a7dc3c471122f027f883ac0601a0a398cfb93b73"
+    },
+    {
+      "path": "workspace/phone-control/test_policy.py",
+      "source_sha256": "89da2e1c5342f9e9c14929d6444dbf8fa66056d2fbe1024d4792f90a469ec84b",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/test_policy.py",
+      "source_text_sha256": "2e029ac1e54f6d0e3d2f4cdaf7f5293f9c33e3d12f7cb2b94edad3eaab5a96d2"
+    },
+    {
+      "path": "workspace/phone-control/test_sleep_dispatch.py",
+      "source_sha256": "f518d18a14fcfc32a4ca55caaafb3e929fa61a1f8f785f63ba770a22321e7455",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/test_sleep_dispatch.py",
+      "source_text_sha256": "35a33cec1e865d3e29a95971527de6f8244ca018b6b091e3f61a2adb3d5a0047"
+    },
+    {
+      "path": "workspace/phone-control/test_task_store.py",
+      "source_sha256": "d525977eecf889ed898797e6610c9c289f6c133646a99bd5cde6022b7bb3fb1d",
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/test_task_store.py",
+      "source_text_sha256": "0211d82d1e76cd2b369ba30e96813f0f8f1211d07608bae52dc40ba9ab309bfd"
+    }
+  ],
+  "excluded": [
+    {
+      "path": "workspace/phone-control/backend-auth-work/tests/staged_loopback_backend.py",
+      "reason": "Historical staged/future-auth or production deployment test; not current runtime source"
+    },
+    {
+      "path": "workspace/phone-control/backend-auth-work/tests/test_native_deployment.py",
+      "reason": "Historical staged/future-auth or production deployment test; not current runtime source"
+    },
+    {
+      "path": "workspace/phone-control/backend-auth-work/tests/test_staged_auth.py",
+      "reason": "Historical staged/future-auth or production deployment test; not current runtime source"
+    }
+  ]
+}

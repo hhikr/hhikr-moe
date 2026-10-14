@@ -1,0 +1,31 @@
+{
+  "timezone": "Asia/Taipei",
+  "offset": "+08:00",
+  "phone": {
+    "normal_minutes": 80,
+    "reduced_minutes": 40,
+    "night_start": "22:30",
+    "night_end": "07:10",
+    "restricted_apps": [
+      "bilibili"
+    ],
+    "description": "Synthetic development rules; quota and schedule come from this test fixture."
+  },
+  "sleep": {
+    "night": "22:30",
+    "rest": "00:00",
+    "prepare": "00:40",
+    "morning": "07:15",
+    "wake": "07:30",
+    "report": "07:45",
+    "night_text": "22:30 了，收尾准备休息吧。助眠音频选好后关屏听，争取 00:00 躺下。刚开始调整，准备时间可以放宽到 00:40。\n如果还睡不着，告诉我情况，我们再调整。\n",
+    "morning_text": "07:15 了，该起床了，最迟 07:30 离床。起来后告诉我昨晚大概几点睡着、几点离床，现在精神怎么样，07:45 前发我就好。\n"
+  },
+  "exercise": {
+    "morning": "09:00",
+    "evening": "19:00",
+    "deadline": "22:59",
+    "morning_text": "09:00 布置，19:00 仅提醒，当天截止 22:59；不为任务推迟睡眠。",
+    "evening_text": "19:00 只是提醒，当天截止 22:59。不要为赶任务补练或牺牲睡眠。\n"
+  }
+}

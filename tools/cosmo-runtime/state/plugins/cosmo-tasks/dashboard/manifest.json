@@ -1,0 +1,1 @@
+{"name":"cosmo-tasks","label":"Cosmo 任务同步","description":"本人登录保护的任务、作息与手机限额同步接口","version":"0.1.0","api":"api.py","entry":"dist/index.js","tab":{"path":"/cosmo-tasks","label":"任务与手机"}}

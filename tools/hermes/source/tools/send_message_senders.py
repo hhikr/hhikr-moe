@@ -259,6 +259,24 @@ def _telegram_format(message):
 async def _send_telegram(token, chat_id, message, media_files=None, thread_id=None, disable_link_previews=False, force_document=False):
     """One-shot Telegram Bot API send; parse failures fall back to plain text."""
     try:
+        from plugins.platforms.telegram.task_cards import decode_card
+        task_card = decode_card(message)
+        if task_card is not None:
+            if media_files:
+                return _error('Task cards do not accept media attachments in the same send')
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            from plugins.platforms.telegram.telegram_ids import normalize_telegram_chat_id
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(**button) for button in group]
+                for group in task_card['buttons']
+            ])
+            bot = _telegram_bot(token)
+            last_msg = await _send_telegram_message_with_retry(
+                bot, chat_id=normalize_telegram_chat_id(chat_id), text=task_card['text'],
+                parse_mode='HTML', reply_markup=keyboard,
+                **_telegram_thread_kwargs(thread_id),
+                **({'disable_web_page_preview': True} if disable_link_previews else {}))
+            return _success('telegram', chat_id, [], message_id=str(last_msg.message_id))
         formatted, send_parse_mode, _has_html = _telegram_format(message)
         bot = _telegram_bot(token)
         from plugins.platforms.telegram.telegram_ids import normalize_telegram_chat_id

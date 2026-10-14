@@ -1,0 +1,5 @@
+name: cosmo-tasks
+version: 0.1.0
+description: Private task and phone-rule sync for the owner's Cosmo app.
+author: Cosmo
+license: MIT
