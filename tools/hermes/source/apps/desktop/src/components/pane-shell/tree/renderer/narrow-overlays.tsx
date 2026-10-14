@@ -15,6 +15,7 @@ import { useContributions } from '@/contrib/react/use-contributions'
 import type { Contribution } from '@/contrib/types'
 import { ESCAPE_PRIORITY, isTopEscapeLayer, pushEscapeLayer } from '@/lib/escape-layers'
 import { cn } from '@/lib/utils'
+import { isTouchOnly } from '@/lib/web-shell'
 import { $chatOnboardingSolo } from '@/store/onboarding-intro'
 import { $paneStates } from '@/store/panes'
 
@@ -187,20 +188,23 @@ export function NarrowOverlays() {
 
   return (
     <>
-      {/* Hover-intent strips on each edge that has a collapsed pane. */}
-      {sides.map(side => (
-        <div
-          className={cn('absolute inset-y-0 z-30 w-1.5', side === 'left' ? 'left-0' : 'right-0')}
-          key={side}
-          onMouseEnter={() => {
-            const first = collapsibles.find(p => sideOf(p) === side)
+      {/* Hover-intent strips on each edge that has a collapsed pane. A finger
+          has no hover: a tap on the edge would open an unpinned overlay that
+          no mouseleave ever closes, on top of the system's edge-swipe back. */}
+      {!isTouchOnly() &&
+        sides.map(side => (
+          <div
+            className={cn('absolute inset-y-0 z-30 w-1.5', side === 'left' ? 'left-0' : 'right-0')}
+            key={side}
+            onMouseEnter={() => {
+              const first = collapsibles.find(p => sideOf(p) === side)
 
-            if (first) {
-              setReveal(current => (current?.pinned ? current : { id: first.id, pinned: false }))
-            }
-          }}
-        />
-      ))}
+              if (first) {
+                setReveal(current => (current?.pinned ? current : { id: first.id, pinned: false }))
+              }
+            }}
+          />
+        ))}
 
       {revealed && (
         <div

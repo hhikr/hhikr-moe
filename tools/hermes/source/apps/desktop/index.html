@@ -34,6 +34,12 @@
             scheme = dark ? 'dark' : 'light'
           }
           document.documentElement.style.backgroundColor = bg
+          // A phone browser paints its address and status bars in this
+          // colour; keep it the theme's, not a fixed near-black.
+          const themeColor = document.querySelector('meta[name="theme-color"]')
+          if (themeColor) {
+            themeColor.setAttribute('content', bg)
+          }
           if (scheme === 'dark' || scheme === 'light') {
             document.documentElement.style.colorScheme = scheme
           }

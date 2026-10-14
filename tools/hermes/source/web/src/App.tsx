@@ -529,8 +529,11 @@ export default function App() {
 
       <header
         className={cn(
-          "lg:hidden fixed top-0 left-0 right-0 z-40 min-h-14",
-          "flex items-center gap-2 px-4 py-2",
+          // viewport-fit=cover puts the page under the status bar and the
+          // notch; the header's own content stays inside the safe area.
+          "lg:hidden fixed top-0 left-0 right-0 z-40 min-h-[calc(3.5rem+env(safe-area-inset-top,0px))]",
+          "flex items-center gap-2 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]",
+          "pl-[calc(1rem+env(safe-area-inset-left,0px))] pr-[calc(1rem+env(safe-area-inset-right,0px))]",
           "border-b border-current/20",
           "bg-background-base",
         )}
@@ -574,7 +577,10 @@ export default function App() {
           fixed lg:hidden header is h-14/z-40; previously each banner carried
           its own mt-14 AND the content kept pt-14, so two visible banners
           stacked three offsets (NS-656 review P3). One spacer, applied once. */}
-      <div aria-hidden className="h-14 shrink-0 lg:hidden" />
+      <div
+        aria-hidden
+        className="h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 lg:hidden"
+      />
       <PluginSlot name="header-banner" />
       <ProfileScopeBanner />
       <MemoryPressureBanner status={sidebarStatus} />
@@ -588,6 +594,7 @@ export default function App() {
             aria-label={t.app.navigation}
             className={cn(
               "fixed top-0 left-0 z-50 flex h-dvh max-h-dvh w-64 min-h-0 flex-col font-sans",
+              "pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] lg:pt-0 lg:pl-0",
               "border-r border-current/20",
               "bg-background-base",
               "transition-[transform] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",

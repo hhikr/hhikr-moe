@@ -402,6 +402,34 @@ function applyTheme(theme: DashboardTheme) {
   // Re-assert the font override last: theme application just rewrote
   // --theme-font-sans/-display, so an active override has to win again.
   applyFontOverride(_ACTIVE_FONT_OVERRIDE);
+
+  syncThemeColor();
+}
+
+/** A phone browser paints its address and status bars with
+ *  <meta name="theme-color">. The palette's variables may be mixes rather
+ *  than plain colours, so let the browser resolve the base background first. */
+function syncThemeColor() {
+  requestAnimationFrame(() => {
+    const probe = document.createElement("span");
+    probe.style.cssText =
+      "position:absolute;visibility:hidden;background:var(--background-base)";
+    document.body.appendChild(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    if (!color || color === "rgba(0, 0, 0, 0)" || color === "transparent") {
+      return;
+    }
+    let meta = document.querySelector<HTMLMetaElement>(
+      'meta[name="theme-color"]',
+    );
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = color;
+  });
 }
 
 // ---------------------------------------------------------------------------

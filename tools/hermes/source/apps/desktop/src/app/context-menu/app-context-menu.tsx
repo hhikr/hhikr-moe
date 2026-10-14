@@ -21,6 +21,7 @@ import { hostPathLabel, hudForcesNativeLinks, normalizeExternalUrl, openExternal
 import { formatCombo } from '@/lib/keybinds/combo'
 import { isRemoteGateway } from '@/lib/media'
 import { reachablePreviewUrl } from '@/lib/preview-reach'
+import { isTouchOnly, isWebShell } from '@/lib/web-shell'
 import { openPreview } from '@/store/preview'
 
 import { ShellMenuItems } from './shell-menu-items'
@@ -545,10 +546,20 @@ export function AppContextMenu() {
   const open = useStore($contextMenu)
 
   useEffect(() => {
-    // stopPropagation beats other renderer handlers; preventDefault is never
-    // called because Chromium emits the main-process context-menu event (the
-    // spellcheck + image-coordinate source) only for unprevented gestures —
-    // and with no Menu.popup anywhere, "default" means no menu at all.
+    // stopPropagation beats other renderer handlers. In Electron
+    // preventDefault is never called because Chromium emits the main-process
+    // context-menu event (the spellcheck + image-coordinate source) only for
+    // unprevented gestures — and with no Menu.popup anywhere, "default" means
+    // no menu at all. In a browser tab "default" is the browser's own menu,
+    // which would open on top of ours, so there the gesture is claimed.
+    const web = isWebShell()
+
+    const claim = (event: MouseEvent) => {
+      if (web) {
+        event.preventDefault()
+      }
+    }
+
     const onContextMenu = (event: MouseEvent) => {
       const element = event.target instanceof Element ? event.target : null
 
@@ -574,6 +585,7 @@ export function AppContextMenu() {
       const terminal = terminalMenuHandleFor(element)
 
       if (terminal) {
+        claim(event)
         event.stopPropagation()
         openTerminalContextMenu(event.clientX, event.clientY, terminal)
 
@@ -605,6 +617,14 @@ export function AppContextMenu() {
         return
       }
 
+      // A phone's long-press on text or in a field is the system's selection
+      // gesture: its own handles and Copy/Paste bar serve it better than a
+      // menu of keyboard verbs, and two menus at once serve nobody.
+      if (web && isTouchOnly() && (target.editable || selected) && !target.linkUrl && !target.onImage) {
+        return
+      }
+
+      claim(event)
       event.stopPropagation()
       openDomContextMenu(event.clientX, event.clientY, target)
     }

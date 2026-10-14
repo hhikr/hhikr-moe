@@ -76,6 +76,33 @@ if (!html.includes('cosmo/touch.js')) {
   html = html.replace('</head>', '  <script src="./cosmo/touch.js" defer></script>\n  </head>');
 }
 
+// Added to a phone's home screen, the page opens without the browser around
+// it. The manifest is fetched like any other file behind the gate, so it has
+// to carry the sign-in cookie.
+const manifest = {
+  name: 'Cosmo',
+  short_name: 'Cosmo',
+  start_url: '../',
+  scope: '../',
+  display: 'standalone',
+  background_color: '#111111',
+  theme_color: '#111111',
+  icons: [{ src: '../apple-touch-icon.png', sizes: '1024x1024', type: 'image/png', purpose: 'any' }],
+};
+fs.writeFileSync(path.join(own, 'manifest.webmanifest'), `${JSON.stringify(manifest, null, 2)}\n`);
+const homeScreen = [
+  '<link rel="manifest" href="./cosmo/manifest.webmanifest" crossorigin="use-credentials">',
+  '<meta name="mobile-web-app-capable" content="yes">',
+  '<meta name="apple-mobile-web-app-capable" content="yes">',
+  // The page draws under the status bar (viewport-fit=cover) and keeps its
+  // content inside the safe area itself (cosmo.css).
+  '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">',
+  '<meta name="apple-mobile-web-app-title" content="Cosmo">',
+];
+if (!html.includes('cosmo/manifest.webmanifest')) {
+  html = html.replace('</head>', `  ${homeScreen.join('\n    ')}\n  </head>`);
+}
+
 // The renderer was written for a window: tell a phone to lay the page out to
 // the edges of the screen and to shrink it, not cover it, when the keyboard opens.
 const viewport = 'width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content';

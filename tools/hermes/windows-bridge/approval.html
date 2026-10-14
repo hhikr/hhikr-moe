@@ -1,12 +1,49 @@
 <!doctype html>
 <html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Hermes 操作审批</title>
-<style>body{font:16px/1.65 system-ui;background:#f5f6f8;color:#20252c;max-width:900px;margin:40px auto;padding:0 24px}article{background:white;border:1px solid #dce0e5;border-radius:12px;padding:20px;margin:16px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f6f8;padding:12px}button{font:inherit;padding:8px 20px;margin-right:12px;cursor:pointer}small{color:#586370}</style>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--line:#dce0e5;--text:#20252c;--muted:#586370;--error:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#15181c;--card:#1d2126;--line:#323840;--text:#e4e7eb;--muted:#9aa4af;--error:#f97066}}
+body{font:16px/1.65 system-ui;background:var(--bg);color:var(--text);max-width:900px;margin:40px auto;padding:0 24px}
+article{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin:16px 0}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);padding:12px}
+button{font:inherit;padding:8px 20px;margin-right:12px;cursor:pointer}
+small{color:var(--muted)}
+.error{color:var(--error)}
+</style>
 <h1>Hermes 操作审批</h1><p>这里显示 Hermes 请求在 Windows 上执行的操作。未回复的请求会保留，不会自动同意。停止连接后，待审批请求取消。</p>
 <p>确认一次只授权当前显示的操作。执行结果会返回 Hermes；回到聊天后可以让它继续。</p><div id="items">正在连接…</div>
 <script>
 const token=location.hash.slice(1);history.replaceState(null,'','/');
 const api=async(url,options={})=>{const r=await fetch(url,{...options,headers:{'X-Approval-Token':token,'Content-Type':'application/json'}});if(!r.ok)throw Error('连接未就绪或审批凭据无效。请从启动文件重新打开。');return r.json()};
-async function refresh(){try{const rows=await api('/pending'),container=document.getElementById('items');container.replaceChildren();if(!rows.length){container.textContent='没有待审批操作。';return}for(const row of rows){const card=document.createElement('article'),title=document.createElement('strong'),detail=document.createElement('pre'),state=document.createElement('p');title.textContent=row.tool;detail.textContent=JSON.stringify(row.args,null,2);state.textContent='状态：'+row.status;card.append(title,state,detail);if(row.status==='pending'){for(const [label,allow]of[['允许这一次',true],['拒绝',false]]){const button=document.createElement('button');button.textContent=label;button.onclick=async()=>{button.disabled=true;await api('/decision',{method:'POST',body:JSON.stringify({id:row.id,allow})});await refresh()};card.append(button)}}container.append(card)}}catch(e){document.getElementById('items').textContent=e.message}}
+// While a decision is being sent, the 3-second refresh leaves the list alone,
+// so the card that is waiting for its answer is not replaced under the click.
+let deciding=false;
+async function decide(row,allow,buttons,note){
+  deciding=true;buttons.forEach(b=>b.disabled=true);note.textContent='正在提交…';note.className='';
+  try{await api('/decision',{method:'POST',body:JSON.stringify({id:row.id,allow})});deciding=false;await refresh()}
+  catch(e){deciding=false;buttons.forEach(b=>b.disabled=false);note.textContent='提交失败：'+e.message+' 可以再试一次。';note.className='error'}
+}
+async function refresh(){
+  if(deciding)return;
+  const container=document.getElementById('items');
+  try{
+    const rows=await api('/pending');
+    if(deciding)return;
+    container.className='';container.replaceChildren();
+    if(!rows.length){container.textContent='没有待审批操作。';return}
+    for(const row of rows){
+      const card=document.createElement('article'),title=document.createElement('strong'),detail=document.createElement('pre'),state=document.createElement('p');
+      title.textContent=row.tool;detail.textContent=JSON.stringify(row.args,null,2);state.textContent='状态：'+row.status;card.append(title,state,detail);
+      if(row.status==='pending'){
+        const note=document.createElement('p'),buttons=[];
+        for(const [label,allow] of [['允许这一次',true],['拒绝',false]]){const button=document.createElement('button');button.textContent=label;button.onclick=()=>decide(row,allow,buttons,note);buttons.push(button);card.append(button)}
+        card.append(note);
+      }
+      container.append(card);
+    }
+  }catch(e){container.textContent=e.message;container.className='error'}
+}
 refresh();setInterval(refresh,3000);
 </script></html>

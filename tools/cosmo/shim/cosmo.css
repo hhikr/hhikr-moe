@@ -4,9 +4,61 @@
    wherever one exists. Loaded after the renderer's stylesheet. */
 
 /* A phone's address bar comes and goes: 100vh is the height without it, so the
-   title bar and the composer ended up under the browser's own chrome. */
+   title bar and the composer ended up under the browser's own chrome. iOS does
+   not shrink even 100dvh for the keyboard; touch.js measures the part of the
+   page the keyboard leaves visible into --app-height. */
 .h-screen {
-  height: 100dvh;
+  height: calc(var(--app-height, 100dvh) - env(safe-area-inset-top));
+}
+
+/* ── Safe areas ───────────────────────────────────────────────────────────
+   viewport-fit=cover lays the page out to the screen's edges, under the notch
+   and the status bar. The shell sits inside the safe area; the title bar's
+   clusters are position: fixed against the screen, so they move in with it.
+   The bottom inset is the status bar's (below). */
+body {
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+
+.w-screen {
+  width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+}
+
+[data-titlebar-cluster='left'] {
+  margin-top: env(safe-area-inset-top);
+  margin-left: env(safe-area-inset-left);
+}
+
+[data-titlebar-cluster='right'] {
+  margin-top: env(safe-area-inset-top);
+  margin-right: env(safe-area-inset-right);
+}
+
+/* A phone on its side is wider than the phone layout below but still has the
+   home indicator under the status bar. */
+@media (min-width: 40.0625rem) {
+  [data-slot='statusbar'] {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ── Touch ────────────────────────────────────────────────────────────────
+   No grey flash over whatever a finger taps, and no double-tap zoom: a tap is
+   a click at once instead of waiting to see whether a second one follows. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+[role='button'],
+[role='tab'],
+[role='menuitem'],
+[data-slot='row-button'],
+[data-sidebar='menu-button'],
+[data-slot='composer-rich-input'] {
+  touch-action: manipulation;
 }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────

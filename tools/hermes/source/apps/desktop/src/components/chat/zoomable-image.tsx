@@ -169,7 +169,7 @@ export function ImageLightbox({
             </div>
           )
         }
-        className="w-auto max-h-[calc(100vh-12rem)] max-w-[calc(100vw-12rem)] border-0 bg-transparent! shadow-none!"
+        className="w-auto max-h-[calc(100dvh-12rem)] max-w-[calc(100vw-12rem)] border-0 bg-transparent! shadow-none! max-sm:max-h-[calc(100dvh-7rem)] max-sm:max-w-[calc(100vw-1rem)]"
         // The media-lightbox shell variant. styles.css paints every
         // [data-slot='dialog-content'] with the themed elevated background +
         // --shadow-md — fine for opaque dialogs, but this shell is meant to be
@@ -187,7 +187,9 @@ export function ImageLightbox({
           <img
             alt={alt ?? ''}
             className={cn(
-              'block max-h-[calc(100vh-12rem)] max-w-[calc(100vw-12rem)] select-none rounded-lg object-contain shadow-2xl',
+              // 6rem a side frames the image on a desktop; on a phone it would leave
+              // the enlarged image smaller than the one in the message.
+              'block max-h-[calc(100dvh-12rem)] max-w-[calc(100vw-12rem)] select-none rounded-lg object-contain shadow-2xl max-sm:max-h-[calc(100dvh-7rem)] max-sm:max-w-[calc(100vw-1rem)]',
               panning && 'cursor-grabbing'
             )}
             onClick={onImageClick}
@@ -197,7 +199,7 @@ export function ImageLightbox({
             {...stageProps}
           />
           <ImageActionButton
-            className="group-hover/lightbox:opacity-100"
+            className="group-hover/lightbox:opacity-100 touch:opacity-100"
             copy={copy}
             onClick={onClick}
             saving={saving}

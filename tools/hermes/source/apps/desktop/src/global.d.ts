@@ -377,6 +377,9 @@ declare global {
       stopPreviewFileWatch: (id: string) => Promise<boolean>
       setActiveWork?: (payload: HermesActiveWork) => void
       setTitleBarTheme?: (payload: HermesTitleBarTheme) => void
+      /** Set only by the browser bridge (Cosmo): the renderer is in a tab, so
+       *  browser defaults (native context menu, reserved shortcuts) apply. */
+      platform?: 'web'
       setNativeTheme?: (mode: 'dark' | 'light' | 'system') => void
       /** Main-process fact: this OS can back glass with a native material. */
       glassSupported?: boolean

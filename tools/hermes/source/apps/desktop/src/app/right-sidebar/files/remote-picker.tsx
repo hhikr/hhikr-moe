@@ -180,7 +180,7 @@ export function RemoteFolderPicker() {
     <Dialog onOpenChange={open => !open && close()} open={Boolean(pending)}>
       <DialogContent
         bodyClassName="flex min-h-0 flex-col gap-0 overflow-hidden p-0"
-        className="h-[min(36rem,calc(100vh-4rem))] max-w-lg"
+        className="h-[min(36rem,calc(100dvh-4rem))] max-w-lg"
         onEscapeKeyDown={event => {
           // One cancel gesture does one thing: Escape abandons the name first.
           if (newFolderName !== null) {
