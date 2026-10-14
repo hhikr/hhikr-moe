@@ -17,7 +17,7 @@ const root = path.resolve(here, '..', '..');
 const { values } = parseArgs({
   options: { upstream: { type: 'string' }, out: { type: 'string' }, 'skip-build': { type: 'boolean' } },
 });
-const upstream = path.resolve(values.upstream ?? path.join(root, '.deployment/hermes/upstream'));
+const upstream = path.resolve(values.upstream ?? path.join(root, 'tools/hermes/source'));
 const out = path.resolve(values.out ?? path.join(root, '.deployment/hermes/cosmo-web/dist'));
 const desktop = path.join(upstream, 'apps/desktop');
 
@@ -84,6 +84,9 @@ html = html.replace(/<meta name="viewport"[^>]*>/, `<meta name="viewport" conten
 
 fs.writeFileSync(indexPath, html);
 
-const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: upstream, encoding: 'utf8' }).trim();
+const sourceRecord = path.join(upstream, 'HHIKR_SOURCE.json');
+const commit = fs.existsSync(sourceRecord)
+  ? JSON.parse(fs.readFileSync(sourceRecord, 'utf8')).upstreamCommit
+  : execFileSync('git', ['rev-parse', 'HEAD'], { cwd: upstream, encoding: 'utf8' }).trim();
 fs.writeFileSync(path.join(own, 'build.json'), `${JSON.stringify({ hermesCommit: commit, builtAt: new Date().toISOString() }, null, 2)}\n`);
 console.log(`Cosmo web build ready in ${out} (Hermes ${commit.slice(0, 12)})`);

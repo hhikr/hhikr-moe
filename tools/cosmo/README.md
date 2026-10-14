@@ -96,15 +96,12 @@ Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供�
 
 ## 构建
 
-上游源码和构建产物都放在 `.deployment/` 下，这个目录不进仓库。
+Hermes 前后端源码保存在 `tools/hermes/source/`，本地来源和目录说明见 [Hermes 本地源码](../hermes/README.md)。构建产物仍放在 `.deployment/` 下，不进仓库。
 
-渲染层的版本必须和后端一致。先确认后端运行的提交（在服务器上对 Hermes 的源码目录执行 `git rev-parse HEAD`），再准备同一提交的源码：
+渲染层的版本必须和后端一致。先核对后端版本和 `tools/hermes/source/HHIKR_SOURCE.json` 中记录的上游基线，再安装前端依赖：
 
 ```powershell
-git clone --depth 1 https://github.com/NousResearch/hermes-agent.git .deployment/hermes/upstream
-git -C .deployment/hermes/upstream fetch --depth 1 origin <提交>
-git -C .deployment/hermes/upstream checkout FETCH_HEAD
-npm --prefix .deployment/hermes/upstream ci --workspace apps/desktop --include-workspace-root --ignore-scripts
+npm --prefix tools/hermes/source ci --workspace apps/desktop --include-workspace-root --ignore-scripts
 npm run cosmo:build
 ```
 

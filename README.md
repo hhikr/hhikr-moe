@@ -72,3 +72,7 @@ Markdown 扩展语法（与 Obsidian 兼容）：
 
 旧的 Hugo + Blowfish 版本在 git 历史中。迁移时已经把短代码（`figure` / `alert` / `mask` / `katex`）
 和 `\\( \\)` 公式转换成了上面的标准写法；文章 URL（`/posts/<slug>/`、`/tags/…`、`/categories/…`、`/series/…`）保持不变。
+
+## Hermes 前后端与连接器
+
+本地源码已按结构收纳在 tools/hermes/，网页适配保留在 tools/cosmo/。目录、构建和导入边界见 [Hermes 本地源码](tools/hermes/README.md)。

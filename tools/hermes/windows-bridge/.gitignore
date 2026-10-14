@@ -1,0 +1,7 @@
+node_modules/
+connection-private.json
+state/
+browser-output/
+*.log
+*-pid.txt
+verification.json
