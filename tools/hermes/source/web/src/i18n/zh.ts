@@ -52,6 +52,7 @@ export const zh: Translations = {
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "关闭导航",
+    backToChat: "返回聊天",
     closeModelTools: "关闭模型与工具",
     footer: {
       org: "Nous Research",

@@ -53,6 +53,7 @@ export const ga: Translations = {
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "Dún an nascleanúint",
+    backToChat: "Ar ais chuig an gcomhrá",
     closeModelTools: "Dún an samhail agus na huirlisí",
     footer: {
       org: "Nous Research",

@@ -1,4 +1,5 @@
 import { type Codec, persistentAtom } from '@/lib/persisted'
+import { isWebShell } from '@/lib/web-shell'
 import { DEFAULT_INTERFACE_MODE, type InterfaceMode, shownInMode, type Tiered } from '@/store/interface-mode'
 
 export type TitlebarAppActionsSide = 'left' | 'right'
@@ -40,6 +41,19 @@ export const TITLEBAR_FIXED_TOOLS = {
 
 export type TitlebarFixedToolId = keyof typeof TITLEBAR_FIXED_TOOLS
 
+export type TitlebarWebToolId = 'dashboard' | 'focus'
+
+/** Tools only a browser tab has: the way over to the dashboard served beside
+ *  the chat (/admin/), and full screen where the browser lets a page take it
+ *  (not iPhone Safari). They travel with the app actions. */
+export function titlebarWebToolIds(): TitlebarWebToolId[] {
+  if (!isWebShell()) {
+    return []
+  }
+
+  return typeof document !== 'undefined' && document.fullscreenEnabled ? ['dashboard', 'focus'] : ['dashboard']
+}
+
 /** The app actions that follow `side`; the sidebar toggle is always left, flip and the right-sidebar toggle always right. */
 const APP_ACTION_IDS: readonly TitlebarFixedToolId[] = ['settings', 'layout', 'hud']
 const RIGHT_FIXED_IDS: readonly TitlebarFixedToolId[] = ['flip-panes', 'right-sidebar']
@@ -53,7 +67,7 @@ export function titlebarAppActionsClusterCounts(
 ): { left: number; right: number } {
   const shown = shownInMode(mode)
   const sidebar = 1
-  const appActions = APP_ACTION_IDS.filter(id => shown(TITLEBAR_FIXED_TOOLS[id])).length
+  const appActions = APP_ACTION_IDS.filter(id => shown(TITLEBAR_FIXED_TOOLS[id])).length + titlebarWebToolIds().length
   const rightFixed = RIGHT_FIXED_IDS.filter(id => shown(TITLEBAR_FIXED_TOOLS[id])).length
 
   if (side === 'left') {

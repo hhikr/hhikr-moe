@@ -82,6 +82,9 @@
   if (viewport) {
     const fit = () => {
       document.documentElement.style.setProperty('--app-height', `${Math.round(viewport.height)}px`)
+      // iOS may still pan the visible part down to the caret; the pinned
+      // shell (cosmo.css) moves with it.
+      document.documentElement.style.setProperty('--app-top', `${Math.max(0, Math.round(viewport.offsetTop))}px`)
 
       if (window.scrollY !== 0 && viewport.height < window.innerHeight) {
         window.scrollTo(0, 0)

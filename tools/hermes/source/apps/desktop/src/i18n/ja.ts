@@ -312,6 +312,9 @@ export const jaOverrides = {
     unmuteHaptics: '触覚フィードバックをオン',
     openSettings: '設定を開く',
     openStarmap: 'メモリグラフを開く',
+    openDashboard: 'ダッシュボードを開く',
+    enterFocusMode: '集中モード（全画面）',
+    exitFocusMode: '集中モードを終了',
     resetHudLayout: 'HUD のサイズと位置をリセット'
   },
 

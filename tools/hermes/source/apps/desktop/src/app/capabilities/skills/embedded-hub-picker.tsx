@@ -1,8 +1,10 @@
 import { useStore } from '@nanostores/react'
 import { memo, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react'
 
+import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from '@/app/layout-constants'
 import { Button } from '@/components/ui/button'
 import type { ProfileScope } from '@/hermes'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useI18n } from '@/i18n'
 import { Loader2 } from '@/lib/icons'
 import { useStoreSelector } from '@/lib/use-session-slice'
@@ -84,7 +86,22 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
   // site — on every visit. Same contract as DetailPane.
   const heightOverride = useStore($paneHeightOverride(HUB_PANE_ID))
   const height = heightOverride ?? HUB_DEFAULT_PX
-  const open = height > HUB_COLLAPSED_PX
+  // A phone has no height to share: there the hub starts folded to its header
+  // whatever the desktop remembered, and when opened it takes the whole page
+  // over the list (its header stays, with the way back) instead of splitting
+  // the screen with it. Not persisted: it is a visit, not a layout.
+  const stacked = useMediaQuery(SIDEBAR_COLLAPSE_MEDIA_QUERY)
+  const [stackedOpen, setStackedOpen] = useState(false)
+  const open = stacked ? stackedOpen : height > HUB_COLLAPSED_PX
+
+  const toggleOpen = () => {
+    if (stacked) {
+      setStackedOpen(!open)
+    } else {
+      setPaneHeightOverride(HUB_PANE_ID, open ? 0 : undefined)
+    }
+  }
+
   const [dragging, setDragging] = useState(false)
   const sectionRef = useRef<HTMLElement>(null)
 
@@ -179,13 +196,17 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
         // section clips its own content and gives height back to the list;
         // min-h keeps the header row itself always visible.
         'relative flex min-h-9 flex-col overflow-hidden border-t border-(--ui-stroke-secondary)',
+        stacked && open && 'absolute inset-0 z-20 bg-(--ui-chat-surface-background)',
         hidden && 'hidden'
       )}
       ref={sectionRef}
     >
       {/* Top-edge drag sash — pull the whole hub section up/down. */}
       <div
-        className="group/hubsash absolute inset-x-0 top-0 z-10 h-1 -translate-y-1/2 cursor-row-resize"
+        className={cn(
+          'group/hubsash absolute inset-x-0 top-0 z-10 h-1 -translate-y-1/2 cursor-row-resize',
+          stacked && 'hidden'
+        )}
         onDoubleClick={() => setPaneHeightOverride(HUB_PANE_ID, undefined)}
         onPointerDown={startDrag}
       >
@@ -203,13 +224,13 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
             {updating && <Loader2 className="size-3 animate-spin" />}
             {updating ? h.updating : h.updateAll}
           </Button>
-          <Button onClick={() => setPaneHeightOverride(HUB_PANE_ID, open ? 0 : undefined)} size="xs" variant="text">
+          <Button onClick={toggleOpen} size="xs" variant="text">
             {open ? h.pickerHide : h.pickerBrowse}
           </Button>
         </div>
       </div>
       {open && (
-        <div className="flex min-h-0 flex-col gap-1 px-3 pb-2">
+        <div className={cn('flex min-h-0 flex-col gap-1 px-3 pb-2', stacked && 'flex-1')}>
           {/* Resizable viewport: height comes from the top-edge drag sash
               above (persisted; double-click resets). flex-basis instead of a
               hard height so a short window shrinks the hub viewport rather
@@ -221,7 +242,7 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
             style={{
               border: '1px solid var(--ui-stroke-secondary)',
               borderRadius: 8,
-              flex: `0 1 ${height}px`,
+              flex: stacked ? '1 1 0' : `0 1 ${height}px`,
               maxWidth: '100%',
               minHeight: 0,
               minWidth: 320,

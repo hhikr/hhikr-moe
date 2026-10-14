@@ -36,6 +36,7 @@ import {
   Heart,
   KeyRound,
   Menu,
+  MessageCircle,
   MessageSquare,
   Package,
   PanelLeftClose,
@@ -108,7 +109,7 @@ import { useTheme } from "@/themes";
 import { isDashboardEmbeddedChatEnabled } from "@/lib/dashboard-flags";
 import { latchChatActivation } from "@/lib/chat-activation";
 import { sharedGatewayProfiles, sharedGatewayRestartDescription } from "@/lib/shared-gateway";
-import { api } from "@/lib/api";
+import { api, HERMES_BASE_PATH } from "@/lib/api";
 import type { StatusResponse, UpdateCheckResponse } from "@/lib/api";
 
 function RouteFallback({ label = "Loading…" }: { label?: string }) {
@@ -372,6 +373,12 @@ function buildRoutes(
 
 const SIDEBAR_COLLAPSED_KEY = "hermes-sidebar-collapsed";
 
+// Mounted under a prefix (Cosmo serves this dashboard at /admin/ beside its
+// chat at /), the page one level up is the chat: offer the way back to it.
+const CHAT_HREF = HERMES_BASE_PATH
+  ? HERMES_BASE_PATH.replace(/\/[^/]*$/, "") || "/"
+  : "";
+
 export default function App() {
   const { t } = useI18n();
   const { pathname } = useLocation();
@@ -559,6 +566,17 @@ export default function App() {
         <Typography className="font-bold text-[0.95rem] leading-[0.95] tracking-[0.05em] text-midground">
           {t.app.brand}
         </Typography>
+
+        {CHAT_HREF && (
+          <a
+            aria-label={t.app.backToChat}
+            className="ml-auto inline-flex items-center gap-1.5 rounded px-2 py-1.5 text-sm text-text-secondary hover:text-midground"
+            href={CHAT_HREF}
+          >
+            <MessageCircle className="h-4 w-4" />
+            {t.app.backToChat}
+          </a>
+        )}
       </header>
 
       {mobileOpen && (
@@ -641,6 +659,17 @@ export default function App() {
               >
                 <X />
               </Button>
+
+              {CHAT_HREF && (
+                <a
+                  aria-label={t.app.backToChat}
+                  className="hidden lg:inline-flex h-9 w-9 shrink-0 items-center justify-center text-text-secondary hover:text-midground"
+                  href={CHAT_HREF}
+                  title={t.app.backToChat}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                </a>
+              )}
 
               <Button
                 ghost

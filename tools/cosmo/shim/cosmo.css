@@ -43,6 +43,48 @@ body {
   }
 }
 
+/* ── The browser's own bars ─────────────────────────────────────────────────
+   A phone browser tucks its address bar away only while the document itself
+   scrolls, and the renderer's shell never lets the document scroll. On a touch
+   screen the shell is pinned (position: fixed) and the document is made just
+   taller than the screen, so a swipe the shell does not use itself — on the
+   title bar, the status bar, or past the end of the conversation — scrolls the
+   document and the address bar goes. Swiping back down brings it back. The
+   shell follows the visible height (--app-height, touch.js) as it changes.
+   Focus mode (title bar, full screen) takes both bars away outright. */
+@media (any-hover: none) {
+  html {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
+  }
+
+  body {
+    height: calc(100lvh + 1px);
+    overflow: visible;
+  }
+
+  #root {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + var(--app-top, 0px));
+    right: env(safe-area-inset-right);
+    left: env(safe-area-inset-left);
+    height: calc(var(--app-height, 100dvh) - env(safe-area-inset-top));
+  }
+
+  /* Lists that keep a swipe to themselves at their ends would never hand it
+     on to the document; the conversation is the one that matters most. */
+  .overscroll-contain {
+    overscroll-behavior-y: auto;
+  }
+}
+
 /* ── Touch ────────────────────────────────────────────────────────────────
    No grey flash over whatever a finger taps, and no double-tap zoom: a tap is
    a click at once instead of waiting to see whether a second one follows. */
@@ -182,29 +224,28 @@ a,
   }
 
   /* The status bar is one 20px line of 11px text against the bottom edge of
-     the window: on a phone that is under the thumb and the gesture bar, and
-     too narrow for the readouts bridge.js turns on. Here it becomes two lines
-     that stand clear of the edge. The session's readouts (context, cache,
-     latency, timers) go on top, and scroll sideways when they do not fit; the
-     backend and the working directory go underneath. */
+     the window: on a phone that is under the thumb and the gesture bar. Here
+     it is one taller line that stands clear of the edge and scrolls sideways:
+     the session's readouts (context, cache, latency, timers) first, then the
+     backend and the working directory. A second line cost the conversation
+     more than it gave. */
   [data-slot='statusbar'] {
     box-sizing: content-box;
-    flex-wrap: wrap;
-    row-gap: 0;
-    height: auto;
-    padding: 0.125rem 0.375rem max(env(safe-area-inset-bottom), 0.5rem);
+    flex-wrap: nowrap;
+    height: 1.75rem;
+    padding: 0 0.375rem max(env(safe-area-inset-bottom), 0.25rem);
     border-top: 1px solid var(--ui-stroke-tertiary);
-  }
-
-  [data-slot='statusbar'] > div {
-    flex: 0 0 100%;
-    height: 1.625rem;
     overflow-x: auto;
     scrollbar-width: none;
   }
 
-  [data-slot='statusbar'] > div::-webkit-scrollbar {
+  [data-slot='statusbar']::-webkit-scrollbar {
     display: none;
+  }
+
+  [data-slot='statusbar'] > div {
+    flex: 0 0 auto;
+    height: 100%;
   }
 
   [data-slot='statusbar'] > div:last-child {
