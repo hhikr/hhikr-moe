@@ -173,7 +173,8 @@ test('the callback needs the state this browser was given and a code the site ac
   assert.equal(done.headers.location, '/');
   assert.match(cookieValue(done, '__Host-cosmo'), /^[A-Za-z0-9_-]{43}$/);
   assert.equal(cookieValue(done, '__Host-cosmo-state'), '', 'the state cookie is cleared');
-  assert.equal((await ask(`/auth/callback?code=good-code&state=${state}`, { headers: jar })).status, 403, 'the code works once');
+  // The state is spent by the first successful callback, so a replay is refused before the code is tried.
+  assert.equal((await ask(`/auth/callback?code=good-code&state=${state}`, { headers: jar })).status, 400, 'the state works once');
 });
 
 test('signed in, pages are served with a content security policy and assets are cacheable', async () => {
@@ -196,8 +197,11 @@ test('signed in, pages are served with a content security policy and assets are 
 
 test('requests to Hermes carry the backend token and never the browser’s credentials', async () => {
   const { cookie } = await signIn();
+  // A page-supplied Authorization header is refused outright (native bearer rules), never forwarded or swapped for the cookie.
+  const bearer = await ask('/api/files/download?path=%2Fa&token=cosmo', { headers: { cookie, authorization: 'Bearer from-the-page' } });
+  assert.equal(bearer.status, 403);
   const res = await ask('/api/files/download?path=%2Fa&token=cosmo', {
-    headers: { cookie, authorization: 'Bearer from-the-page', 'x-hermes-session-token': 'from-the-page', 'x-forwarded-for': '203.0.113.9' },
+    headers: { cookie, 'x-hermes-session-token': 'from-the-page', 'x-forwarded-for': '203.0.113.9' },
   });
   assert.equal(res.status, 200);
   assert.equal(res.headers['set-cookie'], undefined, 'the backend cannot set cookies on this origin');

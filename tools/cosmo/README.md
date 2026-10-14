@@ -15,6 +15,7 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 | --- | --- | --- |
 | 桥接 | [shim/bridge.js](shim/bridge.js) | 在浏览器里提供 `window.hermesDesktop`，代替 Electron 的 preload |
 | 网关 | [gate/server.mjs](gate/server.mjs)、[gate/auth.mjs](gate/auth.mjs) | 检查登录，发送页面文件，把 `/api/*`（含 WebSocket）转给 Hermes |
+| 安卓原生登录 | [gate/native.mjs](gate/native.mjs)、[gate/association/](gate/association/) | 安卓应用的 PKCE 登录和窄范围 Bearer，见“安卓原生登录”一节 |
 | 覆盖样式 | [shim/cosmo.css](shim/cosmo.css) | 排在渲染层的样式之后，修正它在浏览器和手机上的显示 |
 | 触屏 | [shim/touch.js](shim/touch.js) | 手机上点侧边栏外面或选中一项后，把侧边栏收起来；iOS 键盘弹出时让页面缩到键盘上方 |
 | 补丁 | [patches.mjs](patches.mjs) | 构建时对渲染层个别源文件做的替换，见“和桌面版的差别” |
@@ -141,6 +142,37 @@ Hermes 后端升级后，按新的提交重复上面的步骤并重新发布。�
 
 产物和 `gate/` 目录一起打包，上传到服务器，由常驻的网关服务提供，前面是 Caddy。服务器上的脚本、服务单元、检查和回滚步骤在 `tools/deploy/`（第 8b 节）；那个目录写有服务器的地址，不进仓库。
 
+**发布时 `gate/` 必须整组带上，不能只打 `server.mjs` 和 `auth.mjs`。** 2026 年 10 月 14 日的一次发布就是只打了这两个文件，把安卓原生登录的 `native.mjs` 和 `association/` 挤掉了，线上原生登录随之失效，后来才补回。发布脚本现在会拒绝缺少这些文件的压缩包，健康检查也会确认原生路由已挂载。
+
+| 文件 | 说明 |
+| --- | --- |
+| `gate/server.mjs`、`gate/auth.mjs` | 网关主体，包含原生登录的接入点 |
+| `gate/native.mjs` | 安卓原生登录（PKCE 授权、换取令牌、窄范围 Bearer） |
+| `gate/association/assetlinks.json`、`gate/association/callback.html` | Android App Links 关联和回跳页 |
+
+`gate/dev.mjs` 只用于本机调试，不发布。
+
+## 安卓原生登录
+
+安卓应用用系统浏览器登录，应用拿到的是一个只能访问任务接口的 Bearer 令牌，不是网站的 Cookie。网关上的入口：
+
+- `GET /auth/native/authorize`：参数为 `code_challenge`（43 位 base64url）、`code_challenge_method=S256`、`state`，`redirect_uri` 固定为 `https://cosmo.hhikr.moe/android/auth/callback`。未登录时经主站的 Google 登录完成后回到这里，再由网关发放一次性授权码。
+- `POST /auth/native/token`：JSON 只接受 `code`、`code_verifier`、`redirect_uri`、`client_id=moe.hhikr.cosmo.focus`。授权码 120 秒内有效，只能用一次。GET 返回 405。
+- Bearer 令牌只能访问 `/api/plugins/cosmo-tasks/` 下的三个接口（`GET rules`、`POST device-status`、`POST sleep/report`）。带 `Authorization` 头的请求只按这套规则判断，失败直接拒绝，不回退到 Cookie，也不转发给 Hermes。网页本身不发送这个头。
+- `/.well-known/assetlinks.json` 由网关直接提供，内容必须与安卓应用的签名一致。
+
+Android 应用的源码和构建产物在安卓 agent 的工作区里，不在本仓库。改动网关的原生登录部分前，先和那边的基线（`native.mjs` 等文件的 SHA-256）对齐。已验收的哈希：
+
+| 文件 | SHA-256 |
+| --- | --- |
+| `native.mjs` | `23555e06b1e4fb640aed1d948c906135c546c3fc0ed888f81fd43f64310d2baa` |
+| `association/assetlinks.json` | `6920f9261dc0d2bf22db7cc6705457e7b892d56757773f0831a4c24be7be9f83` |
+| `association/callback.html` | `ca4fae5e1b0d7a39846504e417d3f2d4f0632b25b07551d2abb66cc1af2e2101` |
+| `auth.mjs`（含原生登录续接） | `81cba0b66b39d4002ff6aee9cbab1bc8cdbd5dab8fcc66671b24a7986233e362` |
+| `server.mjs`（含原生登录与 `.webmanifest` 类型） | `1524c0709881643e201937e7ee3f5d159c413ec878643071ecc6ab7d34c892f5` |
+
+`server.mjs` 的哈希与“仅原生登录”版本不同，是因为要保留仓库里的 `.webmanifest` 类型。两者的差别只有这一行，不能用旧文件整文件覆盖。
+
 ## 本机调试
 
 启动 Hermes 的本机连接（它把服务器的 9119 端口转到本机），然后：
@@ -157,6 +189,10 @@ node tools/cosmo/gate/dev.mjs
 npm run test:cosmo    # 网关：登录流程、转发、来源检查、WebSocket、会话失效
 npm run test:server   # 其中 tests/server/cosmo.test.mjs 覆盖主站的授权码和许可
 ```
+
+`tests/cosmo/gate.test.mjs` 中两处断言在原生登录合入后更新：state 用过一次即失效，重放返回 400（之前写的是 403）；页面自带的 `Authorization` 头返回 403，且不会转发（之前测试会带着它转发）。
+
+原生登录的测试在安卓 agent 的工作区（`backend-auth-work/tests/test_gate_native.mjs` 等），需要 Python 工具链和它的 `workspace/` 目录，不在本仓库里运行。改动原生登录后要在那边跑一遍。
 
 ## 网关的配置
 
