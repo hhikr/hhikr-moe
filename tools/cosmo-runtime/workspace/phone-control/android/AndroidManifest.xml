@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="moe.hhikr.cosmo.focus" android:versionCode="4" android:versionName="0.2.2">
+ <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+ <uses-permission android:name="android.permission.INTERNET" />
+ <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+ <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+ <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent></queries>
+ <application android:label="Cosmo 专注" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false" android:usesCleartextTraffic="false">
+  <activity android:name="moe.hhikr.cosmo.MainActivity" android:exported="true" android:launchMode="singleTop">
+   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+   <!-- Same signing certificate is published by the live Cosmo gate association. -->
+   <intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="https" android:host="cosmo.hhikr.moe" android:path="/android/auth/callback" />
+   </intent-filter>
+  </activity>
+  <service android:name="moe.hhikr.cosmo.FocusService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
+   <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
+   <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility"/>
+  </service>
+ </application>
+</manifest>

@@ -22,7 +22,7 @@ npm run cosmo:build
 
 构建产物仍保存在 `.deployment/hermes/cosmo-web/dist/`。`cosmo/build.json` 的 `hermesCommit` 记录上游导入基线；后续修改由本仓库提交记录标识。前后端发布需要保持接口版本兼容。
 
-服务器上运行的 Hermes 在 `/opt/hermes-hhikr/source/`，**不是 git 仓库**，是从本仓库复制过去的。修改这里的源码后，要同步到服务器才会生效；同步和重启的步骤在 `tools/deploy/README.md` 的 8b 节（那个目录不进仓库）。不要在服务器上直接改源码，下次同步会被覆盖或对不上。
+服务器上运行的 Hermes 源码在 `/opt/hermes-hhikr/source/`，运行配置和状态在仓库外。Windows 的统一仓库是开发源码；VPS 是运行环境。本次搬迁不自动发布。后续同步先核对服务器最新文件、当前版本和具体授权，只同步对应源码或构建产物，保留原发布版本和实时数据。
 
 ## Windows 连接器
 
@@ -57,4 +57,4 @@ Start-Process -FilePath node -ArgumentList 'bridge.mjs' -WorkingDirectory $PWD -
 
 保留 `source/LICENSE`、原版权声明和各组件许可证。Hermes 根许可证为 MIT，允许修改和分发；依赖和素材按各自许可证处理。
 
-没有导入 `.git`、依赖、构建产物、连接凭据、审批状态、日志、数据库、迁移备份或签名材料。`Downloads/hermes-dev/` 的手机控制、Telegram 定制及个人任务插件不在本次范围内。旧 `cosmo-ui/` 已由当前 Cosmo 界面替代，未导入其历史产物。
+没有导入 `.git`、依赖、构建产物、连接凭据、审批状态、日志、数据库、迁移备份或签名材料。Android、任务插件和执行脚本已归入 [`../cosmo-runtime/`](../cosmo-runtime/README.md)；Telegram 定制直接收纳在 `source/plugins/platforms/telegram/`，定时卡片发送入口在 `source/tools/send_message_senders.py`。个人规则参数从实际源码提取到外部文件，其余逻辑和接口保留。旧 `cosmo-ui/` 已由当前 Cosmo 界面替代，未导入其历史产物。完整目录与验证见 [`../../docs/SOURCE_MIGRATION.md`](../../docs/SOURCE_MIGRATION.md)。

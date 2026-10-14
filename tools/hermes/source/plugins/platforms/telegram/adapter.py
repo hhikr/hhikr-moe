@@ -3663,6 +3663,10 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
         chunks: list[str] = []
         delivered: list[str] = []
         try:
+            from .task_cards import decode_card, send_card
+            task_card = decode_card(content)
+            if task_card is not None:
+                return await send_card(self, chat_id, task_card, metadata)
             # Bot API 10.1 rich fast-path; falls through to legacy MarkdownV2 on permanent/capability
             # errors or DM-topic skips; returns directly on success or transient failure (no legacy resend).
             if self._should_attempt_rich(content, metadata=metadata):
@@ -4688,6 +4692,11 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
         self._accept_update()
         data = query.data
         cb = self._callback_ctx(query)
+        if data.startswith('tc:'):
+            if cb['chat_id'] is not None and await self._callback_authorized(query, cb, _unauthorized()):
+                from .task_cards import handle_callback
+                await handle_callback(self, query, data, cb)
+            return
         # Model picker / generic choice picker (/reasoning, /fast) need a chat id.
         for prefixes, handler in (
             (("mp:", "mpg:", "mpv:", "mm:", "mc:", "mb", "mx", "mg:"), self._handle_model_picker_callback),

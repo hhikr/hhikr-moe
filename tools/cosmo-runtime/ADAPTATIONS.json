@@ -1,0 +1,323 @@
+{
+  "hash_normalization": "CRLF to LF for exported text; original source_sha256 retains exact input bytes",
+  "scope": "Source relocation; no auth redesign or VPS release",
+  "files": [
+    {
+      "repository_path": "tools/cosmo-runtime/compat/fcntl.py",
+      "exported_text_sha256": "aabe67da55b52808bfdc6bc8b27488ba92c95a3de54648dcc6e3e1c21f24fee8",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/hermes_paths.py",
+      "exported_text_sha256": "d14079be7e16dc1381b70be40869cb595047067361747f3d0f903bbdfbe57229",
+      "reason": "Resolve relocated source separately from external runtime data on Windows and VPS"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/__init__.py",
+      "exported_text_sha256": "1792e361eab0aea87bc38b61e2e200f55b885fcaf0ae1897d332d3bdffa722e6",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/adapter.py",
+      "exported_text_sha256": "a1130d96d9cb843d628ce8ca554591ec2de723d16683034769f64a7bda7da017",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/inline_picker.py",
+      "exported_text_sha256": "5111dff2caa687ac2d18651608b6a773c0185ce24bdc32c7f1a778314006ede6",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/plugin.yaml",
+      "exported_text_sha256": "4fbcc679a842d890332c822610a1ba0e2ef7db24467e1046be075addc1d3a558",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/task_cards.py",
+      "exported_text_sha256": "d9acbd229651a7468619fccc149b22221ec9bd144bf73f6ab0b66b4080aa6db8",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/task_store.py",
+      "exported_text_sha256": "b4546575708040cbd289d4349408a83ad1b9846e5285610c76bcffcdf89d051e",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_context.py",
+      "exported_text_sha256": "9fae1f0c84d4895c2ee630c82ac30febfc1ec596503193f3779d6cb4ed5972ea",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_entities.py",
+      "exported_text_sha256": "5693326e8ccd0db9918790df008ad02bdafefb6adf249e688efd10178f04aa2b",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_held_inbound.py",
+      "exported_text_sha256": "2977add624c00606455f36e4eeacf322dd11a12c248a4022fe0f55c7df76c8b5",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_ids.py",
+      "exported_text_sha256": "21ba9008248ea3cc0726eafce7d23096473e2d2419dd8756881f07d61af125b1",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/telegram_network.py",
+      "exported_text_sha256": "2a151a21f501aa1c82c8e64a9bc405713602a3bae2a3e852c70bf0bcbdb5a9fb",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/hermes/source/plugins/platforms/telegram/update_admission.py",
+      "exported_text_sha256": "ebb805a38ea2fc5f1c252f5e936db5f1badd2ec2dc4ab6145255d86343a1e002",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/__init__.py",
+      "exported_text_sha256": "4eb5559509025836cd2918b9bbcdbdcfceb6f5a5c3262f81fc37bfacd9e45dba",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/dashboard/api.py",
+      "exported_text_sha256": "df0b3ba235010d2bd05a0e45bd734df3402f9818261ebf59b14137855a153622",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/dashboard/dist/index.js",
+      "exported_text_sha256": "1c7e57b1585d5d9fa8fbc42e86187cd869c30025c9f347c01c25ea8ebfff7f3c",
+      "reason": "Display blocked window from existing rules response rather than personal literals"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/dashboard/manifest.json",
+      "exported_text_sha256": "de74f037eb50ffd67b4e9e5d491205976f232b11133567089233ebb7b9099a49",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/plugins/cosmo-tasks/plugin.yaml",
+      "exported_text_sha256": "69ae070e26348805c030e44e7bfa07420749c906c93282e06cd707516bfbf977",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/scripts/activity_daily.py",
+      "exported_text_sha256": "2025e6aaab3798f35b1e5c4ca4e33af2d2e6d279e49beaf1574ecb97a589d3e1",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/scripts/activity_encoding_probe.py",
+      "exported_text_sha256": "a81bcec1ca467abbc229095684e9df5dd09205cc45b7d1eadf8ca1e12f754ccb",
+      "reason": "Synthetic encoding probe deadline, not an active task"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/scripts/activity_evening.py",
+      "exported_text_sha256": "cadfd6616f0e7b0ad13d4fdd0889478be953c0b1a9d17a0071e110ee939b6483",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/scripts/activity_morning.py",
+      "exported_text_sha256": "2d7101bed9bfa5c83796078d9be1fe53b699c55674d6603d029ca83148229f86",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/state/scripts/sleep_daily.py",
+      "exported_text_sha256": "aff27643e4d85e915401946f76d084e34c60854aafe31fe955e72f713370d1bc",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_cron_encoding.py",
+      "exported_text_sha256": "64dbb4511fa89b594ca4de4c7d8cab127f292a06c0f01d6a7a9fcabbcc736a03",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_daily_task.py",
+      "exported_text_sha256": "d0dd0f12e51940513b1921d083d315466002ab4c71b906faa2a474160fd6bbf5",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_reminders.py",
+      "exported_text_sha256": "077efda447b4e42d44e554c77afeb6c23e17ace0c0e9e68b14d7194165b90327",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_task_cards.py",
+      "exported_text_sha256": "14c0220a08a3fee180451deacc9b81d1d705c8a2fc58f558723ff97360028e74",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/activity-coach/test_task_wording.py",
+      "exported_text_sha256": "968fed2fde7f6272628e4e61b950f7fe7f9d733afc0be03f398a36f4554d2915",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/AndroidManifest.xml",
+      "exported_text_sha256": "47be8b8221d20c00c726ec2c31f61f3fe7670139ac4c685bd1c1ef17db7d9c32",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/build.py",
+      "exported_text_sha256": "fa2ab58ed4b8ed08b98ca13edf2b3a8f55a72218e244d7de79928550e3639e43",
+      "reason": "Relocated toolchain/signing/association paths; generated external parameters; preserve existing package and signature"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/res/values/strings.xml",
+      "exported_text_sha256": "f141354acc2e7dfb348bfeafea921bc698f12261ab49678a00b7ac100349479b",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/res/xml/accessibility.xml",
+      "exported_text_sha256": "f6fec442f48b3300e79e95be5827b38d3a92651116c09c9ff9eded54d28a25f4",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuth.java",
+      "exported_text_sha256": "91cf94185a67418255d10cbc9e40c89e4b1f71843ef74d8b7504edee3bcbe486",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthDisabledTest.java",
+      "exported_text_sha256": "c2bf7a9ca025b944d302bac9feecc0fdd6e0e6512a386d9dbd86708f6fd40b34",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthPolicy.java",
+      "exported_text_sha256": "140cf1ad8978bdb620a68c70793507e8783916c91286ba332afe6cc8e2700ba9",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/BrowserAuthPolicyTest.java",
+      "exported_text_sha256": "640be4062a86c0366eb9186262d5bdab96be0ef8ae62a93f52c733153f35d6ad",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/FocusService.java",
+      "exported_text_sha256": "476e94525db349f47b3f68308509f9511b1365c1a7e8afd551c96757bbae53bb",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/LoginPolicy.java",
+      "exported_text_sha256": "f28a47339dec73112d8c13b80de2a3b3e5a6eb3aa5106900a6250f1552ee132b",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/LoginPolicyTest.java",
+      "exported_text_sha256": "b47dcc5a264089a633a27693077f021951335eca7e1cd21d2909d2da38037c70",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/MainActivity.java",
+      "exported_text_sha256": "3e24d2d8037386383941876618989213186bac693719abaa5c26fe2a6ca9dfed",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetup.java",
+      "exported_text_sha256": "686991d1542c979e680ea42d0582c0279e42dce2d1d104697883916db11d880f",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetupPolicy.java",
+      "exported_text_sha256": "6ca2d370fa8f3c793ad818c456bd5d20419291a4dd770c12607fdbb2e9064e47",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/PermissionSetupPolicyTest.java",
+      "exported_text_sha256": "636dd26a35e665ebd11825dc21bdc958833ef1934c354a7d23e9ef4020980242",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/RuleEngine.java",
+      "exported_text_sha256": "fdd114e718dbe45607d94ddab31e9634bf775286d01a815c3d7017459e6a9163",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/RuleEngineTest.java",
+      "exported_text_sha256": "ee129414139d9efb97a8c07a94f8e26443fb9216b8d9a0acf4b6ed0ce50d25b4",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/src/moe/hhikr/cosmo/Sync.java",
+      "exported_text_sha256": "671900d972c6ba5b147eb152bac02526fc6235804c0f711f9f03d9f5abf8cbc6",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/test_permission_setup.py",
+      "exported_text_sha256": "c2d519cb705411ebc558284a00faba0d9cdd12000a07bdcd12ba05c018e76f8a",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/android/test_release.py",
+      "exported_text_sha256": "ea20cf7c9d9368c753afe2567465b93ea37a81af066a8f736bd4ee4ac0351ed2",
+      "reason": "Relocated toolchain/signing/association paths; generated external parameters; preserve existing package and signature"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/check_login_start.py",
+      "exported_text_sha256": "41268789e991241d47b80eb85bfdca03497535c16f1d0e2acda2c613f054dabc",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/check_public_readiness.py",
+      "exported_text_sha256": "54ac105dbc259e83d673928e909f7a67a9bf72d2f2bac8ce7337ff394b25afdb",
+      "reason": "Read the existing association from the sole relocated gate; preserve anonymous check semantics"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/tests/test_gate_native.mjs",
+      "exported_text_sha256": "204f15b7594496b8c2b112e698fc0fdd80321a8fad010c54553d70702c3ea917",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/tests/test_gate_real_guard.mjs",
+      "exported_text_sha256": "5127a1b8e045da256527ba14e453ffdb63961cb139eba184e701ea842e532d25",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/tests/test_public_readiness.py",
+      "exported_text_sha256": "d337aca84db3fcfbc81cd1fe60b4982d5790c39682c85c70f7ad92c6f9a255e5",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/backend-auth-work/verify_artifacts.py",
+      "exported_text_sha256": "0035deb4867c9eaf4b1304c12dd4e45b1c586df9d7adec342b84cb14dcb33db1",
+      "reason": "Relocated toolchain/signing/association paths; generated external parameters; preserve existing package and signature"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/policy.py",
+      "exported_text_sha256": "c4b9db3eeafe88c22bd32c48bcde90ca3bea1f0484e1097e08e1a6c7e32137dc",
+      "reason": "Replace actual personal rule/timezone/notification literals with external parameters; retain business decisions and interfaces"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/test_api.py",
+      "exported_text_sha256": "89a1fe9a3fb2918445bb4bd7a7dc3c471122f027f883ac0601a0a398cfb93b73",
+      "reason": "unchanged"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/test_policy.py",
+      "exported_text_sha256": "900e4b92afb2b8ccb57b7914f87980c1be5e74077829a83e15354f4abaf5abab",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/test_sleep_dispatch.py",
+      "exported_text_sha256": "e02329c73b2a6d6a9fe037fc7eb04c138986073b7d4feb424406d058a6ec4fcc",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    },
+    {
+      "repository_path": "tools/cosmo-runtime/workspace/phone-control/test_task_store.py",
+      "exported_text_sha256": "6f52bdcf3222eba38da0a4a2c56c3fdb0e55777973ba5d75e62531525e490766",
+      "reason": "Synthetic parameters and notification topic; existing sole gate paths and current auth functions"
+    }
+  ],
+  "additional_existing_source": [
+    {
+      "path": "tools/hermes/source/tools/send_message_senders.py",
+      "reason": "Bring existing VPS one-shot task-card sender into same backend; matching existing adapter/card protocol"
+    }
+  ],
+  "new_entrypoints": [
+    "run.py",
+    "hermes_main.py",
+    "personal_parameters.py",
+    "verify_sources.py",
+    "tests/run_tests.py",
+    "tests/run_android.py",
+    "tests/verify_equivalence.py",
+    "workspace/phone-control/android/generate_parameters.py",
+    "workspace/phone-control/backend-auth-work/tests/loopback_backend.py"
+  ]
+}

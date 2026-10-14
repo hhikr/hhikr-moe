@@ -1,0 +1,1 @@
+<resources><string name="service_description">仅识别 Bilibili 的可见窗口并计时，超限时返回桌面；不读取文字内容、不录屏、不强停音频。限制可在 Cosmo 专注里关闭。</string></resources>
