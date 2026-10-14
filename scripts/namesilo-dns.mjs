@@ -12,7 +12,7 @@ const domain = 'hhikr.moe';
 async function main() {
   if (!['list', 'point', 'add'].includes(command) || !option('--key-file')) {
     console.log('用法：node scripts/namesilo-dns.mjs list --key-file <凭据文件>');
-    console.log('配置解析：node scripts/namesilo-dns.mjs point --key-file <凭据文件> --ip <服务器IPv4>');
+    console.log('配置解析：node scripts/namesilo-dns.mjs point --key-file <凭据文件> --ip <服务器IPv4> [--also <子域名,子域名>]');
     console.log('新增子域名：node scripts/namesilo-dns.mjs add --key-file <凭据文件> --host <子域名> --ip <服务器IPv4>');
     process.exitCode = 1;
     return;
@@ -64,7 +64,10 @@ async function main() {
     console.log(`${fullHost(host)} 已指向 ${ip}；DNS 缓存仍需时间更新。`);
     return;
   }
-  const targets = ['', 'www'];
+  // 主域名和 www 总是迁移；--also 列出要一起迁移的子域名（逗号分隔），用于服务器更换 IP。
+  const also = (option('--also') ?? '').split(',').filter(Boolean);
+  if (also.some(host => !/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(host))) throw new Error('--also 必须是逗号分隔的单段子域名，例如 cosmo。');
+  const targets = [...new Set(['', 'www', ...also])];
   for (const host of targets) {
     const related = selected(host);
     if (related.some(record => record.type === 'AAAA')) {
