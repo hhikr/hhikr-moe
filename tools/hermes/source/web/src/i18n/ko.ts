@@ -53,6 +53,7 @@ export const ko: Translations = {
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "내비게이션 닫기",
+    backToChat: "채팅으로 돌아가기",
     closeModelTools: "모델 및 도구 닫기",
     footer: {
       org: "Nous Research",

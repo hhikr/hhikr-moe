@@ -34,6 +34,9 @@ export const zhHantChrome = {
     unmuteHaptics: '開啟觸感回饋',
     openSettings: '開啟設定',
     openStarmap: '開啟記憶圖譜',
+    openDashboard: '開啟管理頁',
+    enterFocusMode: '專注模式（全螢幕）',
+    exitFocusMode: '退出專注模式',
     resetHudLayout: '重設 HUD 大小和位置'
   },
 

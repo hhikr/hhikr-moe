@@ -53,6 +53,7 @@ export const ar = defineLocale({
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "إغلاق التنقل",
+    backToChat: "العودة إلى المحادثة",
     closeModelTools: "إغلاق النموذج والأدوات",
     footer: {
       org: "Nous Research",

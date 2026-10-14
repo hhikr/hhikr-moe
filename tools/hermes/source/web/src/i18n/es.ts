@@ -53,6 +53,7 @@ export const es: Translations = {
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "Cerrar navegación",
+    backToChat: "Volver al chat",
     closeModelTools: "Cerrar modelo y herramientas",
     footer: {
       org: "Nous Research",

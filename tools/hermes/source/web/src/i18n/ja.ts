@@ -53,6 +53,7 @@ export const ja: Translations = {
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "ナビゲーションを閉じる",
+    backToChat: "チャットに戻る",
     closeModelTools: "モデルとツールを閉じる",
     footer: {
       org: "Nous Research",

@@ -1,20 +1,24 @@
 import { useStore } from '@nanostores/react'
 import {
   Children,
+  createContext,
   type CSSProperties,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
+  useContext,
   useEffect,
   useRef,
   useState
 } from 'react'
 
+import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from '@/app/layout-constants'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { RowButton } from '@/components/ui/row-button'
 import { Switch } from '@/components/ui/switch'
 import { Tip } from '@/components/ui/tooltip'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
 import {
@@ -57,6 +61,20 @@ export const MASTER_DETAIL_WIDE_COLS = 'sm:grid-cols-[minmax(0,var(--md-split,0.
 const SPLIT_MIN_LEFT_PX = 180
 const SPLIT_MIN_RIGHT_PX = 320
 
+// Below the sidebar breakpoint the two columns would stack and split a phone's
+// height between them, leaving the detail a strip at the bottom. There they
+// become two levels instead: the list, and — once a row marked
+// `data-md-select` is chosen — the detail on its own, with a way back.
+export const MASTER_DETAIL_SELECT_ATTR = 'data-md-select'
+
+interface StackedView {
+  back: () => void
+  showDetail: boolean
+  stacked: boolean
+}
+
+const StackedViewContext = createContext<StackedView>({ back: () => {}, showDetail: false, stacked: false })
+
 // `split="wide"` gives list-heavy pages a rail that shares the page with a
 // sparse detail (skills/tools/mcp); the default 14rem rail suits pages whose
 // detail carries the weight (messaging). A `resizeId` turns the column seam
@@ -79,6 +97,9 @@ export function MasterDetail({
   // Unconditional hook (rules of hooks) — the '' atom is inert when no id.
   const override = useStore($paneWidthOverride(resizeId ?? ''))
   const [dragging, setDragging] = useState(false)
+  const stacked = useMediaQuery(SIDEBAR_COLLAPSE_MEDIA_QUERY)
+  const [showDetail, setShowDetail] = useState(false)
+  const view: StackedView = { back: () => setShowDetail(false), showDetail, stacked }
 
   const startSplitDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     const grid = gridRef.current
@@ -114,46 +135,59 @@ export function MasterDetail({
   const [list, ...rest] = Children.toArray(children)
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div
-        className={cn(
-          'grid min-h-0 flex-1 grid-cols-1',
-          split === 'wide' ? MASTER_DETAIL_WIDE_COLS : 'sm:grid-cols-[14rem_minmax(0,1fr)]'
-        )}
-        ref={gridRef}
-        style={override !== undefined ? ({ '--md-split': `${override}px` } as CSSProperties) : undefined}
-      >
-        {resizeId ? (
-          <>
-            {list}
-            <div className="relative grid min-h-0 min-w-0">
-              <div
-                className="group/vsash absolute inset-y-0 left-0 z-10 hidden w-1 -translate-x-1/2 cursor-col-resize sm:block"
-                onDoubleClick={() => setPaneWidthOverride(resizeId, undefined)}
-                onPointerDown={startSplitDrag}
-              >
+    <StackedViewContext.Provider value={view}>
+      <div className="flex h-full min-h-0 flex-col">
+        <div
+          className={cn(
+            'grid min-h-0 flex-1 grid-cols-1',
+            split === 'wide' ? MASTER_DETAIL_WIDE_COLS : 'sm:grid-cols-[14rem_minmax(0,1fr)]'
+          )}
+          onClickCapture={
+            stacked
+              ? event => {
+                  if (event.target instanceof Element && event.target.closest(`[${MASTER_DETAIL_SELECT_ATTR}]`)) {
+                    setShowDetail(true)
+                  }
+                }
+              : undefined
+          }
+          ref={gridRef}
+          style={override !== undefined ? ({ '--md-split': `${override}px` } as CSSProperties) : undefined}
+        >
+          {resizeId ? (
+            <>
+              {list}
+              <div className={cn('relative grid min-h-0 min-w-0', stacked && !showDetail && 'hidden')}>
                 <div
-                  className={cn(
-                    'absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors',
-                    dragging ? 'bg-(--ui-stroke-secondary)' : 'group-hover/vsash:bg-(--ui-stroke-secondary)'
-                  )}
-                />
+                  className="group/vsash absolute inset-y-0 left-0 z-10 hidden w-1 -translate-x-1/2 cursor-col-resize sm:block"
+                  onDoubleClick={() => setPaneWidthOverride(resizeId, undefined)}
+                  onPointerDown={startSplitDrag}
+                >
+                  <div
+                    className={cn(
+                      'absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors',
+                      dragging ? 'bg-(--ui-stroke-secondary)' : 'group-hover/vsash:bg-(--ui-stroke-secondary)'
+                    )}
+                  />
+                </div>
+                {rest}
               </div>
-              {rest}
-            </div>
-          </>
-        ) : (
-          children
-        )}
+            </>
+          ) : (
+            children
+          )}
+        </div>
+        {pane}
       </div>
-      {pane}
-    </div>
+    </StackedViewContext.Provider>
   )
 }
 
 export function ListColumn({ children, header }: { children: ReactNode; header?: ReactNode }) {
+  const { showDetail, stacked } = useContext(StackedViewContext)
+
   return (
-    <aside className="flex min-h-0 flex-col p-2">
+    <aside className={cn('flex min-h-0 flex-col p-2', stacked && showDetail && 'hidden')}>
       {header}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">{children}</div>
     </aside>
@@ -172,10 +206,23 @@ export function DetailColumn({
   children: ReactNode
   footer?: ReactNode
 }) {
+  const { t } = useI18n()
+  const { back, showDetail, stacked } = useContext(StackedViewContext)
+
   return (
-    <main className="flex min-h-0 flex-col overflow-hidden">
+    <main className={cn('flex min-h-0 flex-col overflow-hidden', stacked && !showDetail && 'hidden')}>
+      {stacked && (
+        <button
+          className="flex h-10 shrink-0 items-center gap-1.5 border-b border-(--ui-stroke-tertiary) px-3 text-left text-sm text-(--ui-text-secondary)"
+          onClick={back}
+          type="button"
+        >
+          <Codicon name="chevron-left" size="1rem" />
+          {t.common.back}
+        </button>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-        <div className="mx-auto max-w-2xl space-y-5 px-5 py-4">{children}</div>
+        <div className="mx-auto max-w-2xl space-y-5 px-5 py-4 max-sm:px-4">{children}</div>
       </div>
       {footer && (
         <div className="mx-auto w-full max-w-2xl shrink-0 px-5 pb-3 pt-1.5 text-right text-[0.65rem] text-muted-foreground/50">
@@ -469,6 +516,7 @@ export function CapRow({
     >
       <RowButton
         className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md pl-2 pr-1.5 text-left"
+        data-md-select=""
         onClick={onSelect}
       >
         <span className="min-w-0 flex-1">

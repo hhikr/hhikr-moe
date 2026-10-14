@@ -553,6 +553,9 @@ export interface Translations extends NoticeTranslations {
     openSettings: string
     openStarmap: string
     enterHud: string
+    openDashboard: string
+    enterFocusMode: string
+    exitFocusMode: string
     exitHud: string
     resetHudLayout: string
     layoutEditor: string

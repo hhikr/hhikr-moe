@@ -53,6 +53,7 @@ export const hu: Translations = {
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "Navigáció bezárása",
+    backToChat: "Vissza a csevegéshez",
     closeModelTools: "Modell és eszközök bezárása",
     footer: {
       org: "Nous Research",

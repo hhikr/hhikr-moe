@@ -53,6 +53,7 @@ export const af: Translations = {
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "Maak navigasie toe",
+    backToChat: "Terug na klets",
     closeModelTools: "Maak model en gereedskap toe",
     footer: {
       org: "Nous Research",
