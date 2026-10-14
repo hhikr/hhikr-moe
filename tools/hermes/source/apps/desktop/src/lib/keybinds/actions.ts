@@ -8,6 +8,7 @@
 import { registry } from '@/contrib/registry'
 import type { Contribution } from '@/contrib/types'
 import { isMacPlatform } from '@/lib/platform'
+import { isWebShell } from '@/lib/web-shell'
 
 export type KeybindCategory = 'composer' | 'profiles' | 'session' | 'navigation' | 'view'
 
@@ -78,7 +79,7 @@ const SESSION_SLOT_ACTIONS: KeybindActionMeta[] = Array.from({ length: SESSION_S
   defaults: [`ctrl+${i + 1}`]
 }))
 
-export const KEYBIND_ACTIONS: readonly KeybindActionMeta[] = [
+const BUILTIN_KEYBIND_ACTIONS: readonly KeybindActionMeta[] = [
   // ── Composer ─────────────────────────────────────────────────────────────
   // Soft `/` / Enter focus (gated); other printables type-to-focus unbound.
   { id: 'composer.focus', category: 'composer', defaults: ['/', 'enter'] },
@@ -224,6 +225,28 @@ export const KEYBIND_ACTIONS: readonly KeybindActionMeta[] = [
   { id: 'appearance.toggleMode', category: 'view', defaults: ['shift+x'] },
   { id: 'keybinds.openPanel', category: 'view', defaults: ['mod+/'] }
 ]
+
+// Chords a browser keeps for itself: a page never sees them, so in a tab ⌘W /
+// Ctrl+W closes the whole tab instead of a pane's. The web build ships these
+// actions unbound (they stay rebindable); Electron keeps them.
+const BROWSER_RESERVED_COMBOS = new Set([
+  'mod+n',
+  'mod+t',
+  'mod+w',
+  'mod+shift+n',
+  'mod+shift+t',
+  'ctrl+tab',
+  'ctrl+shift+tab',
+  'ctrl+pageup',
+  'ctrl+pagedown'
+])
+
+export const KEYBIND_ACTIONS: readonly KeybindActionMeta[] = isWebShell()
+  ? BUILTIN_KEYBIND_ACTIONS.map(action => ({
+      ...action,
+      defaults: action.defaults.filter(combo => !BROWSER_RESERVED_COMBOS.has(combo))
+    }))
+  : BUILTIN_KEYBIND_ACTIONS
 
 export const KEYBIND_ACTION_IDS: readonly string[] = KEYBIND_ACTIONS.map(action => action.id)
 

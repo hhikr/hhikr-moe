@@ -379,6 +379,41 @@ describe('AppContextMenu', () => {
     expect(await screen.findByText('Settings')).toBeTruthy()
   })
 
+  // Electron needs the gesture unprevented (main's context-menu event); a
+  // browser tab would show its own menu on top of ours unless it is claimed.
+  it('leaves the gesture unprevented in Electron', async () => {
+    installBridge()
+    mountMenu()
+    const host = attach('<div><p>plain chrome</p></div>')
+
+    expect(fireEvent.contextMenu(host.querySelector('p')!)).toBe(true)
+    expect(await screen.findByText('Settings')).toBeTruthy()
+  })
+
+  it('claims the gesture in a browser tab', async () => {
+    installBridge({ platform: 'web' })
+    mountMenu()
+    const host = attach('<div><p>plain chrome</p></div>')
+
+    expect(fireEvent.contextMenu(host.querySelector('p')!)).toBe(false)
+    expect(await screen.findByText('Settings')).toBeTruthy()
+  })
+
+  it("leaves a phone's long-press in a field to the system in a browser tab", () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(any-hover: none)', media: query }))
+
+    try {
+      installBridge({ platform: 'web' })
+      mountMenu()
+      const host = attach('<textarea>draft</textarea>')
+
+      expect(fireEvent.contextMenu(host.querySelector('textarea')!)).toBe(true)
+      expect($contextMenu.get()).toBeNull()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('skips plain right-clicks inside a skip-marked surface, but not links in it', async () => {
     installBridge()
     mountMenu()

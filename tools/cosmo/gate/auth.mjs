@@ -39,6 +39,7 @@ export function createAuth(config) {
 
   /** id → { grant, user, expires, checkedAt, sockets } */
   const sessions = new Map();
+  const attempts = new Map();
 
   async function site(action, body) {
     const response = await fetch(`${config.siteInternal}/api/internal/cosmo`, {
@@ -84,8 +85,12 @@ export function createAuth(config) {
   }
 
   /** Send a signed-out browser to the site, remembering the state it must bring back. */
-  function begin(res) {
+  function begin(res, returnTo = '/') {
+    for (const [key, entry] of attempts) if (entry.expires <= Date.now()) attempts.delete(key);
+    if (attempts.size >= 256) return plain(res, 503, '请稍后重新开始登录。');
+    if (returnTo !== '/' && !/^\/auth\/native\/authorize\?request=[A-Za-z0-9_-]{43}$/.test(returnTo)) return plain(res, 400, '无效返回地址。');
     const state = token();
+    attempts.set(state, { returnTo, expires: Date.now() + STATE_LIFETIME * 1000 });
     res.writeHead(302, {
       Location: `${config.sitePublic}/api/auth/cosmo?state=${state}`,
       'Set-Cookie': cookie(STATE_COOKIE, state, STATE_LIFETIME),
@@ -96,7 +101,7 @@ export function createAuth(config) {
   }
 
   const plain = (res, status, text, headers = {}) => {
-    res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
+    res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', ...headers });
     res.end(text);
   };
 
@@ -107,8 +112,12 @@ export function createAuth(config) {
       const state = url.searchParams.get('state') ?? '';
       const expected = jar.get(STATE_COOKIE) ?? '';
       const code = url.searchParams.get('code') ?? '';
-      const stateMatches =
-        state.length > 0 && state.length === expected.length && crypto.timingSafeEqual(Buffer.from(state), Buffer.from(expected));
+      const attempt = attempts.get(state);
+      const stateMatches = state.length === 43 && expected.length === 43 && !/[^A-Za-z0-9_-]/.test(state + expected) &&
+        crypto.timingSafeEqual(Buffer.from(state), Buffer.from(expected)) && attempt && attempt.expires > Date.now() &&
+        url.searchParams.getAll('state').length === 1 && url.searchParams.getAll('code').length === 1 &&
+        code.length > 0 && code.length <= 4096 && !/[\u0000-\u001f\u007f]/.test(code);
+      if (stateMatches) attempts.delete(state);
       if (!stateMatches || !code) return plain(res, 400, '登录请求已失效，请重新打开 Cosmo。', { 'Set-Cookie': cookie(STATE_COOKIE, '', 0) }), true;
 
       const redeemed = await site('redeem', { code }).catch(() => undefined);
@@ -125,7 +134,7 @@ export function createAuth(config) {
       });
       // The code is spent and leaves the address bar with this redirect.
       res.writeHead(302, {
-        Location: '/',
+        Location: attempt.returnTo,
         'Set-Cookie': [cookie(SESSION_COOKIE, id, SESSION_LIFETIME / 1000), cookie(STATE_COOKIE, '', 0)],
         'Cache-Control': 'no-store',
         'Referrer-Policy': 'no-referrer',
@@ -151,10 +160,23 @@ export function createAuth(config) {
     return false;
   }
 
+  async function nativeSessionById(id) {
+    const found = id && sessions.get(id);
+    if (!found || found.expires <= Date.now()) { if (id) end(id);return undefined; }
+    // Native requests never use the browser's stale verdict on website outage.
+    let answer;
+    try { answer = await site('check', { grant: found.grant }); } catch { throw new Error('auth-unavailable'); }
+    if (!answer || typeof answer.valid !== 'boolean') throw new Error('auth-unavailable');
+    if (!answer.valid) { end(id);return undefined; }
+    if (!sessions.has(id)) return undefined;
+    found.checkedAt = Date.now();return found;
+  }
+  const nativeSession = req => nativeSessionById(cookies(req).get(SESSION_COOKIE));
+
   // Forget sessions that ran out without being used again.
   setInterval(() => {
     for (const [id, found] of sessions) if (found.expires <= Date.now()) end(id);
   }, 600_000).unref();
 
-  return { mode: 'site', session, handle, begin };
+  return { mode: 'site', session, handle, begin, nativeSession, nativeSessionById };
 }

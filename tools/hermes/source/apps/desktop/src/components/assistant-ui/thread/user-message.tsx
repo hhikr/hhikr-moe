@@ -19,6 +19,7 @@ import { useMessageReactions } from '@/components/assistant-ui/thread/use-messag
 import { UserMessageText } from '@/components/assistant-ui/thread/user-message-text'
 import { Codicon } from '@/components/ui/codicon'
 import { Tip } from '@/components/ui/tooltip'
+import { useLongPress } from '@/hooks/use-long-press'
 import { useResizeObserver } from '@/hooks/use-resize-observer'
 import { useI18n } from '@/i18n'
 import { triggerHaptic } from '@/lib/haptics'
@@ -369,6 +370,17 @@ export const UserMessage: FC<{
   // edited, restored, or stopped from here. The bubble stays a button that
   // toggles the 2-line clamp so long prompts are still fully readable.
   const readOnly = isWatchWindow()
+
+  // The touch-and-hold the right-click below stands in for, for real.
+  const longPress = useLongPress(
+    readOnly || !reactionsEnabled
+      ? undefined
+      : () => {
+          triggerHaptic('selection')
+          setPickerOpen(true)
+        }
+  )
+
   const [expanded, setExpanded] = useState(false)
   const clampActive = !(readOnly && expanded)
 
@@ -503,7 +515,11 @@ export const UserMessage: FC<{
               selected={shownReactions.find(reaction => reaction.author === 'user')?.emoji}
             >
               <div
-                className="relative w-full"
+                // A hold must not also start the system's text selection or
+                // link preview; tapping the bubble edits it, which is where
+                // its text can be selected on a phone.
+                className="relative w-full touch:select-none touch:[-webkit-touch-callout:none]"
+                {...longPress}
                 // The app context menu skips PLAIN right-clicks here (the
                 // attr below) so this handler keeps the picker gesture; a
                 // link/image/selection inside the bubble still gets the app

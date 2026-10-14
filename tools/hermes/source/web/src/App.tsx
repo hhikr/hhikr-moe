@@ -36,6 +36,7 @@ import {
   Heart,
   KeyRound,
   Menu,
+  MessageCircle,
   MessageSquare,
   Package,
   PanelLeftClose,
@@ -108,7 +109,7 @@ import { useTheme } from "@/themes";
 import { isDashboardEmbeddedChatEnabled } from "@/lib/dashboard-flags";
 import { latchChatActivation } from "@/lib/chat-activation";
 import { sharedGatewayProfiles, sharedGatewayRestartDescription } from "@/lib/shared-gateway";
-import { api } from "@/lib/api";
+import { api, HERMES_BASE_PATH } from "@/lib/api";
 import type { StatusResponse, UpdateCheckResponse } from "@/lib/api";
 
 function RouteFallback({ label = "Loading…" }: { label?: string }) {
@@ -372,6 +373,12 @@ function buildRoutes(
 
 const SIDEBAR_COLLAPSED_KEY = "hermes-sidebar-collapsed";
 
+// Mounted under a prefix (Cosmo serves this dashboard at /admin/ beside its
+// chat at /), the page one level up is the chat: offer the way back to it.
+const CHAT_HREF = HERMES_BASE_PATH
+  ? HERMES_BASE_PATH.replace(/\/[^/]*$/, "") || "/"
+  : "";
+
 export default function App() {
   const { t } = useI18n();
   const { pathname } = useLocation();
@@ -529,8 +536,11 @@ export default function App() {
 
       <header
         className={cn(
-          "lg:hidden fixed top-0 left-0 right-0 z-40 min-h-14",
-          "flex items-center gap-2 px-4 py-2",
+          // viewport-fit=cover puts the page under the status bar and the
+          // notch; the header's own content stays inside the safe area.
+          "lg:hidden fixed top-0 left-0 right-0 z-40 min-h-[calc(3.5rem+env(safe-area-inset-top,0px))]",
+          "flex items-center gap-2 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]",
+          "pl-[calc(1rem+env(safe-area-inset-left,0px))] pr-[calc(1rem+env(safe-area-inset-right,0px))]",
           "border-b border-current/20",
           "bg-background-base",
         )}
@@ -556,6 +566,17 @@ export default function App() {
         <Typography className="font-bold text-[0.95rem] leading-[0.95] tracking-[0.05em] text-midground">
           {t.app.brand}
         </Typography>
+
+        {CHAT_HREF && (
+          <a
+            aria-label={t.app.backToChat}
+            className="ml-auto inline-flex items-center gap-1.5 rounded px-2 py-1.5 text-sm text-text-secondary hover:text-midground"
+            href={CHAT_HREF}
+          >
+            <MessageCircle className="h-4 w-4" />
+            {t.app.backToChat}
+          </a>
+        )}
       </header>
 
       {mobileOpen && (
@@ -574,7 +595,10 @@ export default function App() {
           fixed lg:hidden header is h-14/z-40; previously each banner carried
           its own mt-14 AND the content kept pt-14, so two visible banners
           stacked three offsets (NS-656 review P3). One spacer, applied once. */}
-      <div aria-hidden className="h-14 shrink-0 lg:hidden" />
+      <div
+        aria-hidden
+        className="h-[calc(3.5rem+env(safe-area-inset-top,0px))] shrink-0 lg:hidden"
+      />
       <PluginSlot name="header-banner" />
       <ProfileScopeBanner />
       <MemoryPressureBanner status={sidebarStatus} />
@@ -588,6 +612,7 @@ export default function App() {
             aria-label={t.app.navigation}
             className={cn(
               "fixed top-0 left-0 z-50 flex h-dvh max-h-dvh w-64 min-h-0 flex-col font-sans",
+              "pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] lg:pt-0 lg:pl-0",
               "border-r border-current/20",
               "bg-background-base",
               "transition-[transform] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
@@ -634,6 +659,17 @@ export default function App() {
               >
                 <X />
               </Button>
+
+              {CHAT_HREF && (
+                <a
+                  aria-label={t.app.backToChat}
+                  className="hidden lg:inline-flex h-9 w-9 shrink-0 items-center justify-center text-text-secondary hover:text-midground"
+                  href={CHAT_HREF}
+                  title={t.app.backToChat}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                </a>
+              )}
 
               <Button
                 ghost

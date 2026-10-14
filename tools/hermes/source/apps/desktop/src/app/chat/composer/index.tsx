@@ -26,6 +26,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { isMacPlatform } from '@/lib/platform'
 import { useStoreSelector, useStoresSelector } from '@/lib/use-session-slice'
 import { cn } from '@/lib/utils'
+import { isTouchOnly } from '@/lib/web-shell'
 import { sessionCompacting } from '@/store/compaction'
 import { browseBackward, browseForward, deriveUserHistory, isBrowsingHistory } from '@/store/composer-input-history'
 import { POPOUT_WIDTH_REM } from '@/store/composer-popout'
@@ -967,7 +968,9 @@ export function ChatBar({
       return
     }
 
-    if (event.key === 'Enter' && !event.shiftKey) {
+    // An on-screen keyboard has no Shift: there Enter starts a new line, and
+    // the send and queue buttons do what Enter and Cmd/Ctrl+Enter do here.
+    if (event.key === 'Enter' && !event.shiftKey && !isTouchOnly()) {
       event.preventDefault()
 
       // Decide from the DOM, not React state. `hasComposerPayload` is derived
@@ -1158,6 +1161,7 @@ export function ChatBar({
         data-placeholder={placeholder}
         data-slot={RICH_INPUT_SLOT}
         dir={textDirection}
+        enterKeyHint={isTouchOnly() ? 'enter' : 'send'}
         onBeforeInput={handleEditorBeforeInput}
         onBlur={() => {
           // A composition never survives focus loss (Chromium commits the

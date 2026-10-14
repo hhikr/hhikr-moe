@@ -27,7 +27,7 @@ import {
   toggleRightSide
 } from '@/store/layout'
 import { $unreadSessionCount } from '@/store/session-dot-state'
-import { $titlebarAppActionsSide, TITLEBAR_FIXED_TOOLS } from '@/store/titlebar-app-actions'
+import { $titlebarAppActionsSide, TITLEBAR_FIXED_TOOLS, titlebarWebToolIds } from '@/store/titlebar-app-actions'
 
 import { appViewForPath, hidesFixedTitlebarClusters, isOverlayView } from '../routes'
 
@@ -111,6 +111,21 @@ function withCountBadge(icon: ReactNode, count: number | undefined): ReactNode {
   )
 }
 
+/** Whether this tab is in full screen, as the browser reports it. */
+function useFullscreen(): boolean {
+  const [fullscreen, setFullscreen] = useState(() => typeof document !== 'undefined' && !!document.fullscreenElement)
+
+  useEffect(() => {
+    const sync = () => setFullscreen(Boolean(document.fullscreenElement))
+
+    document.addEventListener('fullscreenchange', sync)
+
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+
+  return fullscreen
+}
+
 /** Live ⌘/Ctrl tracking — mod-click affordances telegraph themselves (the
  *  layout button morphs into its reset form while the modifier is down). */
 function useModifierHeld(): boolean {
@@ -139,6 +154,7 @@ export function TitlebarControls({ leftTools = [], tools = [], onOpenSettings }:
   const navigate = useNavigate()
   const location = useLocation()
   const modHeld = useModifierHeld()
+  const fullscreen = useFullscreen()
   const fileBrowserOpen = useStore($fileBrowserOpen)
   const leftSideOpen = useStore($leftSideOpen)
   const panesFlipped = useStore($panesFlipped)
@@ -259,6 +275,37 @@ export function TitlebarControls({ leftTools = [], tools = [], onOpenSettings }:
       }
     }
   ]
+
+  // A browser tab (Cosmo) also gets the way over to the dashboard served
+  // beside it, and a focus mode: full screen, which takes the browser's own
+  // address bar and the system status bar away until it is left again.
+  const webTools: Record<string, TitlebarTool> = {
+    dashboard: {
+      icon: <TitlebarIcon name="dashboard" />,
+      id: 'dashboard',
+      label: t.titlebar.openDashboard,
+      onSelect: () => {
+        triggerHaptic('open')
+        window.location.assign('/admin/')
+      }
+    },
+    focus: {
+      icon: <TitlebarIcon name={fullscreen ? 'screen-normal' : 'screen-full'} />,
+      id: 'focus',
+      label: fullscreen ? t.titlebar.exitFocusMode : t.titlebar.enterFocusMode,
+      onSelect: () => {
+        triggerHaptic('tap')
+
+        if (document.fullscreenElement) {
+          void document.exitFullscreen().catch(() => {})
+        } else {
+          void document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {})
+        }
+      }
+    }
+  }
+
+  systemTools.push(...titlebarWebToolIds().map(id => webTools[id]))
 
   const view = appViewForPath(location.pathname)
 

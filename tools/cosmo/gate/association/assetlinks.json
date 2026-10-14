@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "moe.hhikr.cosmo.focus",
+      "sha256_cert_fingerprints": [
+        "42:E7:2C:26:B0:FE:2A:32:45:03:9C:E0:F9:0C:2E:B9:F6:01:B1:5C:B2:E8:16:34:D5:C9:15:63:11:60:03:AB"
+      ]
+    }
+  }
+]

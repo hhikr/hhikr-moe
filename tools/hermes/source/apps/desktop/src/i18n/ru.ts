@@ -291,6 +291,9 @@ export const ruOverrides = {
     openSettings: 'Открыть настройки',
     openStarmap: 'Открыть граф памяти',
     enterHud: 'Режим HUD',
+    openDashboard: 'Открыть панель управления',
+    enterFocusMode: 'Режим фокуса (во весь экран)',
+    exitFocusMode: 'Выйти из режима фокуса',
     exitHud: 'Выйти из режима HUD',
     layoutEditor: 'Редактор раскладки',
     layoutEditorTitle: mod => `Редактор раскладки — ${mod}-клик сбрасывает раскладку`

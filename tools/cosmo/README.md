@@ -1,6 +1,13 @@
 # Cosmo 网页版
 
-Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打开。界面不是自己写的：它直接使用 [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop) 的渲染层源码（`hermes-agent` 仓库的 `apps/desktop/src`，MIT 许可），一行不改，换掉的只有它和 Electron 之间的那层桥接。
+Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打开。界面不是自己写的：它使用 [Hermes Desktop](https://hermes-agent.nousresearch.com/docs/user-guide/desktop) 的渲染层源码（`hermes-agent` 仓库的 `apps/desktop/src`，MIT 许可），换掉的是它和 Electron 之间的那层桥接。
+
+渲染层源码保存在本仓库的 `tools/hermes/source/apps/desktop/`（见 [Hermes 本地源码](../hermes/README.md)），可以直接修改。浏览器和手机需要的改动写在源码里，按两个条件分支，桌面版的行为不变：
+
+- `isWebShell()`（`src/lib/web-shell.ts`）：页面运行在浏览器里，判断依据是桥接提供的 `platform: 'web'`。
+- `isTouchOnly()` 和 Tailwind 的 `touch:` 变体：所有输入设备都不能悬停（`(any-hover: none)`），也就是手机和平板。带触屏的笔记本不算。
+
+`patches.mjs` 里是改源码之前就有的几处替换，保留不动。新的改动直接写进源码，不再往里加。
 
 ## 组成
 
@@ -8,10 +15,11 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 | --- | --- | --- |
 | 桥接 | [shim/bridge.js](shim/bridge.js) | 在浏览器里提供 `window.hermesDesktop`，代替 Electron 的 preload |
 | 网关 | [gate/server.mjs](gate/server.mjs)、[gate/auth.mjs](gate/auth.mjs) | 检查登录，发送页面文件，把 `/api/*`（含 WebSocket）转给 Hermes |
+| 安卓原生登录 | [gate/native.mjs](gate/native.mjs)、[gate/association/](gate/association/) | 安卓应用的 PKCE 登录和窄范围 Bearer，见“安卓原生登录”一节 |
 | 覆盖样式 | [shim/cosmo.css](shim/cosmo.css) | 排在渲染层的样式之后，修正它在浏览器和手机上的显示 |
-| 触屏 | [shim/touch.js](shim/touch.js) | 手机上点侧边栏外面或选中一项后，把侧边栏收起来 |
+| 触屏 | [shim/touch.js](shim/touch.js)、[shim/cosmo.css](shim/cosmo.css) | 手机上点侧边栏外面或选中一项后，把侧边栏收起来；iOS 键盘弹出时让页面缩到键盘上方；上滑收起浏览器地址栏；标题栏的“专注模式”进入全屏（iPhone 不支持） |
 | 补丁 | [patches.mjs](patches.mjs) | 构建时对渲染层个别源文件做的替换，见“和桌面版的差别” |
-| 构建 | [build.mjs](build.mjs) | 用上游自己的 Vite 配置加上补丁构建渲染层，再把 `shim/` 的三个文件放进页面 |
+| 构建 | [build.mjs](build.mjs) | 用上游自己的 Vite 配置加上补丁构建渲染层，再把 `shim/` 的三个文件和添加到主屏幕用的 manifest 放进页面 |
 | 主站一侧 | `src/server/cosmo.ts`、`src/pages/api/auth/cosmo.ts`、`src/pages/api/internal/cosmo.ts` | 把 endministrator 的登录状态交给 Cosmo |
 
 渲染层只通过 `window.hermesDesktop` 接触本机，其余全部走 Hermes 后端的接口。桥接把连接描述成“远程后端”，渲染层于是用后端自己的接口读写文件、查看 Git、选择工作目录，这些功能不需要额外实现。
@@ -40,6 +48,8 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 | 多窗口 | 变成浏览器标签页 |
 | 系统通知、剪贴板、麦克风 | 使用浏览器的对应功能，需要授权 |
 | 页面内查找 | 用浏览器自己的 Ctrl/Cmd+F |
+| 右键菜单 | 相同，不再同时弹出浏览器自己的菜单。剪切、复制、粘贴、复制图片走浏览器的剪贴板，第一次使用时浏览器会请求授权；没有拼写检查建议。手机上在文字或输入框里长按，仍然是系统自己的选字和复制粘贴 |
+| 快捷键 | 浏览器不让页面使用的几组：⌘/Ctrl+N、⌘/Ctrl+T、⌘/Ctrl+W、⌘/Ctrl+Shift+N、⌘/Ctrl+Shift+T、Ctrl+Tab、Ctrl+PageUp/PageDown。网页版默认不绑定这些，可以在快捷键面板里另设。还有回合在进行时关闭或刷新标签页，浏览器会先提示 |
 | 终端面板 | 没有。桌面版的终端是本机的 shell，网页没有对应物 |
 | 内置浏览器预览、技能中心的嵌入页 | 多数网站禁止被嵌入，显示为空白；文件和产物预览正常 |
 | 预览随文件变化自动刷新 | 没有，需要手动刷新 |
@@ -55,11 +65,11 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 
 终端状态行里还有两项渲染层没有，由补丁加上：平均延迟（时钟图标，后端随用量一起发来的 `avg_latency_s`）和空闲计时（`✓`，上一次回复结束到现在的时间，由页面自己计时，所以刷新或换会话后要等下一轮结束才出现）。
 
-手机上状态栏变成两行，离开屏幕底边：上面一行是会话读数，依次为上下文用量、缓存命中率、平均延迟、空闲计时，放不下的（每秒 token 数、会话计时、审批模式）向左滑动可见；下面一行是后端状态和工作目录。上下文进度条在手机上从 10 格缩为 5 格。
+手机上状态栏是一行，离开屏幕底边，左右滑动可见全部内容：先是会话读数，依次为上下文用量、缓存命中率、平均延迟、空闲计时、每秒 token 数、会话计时、审批模式，后面是后端状态和工作目录。上下文进度条在手机上从 10 格缩为 5 格。
 
 ### 补丁
 
-渲染层的源码目录不改，但有几处行为和桌面版不同，由 [patches.mjs](patches.mjs) 在构建读取源文件时替换。除了上面状态栏的两项和手机上的进度条长度，还有：
+有几处行为和桌面版不同，由 [patches.mjs](patches.mjs) 在构建读取源文件时替换。这些是渲染层源码进本仓库之前的做法；之后的改动直接写在源码里（见开头）。除了上面状态栏的两项和手机上的进度条长度，还有：
 
 | 位置 | 桌面版 | 网页版 |
 | --- | --- | --- |
@@ -72,25 +82,48 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 
 ## 手机
 
-渲染层是为桌面窗口写的，窄到 768px 以下时它自己会把侧边栏变成滑出层，其余不变。[shim/cosmo.css](shim/cosmo.css) 和 [shim/touch.js](shim/touch.js) 补上手机需要的部分，不改渲染层的源码：
+渲染层的窗口宽度小于 640px（`SIDEBAR_DOCK_MIN_WIDTH_PX`，`src/app/layout-constants.ts`）时，会把侧边栏变成滑出层。其余手机上的处理分成两部分。
 
-- 页面高度跟随浏览器地址栏的显隐（`100dvh`），键盘弹出时页面缩小而不是被盖住。
-- 标签页的关闭按钮有自己的位置，不压在标题上；当前标签的关闭按钮常显，因为触屏没有悬停。
+写在渲染层源码里的：
+
+- 助手消息下面的操作栏（复制、重试、分支、时间）和会话行的 ⋯ 按钮常显。桌面上它们悬停才出现，触屏没有悬停。
+- 悬停样式只在能悬停的设备上生效，点过的按钮不会一直保持悬停时的样子。
+- 长按自己发的消息打开表情反应。长按会话行、文件树这类有菜单的行时打开它的菜单，不会同时开始选字或弹出链接预览，松手也不会再打开这一行。
+- 在输入框里按回车换行，用发送按钮发送；回合进行中用排队按钮排队。键盘上的回车键显示为“换行”。
+- 图片放大后占满屏幕宽度，不再留桌面上的 6rem 边距。
+- 技能、工具集、消息平台这类左边列表、右边详情的页面，变成两级：先是列表，点一行进入只有详情的一页，顶部有“返回”。桌面上两栏并排，窄屏上它们原本上下叠在一起，详情只剩底部一小块。
+- 标题栏多两个按钮（只在网页版出现）：“打开管理页”跳到 `/admin/`；“专注模式”让页面全屏，浏览器的地址栏和系统状态栏都收起来，再按一次或用返回手势退出。iPhone 的 Safari 不允许网页全屏，那里没有这个按钮。
+- 屏幕左右边缘没有悬停展开侧栏的热区，不会和系统的边缘返回手势冲突。
+- 输入框只在被点到时才获得焦点（`patches.mjs` 里的补丁）。
+
+写在 [shim/cosmo.css](shim/cosmo.css) 和 [shim/touch.js](shim/touch.js) 里的：
+
+- 页面高度跟随浏览器地址栏的显隐（`100dvh`）。iOS 的 Safari 不会因为键盘缩小页面，`touch.js` 用 `visualViewport` 量出键盘上方剩下的高度，写进 `--app-height`。Android 的 Chrome 靠 `interactive-widget=resizes-content` 缩小页面。
+- 页面铺满整个屏幕（`viewport-fit=cover`），内容留在安全区里：顶部躲开状态栏和刘海，横屏时左右躲开刘海，底部躲开主屏幕指示条。
+- 浏览器的地址栏和状态栏用主题的背景色（`theme-color` 随主题切换）。
+- 上滑时浏览器的地址栏会收起来，下滑时再出现。渲染层的外壳本身不滚动，所以触屏上把它固定（`position: fixed`），让文档比屏幕高出一点：在标题栏、状态栏上滑，或者对话已经滚到底时继续上滑，滚动的是文档，浏览器就收起地址栏。
+- 添加到主屏幕后，Cosmo 不带浏览器外框，作为独立应用打开。
+- 点按时没有灰色高亮，按钮上双击不会放大页面。
+- 标签页的关闭按钮有自己的位置，不压在标题上；当前标签的关闭按钮常显。
+- 状态栏变成一行，离开屏幕底边，左右滑动可以看到全部读数：先是上下文用量、缓存命中率、平均延迟、空闲计时等会话读数，后面是后端状态和工作目录。
 - 640px 以下：隐藏布局编辑器、HUD、左右互换这三个只对桌面窗口有意义的按钮，隐藏折叠成 28px 窄条的区域（终端），标题栏按钮的可点范围放大，侧边栏的行加高，输入框字号不低于 16px（否则 iOS 会在聚焦时放大页面）。
-- 侧边栏打开时其余部分变暗；点暗处或选中一个会话、一个页面，侧边栏收起。
-- 输入框只在被点到时才获得焦点。渲染层以键盘为先，点到空白处、关闭菜单、打开会话之后都会把焦点交还输入框，在手机上这等于每点一下就弹出输入法。这一条由补丁实现，按 `(hover: none)` 判断，带触屏的笔记本不受影响。
+- 侧边栏打开时其余部分变暗。点暗处会收起侧边栏，这一下不会点到下面的按钮或链接；选中一个会话或一个页面，侧边栏也会收起。
 
-这些规则尽量按渲染层的 `data-*` 属性选择元素。Hermes 升级后属性可能改名，规则会悄悄失效而不是报错，所以升级后要在手机宽度下看一遍：标题栏只剩设置和右侧栏两个按钮、右边没有窄条、侧边栏点外面能收起。
+这些规则尽量按渲染层的 `data-*` 属性选择元素。Hermes 升级后属性可能改名，规则会悄悄失效而不是报错，所以升级后要在手机宽度下看一遍：标题栏右边只剩设置、管理页、专注模式和右侧栏这几个按钮，右边没有窄条，侧边栏点外面能收起。
 
 ## 管理页
 
-Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供的那一套）挂在 `/admin/` 下，和 Cosmo 用同一个登录。它不经过构建：网关把 `/admin/` 下的请求去掉前缀后转给后端，并带上 `X-Forwarded-Prefix: /admin`，后端据此把页面里的资源和接口地址都写成带前缀的。
+Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供的那一套）挂在 `/admin/` 下，和 Cosmo 用同一个登录。它由 Hermes 后端提供，网关只做转发：把 `/admin/` 下的请求去掉前缀后转给后端，并带上 `X-Forwarded-Prefix: /admin`，后端据此把页面里的资源和接口地址都写成带前缀的。
 
 网关在中间做三件事：
 
 - 后端在页面里写入了会话令牌，网关在转出前把它换成占位值。浏览器之后带着占位值来请求，网关再换回真的，和 Cosmo 的做法一样。压缩过的页面无法检查，直接拒绝。
 - 这个浏览器没有选过语言时，把管理页的语言设为简体中文（管理页默认英文，语言存在 `localStorage` 的 `hermes-locale`）。
 - 管理页按需加载的页面会到根路径的 `/assets/` 找样式文件，不管自己被挂在哪个前缀下。网关在自己的 `assets/` 里找不到某个文件时，改向后端要。构建产物以内容命名，两边不会重名。
+
+管理页挂在前缀下时（这里是 `/admin`），手机顶栏右边和桌面侧边栏顶部各有一个“返回聊天”，回到 Cosmo 的聊天页；聊天页标题栏的“打开管理页”则通向这里。
+
+管理页的页面由后端从它自己的构建产物提供，源码是 `tools/hermes/source/web/`。改了那里（比如手机顶栏让出状态栏、`theme-color` 跟随主题、“返回聊天”），要同步到服务器、重新构建并重启 Hermes 后端才会生效，`npm run cosmo:build` 不管这一部分。服务器上的源码副本不是 git 仓库，同步的步骤在 `tools/deploy/README.md` 的 8b 节（那个目录不进仓库）。2026 年 10 月 14 日已经同步过一次。
 
 主题和字体是管理页自带的功能，在侧边栏左下角切换，选择保存在 Hermes 的配置里。自定义主题是 Hermes 数据目录下 `dashboard-themes/*.yaml`。
 
@@ -115,6 +148,37 @@ Hermes 后端升级后，按新的提交重复上面的步骤并重新发布。�
 
 产物和 `gate/` 目录一起打包，上传到服务器，由常驻的网关服务提供，前面是 Caddy。服务器上的脚本、服务单元、检查和回滚步骤在 `tools/deploy/`（第 8b 节）；那个目录写有服务器的地址，不进仓库。
 
+**发布时 `gate/` 必须整组带上，不能只打 `server.mjs` 和 `auth.mjs`。** 2026 年 10 月 14 日的一次发布就是只打了这两个文件，把安卓原生登录的 `native.mjs` 和 `association/` 挤掉了，线上原生登录随之失效，后来才补回。发布脚本现在会拒绝缺少这些文件的压缩包，健康检查也会确认原生路由已挂载。
+
+| 文件 | 说明 |
+| --- | --- |
+| `gate/server.mjs`、`gate/auth.mjs` | 网关主体，包含原生登录的接入点 |
+| `gate/native.mjs` | 安卓原生登录（PKCE 授权、换取令牌、窄范围 Bearer） |
+| `gate/association/assetlinks.json`、`gate/association/callback.html` | Android App Links 关联和回跳页 |
+
+`gate/dev.mjs` 只用于本机调试，不发布。
+
+## 安卓原生登录
+
+安卓应用用系统浏览器登录，应用拿到的是一个只能访问任务接口的 Bearer 令牌，不是网站的 Cookie。网关上的入口：
+
+- `GET /auth/native/authorize`：参数为 `code_challenge`（43 位 base64url）、`code_challenge_method=S256`、`state`，`redirect_uri` 固定为 `https://cosmo.hhikr.moe/android/auth/callback`。未登录时经主站的 Google 登录完成后回到这里，再由网关发放一次性授权码。
+- `POST /auth/native/token`：JSON 只接受 `code`、`code_verifier`、`redirect_uri`、`client_id=moe.hhikr.cosmo.focus`。授权码 120 秒内有效，只能用一次。GET 返回 405。
+- Bearer 令牌只能访问 `/api/plugins/cosmo-tasks/` 下的三个接口（`GET rules`、`POST device-status`、`POST sleep/report`）。带 `Authorization` 头的请求只按这套规则判断，失败直接拒绝，不回退到 Cookie，也不转发给 Hermes。网页本身不发送这个头。
+- `/.well-known/assetlinks.json` 由网关直接提供，内容必须与安卓应用的签名一致。
+
+Android 应用的源码和构建产物在安卓 agent 的工作区里，不在本仓库。改动网关的原生登录部分前，先和那边的基线（`native.mjs` 等文件的 SHA-256）对齐。已验收的哈希：
+
+| 文件 | SHA-256 |
+| --- | --- |
+| `native.mjs` | `23555e06b1e4fb640aed1d948c906135c546c3fc0ed888f81fd43f64310d2baa` |
+| `association/assetlinks.json` | `6920f9261dc0d2bf22db7cc6705457e7b892d56757773f0831a4c24be7be9f83` |
+| `association/callback.html` | `ca4fae5e1b0d7a39846504e417d3f2d4f0632b25b07551d2abb66cc1af2e2101` |
+| `auth.mjs`（含原生登录续接） | `81cba0b66b39d4002ff6aee9cbab1bc8cdbd5dab8fcc66671b24a7986233e362` |
+| `server.mjs`（含原生登录与 `.webmanifest` 类型） | `1524c0709881643e201937e7ee3f5d159c413ec878643071ecc6ab7d34c892f5` |
+
+`server.mjs` 的哈希与“仅原生登录”版本不同，是因为要保留仓库里的 `.webmanifest` 类型。两者的差别只有这一行，不能用旧文件整文件覆盖。
+
 ## 本机调试
 
 启动 Hermes 的本机连接（它把服务器的 9119 端口转到本机），然后：
@@ -131,6 +195,10 @@ node tools/cosmo/gate/dev.mjs
 npm run test:cosmo    # 网关：登录流程、转发、来源检查、WebSocket、会话失效
 npm run test:server   # 其中 tests/server/cosmo.test.mjs 覆盖主站的授权码和许可
 ```
+
+`tests/cosmo/gate.test.mjs` 中两处断言在原生登录合入后更新：state 用过一次即失效，重放返回 400（之前写的是 403）；页面自带的 `Authorization` 头返回 403，且不会转发（之前测试会带着它转发）。
+
+原生登录的测试在安卓 agent 的工作区（`backend-auth-work/tests/test_gate_native.mjs` 等），需要 Python 工具链和它的 `workspace/` 目录，不在本仓库里运行。改动原生登录后要在那边跑一遍。
 
 ## 网关的配置
 

@@ -426,6 +426,192 @@
     }
   }
 
+  // ── Context menu ─────────────────────────────────────────────────────────
+  // The renderer draws its own menu and, in Electron, asks the main process to
+  // run the edit verbs against the focused element and to copy the image under
+  // the gesture. Here the page does both itself. The gesture's target is
+  // remembered on the way down, ahead of the renderer's own listener.
+  let lastMenuTarget = null
+
+  window.addEventListener(
+    'contextmenu',
+    event => {
+      lastMenuTarget = event.target instanceof Element ? event.target : null
+    },
+    true
+  )
+
+  const isFormField = el => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement
+
+  function insertText(el, text) {
+    // execCommand keeps the field's undo history and fires the input events a
+    // framework listens to; setRangeText is the fallback where it is refused.
+    if (document.execCommand('insertText', false, text)) {
+      return
+    }
+
+    if (isFormField(el)) {
+      el.setRangeText(text, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, 'end')
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }))
+    }
+  }
+
+  function selectedText(el) {
+    if (isFormField(el)) {
+      return el.value.slice(el.selectionStart ?? 0, el.selectionEnd ?? 0)
+    }
+
+    return window.getSelection()?.toString() ?? ''
+  }
+
+  // A paste goes to the field as a paste event, so the composer's own handler
+  // (images become attachments, long text becomes a file) sees it exactly as
+  // it sees Ctrl/Cmd+V. Only if nobody handles it is the text typed in.
+  async function paste(el) {
+    const data = new DataTransfer()
+
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        for (const type of item.types) {
+          const blob = await item.getType(type)
+
+          if (type === 'text/plain' || type === 'text/html') {
+            data.setData(type, await blob.text())
+          } else if (type.startsWith('image/')) {
+            data.items.add(new File([blob], `clipboard-${Date.now()}.${type.split('/')[1] || 'png'}`, { type }))
+          }
+        }
+      }
+    } catch {
+      try {
+        data.setData('text/plain', await navigator.clipboard.readText())
+      } catch {
+        // No permission: there is nothing this page is allowed to paste.
+        return
+      }
+    }
+
+    const target = el ?? document.body
+    const handled = !target.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: data }))
+    const text = data.getData('text/plain')
+
+    if (!handled && text) {
+      insertText(target, text)
+    }
+  }
+
+  async function contextMenuEdit(command) {
+    const el = document.activeElement instanceof HTMLElement ? document.activeElement : null
+
+    if (command === 'selectAll') {
+      document.execCommand('selectAll')
+
+      return
+    }
+
+    if (command === 'paste') {
+      await paste(el)
+
+      return
+    }
+
+    // copy / cut: the browser's own command while the menu click still counts
+    // as a user gesture, the async clipboard where it does not.
+    if (document.execCommand(command)) {
+      return
+    }
+
+    const text = selectedText(el)
+
+    if (!text) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      return
+    }
+
+    if (command === 'cut') {
+      insertText(el, '')
+    }
+  }
+
+  const canvasPng = source =>
+    new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas')
+
+      canvas.width = source.naturalWidth || source.width
+      canvas.height = source.naturalHeight || source.height
+      canvas.getContext('2d').drawImage(source, 0, 0)
+      canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('Could not encode the image'))), 'image/png')
+    })
+
+  // The clipboard takes PNG everywhere and little else, so other formats are
+  // redrawn. A cross-origin image without CORS cannot be read at all.
+  async function imagePng(img) {
+    try {
+      const blob = await (await fetch(img.currentSrc || img.src, { credentials: 'same-origin' })).blob()
+
+      if (blob.type === 'image/png') {
+        return blob
+      }
+
+      return await canvasPng(await createImageBitmap(blob))
+    } catch {
+      return canvasPng(img)
+    }
+  }
+
+  async function contextMenuCopyImage() {
+    const img = lastMenuTarget?.closest('img')
+
+    if (!(img instanceof HTMLImageElement)) {
+      return
+    }
+
+    try {
+      // A promise inside the item, not an awaited blob: Safari accepts the
+      // write only while the click that asked for it is still current.
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': imagePng(img) })])
+    } catch (error) {
+      console.warn('[cosmo] could not copy the image', error)
+    }
+  }
+
+  // ── Page chrome ──────────────────────────────────────────────────────────
+  // Electron tints the native title bar with the theme; a phone browser tints
+  // its address and status bars with <meta name="theme-color">.
+  function setTitleBarTheme(theme) {
+    const color = String(theme?.background || '')
+
+    if (!color) {
+      return
+    }
+
+    let meta = document.querySelector('meta[name="theme-color"]')
+
+    if (!meta) {
+      meta = document.createElement('meta')
+      meta.name = 'theme-color'
+      document.head.appendChild(meta)
+    }
+
+    meta.content = color
+  }
+
+  // Electron asks before quitting with turns in flight. A tab's equivalent is
+  // the browser's leave-page prompt, which also catches Ctrl/Cmd+W.
+  let activeWork = 0
+
+  window.addEventListener('beforeunload', event => {
+    if (activeWork > 0) {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+  })
+
   // ── Browser equivalents ──────────────────────────────────────────────────
   function openExternal(url) {
     const target = String(url || '')
@@ -543,6 +729,7 @@
   }
 
   const bridge = {
+    platform: 'web',
     glassSupported: false,
     translucencySupported: false,
     localModelsEnabled: false,
@@ -672,6 +859,14 @@
       control: () => {},
       onState: never,
       onControl: never
+    },
+
+    // Context menu, page chrome
+    contextMenuEdit,
+    contextMenuCopyImage,
+    setTitleBarTheme,
+    setActiveWork: payload => {
+      activeWork = Number(payload?.count) || 0
     },
 
     // Notifications, media, clipboard

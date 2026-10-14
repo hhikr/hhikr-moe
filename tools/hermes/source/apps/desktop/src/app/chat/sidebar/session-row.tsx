@@ -342,8 +342,10 @@ function SidebarSessionRowImpl({
         <Button
           aria-label={r.sessionActions}
           className={cn(
-            'size-5 rounded-[4px] bg-transparent text-transparent transition-colors duration-100 hover:bg-(--ui-control-active-background) hover:text-foreground focus-visible:bg-(--ui-control-active-background) focus-visible:text-foreground focus-visible:ring-0 data-[state=open]:bg-(--ui-control-active-background) data-[state=open]:text-foreground group-hover:text-(--ui-text-tertiary) [&_svg]:size-3.5!',
-            trailing.length > 0 && 'absolute right-0',
+            'size-5 rounded-[4px] bg-transparent text-transparent transition-colors duration-100 hover:bg-(--ui-control-active-background) hover:text-foreground focus-visible:bg-(--ui-control-active-background) focus-visible:text-foreground focus-visible:ring-0 data-[state=open]:bg-(--ui-control-active-background) data-[state=open]:text-foreground group-hover:text-(--ui-text-tertiary) touch:text-(--ui-text-tertiary) [&_svg]:size-3.5!',
+            // Over the age, which fades on hover; a touch screen shows both,
+            // so there the button takes its own place beside it.
+            trailing.length > 0 && 'absolute right-0 touch:static',
             pr && KEBAB_YIELDS
           )}
           size="icon"

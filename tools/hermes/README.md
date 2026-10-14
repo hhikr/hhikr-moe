@@ -22,6 +22,8 @@ npm run cosmo:build
 
 构建产物仍保存在 `.deployment/hermes/cosmo-web/dist/`。`cosmo/build.json` 的 `hermesCommit` 记录上游导入基线；后续修改由本仓库提交记录标识。前后端发布需要保持接口版本兼容。
 
+服务器上运行的 Hermes 在 `/opt/hermes-hhikr/source/`，**不是 git 仓库**，是从本仓库复制过去的。修改这里的源码后，要同步到服务器才会生效；同步和重启的步骤在 `tools/deploy/README.md` 的 8b 节（那个目录不进仓库）。不要在服务器上直接改源码，下次同步会被覆盖或对不上。
+
 ## Windows 连接器
 
 ```powershell
@@ -30,7 +32,26 @@ node tools/hermes/windows-bridge/setup.mjs
 node tools/hermes/windows-bridge/bridge.mjs
 ```
 
-安装脚本生成本机凭据和配置，不覆盖已有凭据。默认授权根目录是网站项目。`verify.mjs` 检查已运行连接器的认证、文件边界与审批；`verify-development.mjs` 需要另行配置原有 VPS 路径映射，只用于该开发环境。
+安装脚本生成本机凭据和配置，不覆盖已有凭据。默认授权根目录是网站项目。`verify.mjs` 检查已运行连接器的认证、文件边界与命令执行；`verify-development.mjs` 需要另行配置原有 VPS 路径映射，只用于该开发环境。
+
+**实际在运行的连接器不在上面的目录里**，而是在 `.deployment/hermes/windows-bridge/`（那里有 `node_modules`、`connection-private.json` 和 `bridge.log`）。`tools/hermes/windows-bridge/` 只有源码，直接在那里运行 `bridge.mjs` 会因为缺依赖和配置而失败。启动方式：
+
+```powershell
+Set-Location .deployment\hermes\windows-bridge
+Start-Process -FilePath node -ArgumentList 'bridge.mjs' -WorkingDirectory $PWD -WindowStyle Hidden -PassThru -RedirectStandardOutput "$PWD\bridge.log" -RedirectStandardError "$PWD\bridge-error.log"
+```
+
+**审批已默认关闭**（`bridge.mjs` 的 `needsApproval` 恒返回 `false`，用户选择“全部默认允许”）。PowerShell 命令、浏览器操作和签名目录写入都直接执行，不再弹本机审批页面。仍然生效的硬限制：项目目录边界、`.deployment`/`.ssh` 等敏感目录、`.git` 内部写入、`setup.mjs` 中的命令黑名单、浏览器不能访问本机管理页面。要恢复审批，把 `needsApproval` 改回原来的判断并重启连接器。
+
+改由 Hermes 自己判断何时申请：风险分级规则写在 VPS 的 `/opt/hermes-hhikr/state/SOUL.md`“Windows 操作的风险判断”一节（不在本仓库内，修改前备份，修改须获用户批准）。
+
+连接器没有开机自启动。它停了以后，Hermes 本身照常运行，只是 `mcp_windows_*` 工具（读写文件、运行命令、浏览器）缺失，会话会报告“没有挂载”。
+
+**排查“会话里没有 `mcp_windows_*` 工具”**：
+
+1. 电脑上 `19120` 是否在监听：`Get-NetTCPConnection -LocalPort 19120`。没有就是连接器没运行，按上面的方法启动。
+2. 服务器上经隧道探测：带 `HERMES_WINDOWS_TOKEN` 的 `initialize` 返回 200，不带令牌返回 401。返回 000 说明隧道另一端没有连接器。
+3. Hermes 的 MCP 发现在每次新会话启动时重试，所以连接器恢复后新开会话就会挂上。服务器的 `state/logs` 里有 `Background MCP discovery completed with zero connected servers` 说明那一次没连上。不需要重启 Hermes，除非旧会话仍然缺工具（那种情况下重启 `hermes-hhikr` 会打断会话）。
 
 ## 导入边界与许可证
 

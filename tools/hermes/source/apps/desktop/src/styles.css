@@ -12,8 +12,31 @@
 
 /* v4 gates hover: on @media (hover: hover). Some Windows hosts with a
    digitizer answer false even with a mouse, so hover-reveal controls stay
-   opacity-0 (clickable, invisible). Trust :hover itself. */
-@custom-variant hover (&:hover);
+   opacity-0 (clickable, invisible). Ask whether ANY input can hover instead:
+   such a host still says yes, while a phone, whose taps would otherwise leave
+   :hover styles stuck on the last thing touched, says no. */
+@custom-variant hover {
+  @media (any-hover: hover) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+/* Every input is a finger. Controls that only appear on hover are shown
+   outright here, since nothing can hover them into view. */
+@custom-variant touch (@media (any-hover: none));
+
+/* A long press on a row with its own menu opens that menu (Radix, after
+   700ms). Without this, iOS starts selecting the row's text and previewing its
+   link at the same time. The pane-body fallback trigger is left alone: it
+   wraps the whole conversation, whose text must stay selectable. */
+@media (any-hover: none) {
+  [data-hermes-context-menu-trigger]:not([data-zone-body]) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
 @custom-variant dark (&:is(.dark *));
 
 /* Blanket reduced-motion override: kill ALL CSS animations and transitions

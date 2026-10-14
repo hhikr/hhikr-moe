@@ -17,9 +17,43 @@ function ContextMenuPortal({ ...props }: React.ComponentProps<typeof ContextMenu
  * (status bar footer); this attribute is not. */
 export const HERMES_CONTEXT_MENU_TRIGGER_ATTR = 'data-hermes-context-menu-trigger'
 
-function ContextMenuTrigger({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
+// Radix opens the menu for a finger held this long (it uses 700ms).
+const TOUCH_HOLD_MS = 600
+
+function ContextMenuTrigger({
+  onClickCapture,
+  onPointerDown,
+  ...props
+}: React.ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
+  const touchDownAt = React.useRef<null | number>(null)
+
   return (
-    <ContextMenuPrimitive.Trigger data-slot="context-menu-trigger" {...props} data-hermes-context-menu-trigger="" />
+    <ContextMenuPrimitive.Trigger
+      data-slot="context-menu-trigger"
+      {...props}
+      data-hermes-context-menu-trigger=""
+      // A finger that held long enough to open the menu still produces a
+      // click when it lifts, which would also open the row under it (and, on
+      // a phone, put the sidebar away). That click belongs to the hold.
+      onClickCapture={event => {
+        const downAt = touchDownAt.current
+
+        touchDownAt.current = null
+
+        if (downAt !== null && event.timeStamp - downAt >= TOUCH_HOLD_MS) {
+          event.preventDefault()
+          event.stopPropagation()
+
+          return
+        }
+
+        onClickCapture?.(event)
+      }}
+      onPointerDown={event => {
+        touchDownAt.current = event.pointerType === 'touch' ? event.timeStamp : null
+        onPointerDown?.(event)
+      }}
+    />
   )
 }
 

@@ -77,6 +77,7 @@ export interface Translations {
     brand: string;
     brandShort: string;
     closeNavigation: string;
+    backToChat: string;
     closeModelTools: string;
     footer: {
       org: string;

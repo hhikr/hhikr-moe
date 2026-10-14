@@ -23,6 +23,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAuth } from './auth.mjs';
+import { createNative } from './native.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const env = process.env;
@@ -54,6 +55,7 @@ if (config.auth === 'site' && config.gateSecret.length < 32) throw new Error('CO
 if (config.auth !== 'site' && config.auth !== 'none') throw new Error('COSMO_AUTH must be "site" or "none".');
 
 const auth = createAuth(config);
+const native = createNative(config, auth);
 
 // ── The backend's session token ─────────────────────────────────────────────
 // Hermes mints a token per process start and writes it into the page it serves
@@ -111,6 +113,7 @@ const TYPES = {
   '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -305,9 +308,16 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, config.publicOrigin);
     const reading = req.method === 'GET' || req.method === 'HEAD';
 
+    if (await native.handle(req, res, url)) return;
     if (await auth.handle(req, res, url)) return;
 
-    const session = await auth.session(req);
+    let session;
+    if (req.headers.authorization !== undefined) {
+      // Native bearer has a narrower API surface; never fall back to browser cookies.
+      const checked = await native.apiSession(req, url);
+      if (!checked.session) return sendJson(res, checked.status, { detail: 'Native authorization rejected.' });
+      session = checked.session;
+    } else session = await auth.session(req);
 
     const inDashboard = dashboardPath(url.pathname);
     if (inDashboard !== null && !inDashboard.startsWith('/api/')) {
@@ -361,7 +371,7 @@ const server = http.createServer(async (req, res) => {
       : undefined;
     return serveStatic(req, res, url.pathname, fromDashboard);
   } catch (error) {
-    console.error(error);
+    console.error('Cosmo request failed.');
     if (!res.headersSent) send(res, 500);
     else res.destroy();
   }
