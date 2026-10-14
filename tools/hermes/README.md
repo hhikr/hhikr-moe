@@ -34,6 +34,21 @@ node tools/hermes/windows-bridge/bridge.mjs
 
 安装脚本生成本机凭据和配置，不覆盖已有凭据。默认授权根目录是网站项目。`verify.mjs` 检查已运行连接器的认证、文件边界与审批；`verify-development.mjs` 需要另行配置原有 VPS 路径映射，只用于该开发环境。
 
+**实际在运行的连接器不在上面的目录里**，而是在 `.deployment/hermes/windows-bridge/`（那里有 `node_modules`、`connection-private.json` 和 `bridge.log`）。`tools/hermes/windows-bridge/` 只有源码，直接在那里运行 `bridge.mjs` 会因为缺依赖和配置而失败。启动方式：
+
+```powershell
+Set-Location .deployment\hermes\windows-bridge
+Start-Process -FilePath node -ArgumentList 'bridge.mjs' -WorkingDirectory $PWD -WindowStyle Hidden -PassThru -RedirectStandardOutput "$PWD\bridge.log" -RedirectStandardError "$PWD\bridge-error.log"
+```
+
+连接器没有开机自启动。它停了以后，Hermes 本身照常运行，只是 `mcp_windows_*` 工具（读写文件、运行命令、浏览器）缺失，会话会报告“没有挂载”。
+
+**排查“会话里没有 `mcp_windows_*` 工具”**：
+
+1. 电脑上 `19120` 是否在监听：`Get-NetTCPConnection -LocalPort 19120`。没有就是连接器没运行，按上面的方法启动。
+2. 服务器上经隧道探测：带 `HERMES_WINDOWS_TOKEN` 的 `initialize` 返回 200，不带令牌返回 401。返回 000 说明隧道另一端没有连接器。
+3. Hermes 的 MCP 发现在每次新会话启动时重试，所以连接器恢复后新开会话就会挂上。服务器的 `state/logs` 里有 `Background MCP discovery completed with zero connected servers` 说明那一次没连上。不需要重启 Hermes，除非旧会话仍然缺工具（那种情况下重启 `hermes-hhikr` 会打断会话）。
+
 ## 导入边界与许可证
 
 保留 `source/LICENSE`、原版权声明和各组件许可证。Hermes 根许可证为 MIT，允许修改和分发；依赖和素材按各自许可证处理。
