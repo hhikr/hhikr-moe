@@ -22,6 +22,8 @@ npm run cosmo:build
 
 构建产物仍保存在 `.deployment/hermes/cosmo-web/dist/`。`cosmo/build.json` 的 `hermesCommit` 记录上游导入基线；后续修改由本仓库提交记录标识。前后端发布需要保持接口版本兼容。
 
+服务器上运行的 Hermes 在 `/opt/hermes-hhikr/source/`，**不是 git 仓库**，是从本仓库复制过去的。修改这里的源码后，要同步到服务器才会生效；同步和重启的步骤在 `tools/deploy/README.md` 的 8b 节（那个目录不进仓库）。不要在服务器上直接改源码，下次同步会被覆盖或对不上。
+
 ## Windows 连接器
 
 ```powershell

@@ -17,7 +17,7 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 | 网关 | [gate/server.mjs](gate/server.mjs)、[gate/auth.mjs](gate/auth.mjs) | 检查登录，发送页面文件，把 `/api/*`（含 WebSocket）转给 Hermes |
 | 安卓原生登录 | [gate/native.mjs](gate/native.mjs)、[gate/association/](gate/association/) | 安卓应用的 PKCE 登录和窄范围 Bearer，见“安卓原生登录”一节 |
 | 覆盖样式 | [shim/cosmo.css](shim/cosmo.css) | 排在渲染层的样式之后，修正它在浏览器和手机上的显示 |
-| 触屏 | [shim/touch.js](shim/touch.js) | 手机上点侧边栏外面或选中一项后，把侧边栏收起来；iOS 键盘弹出时让页面缩到键盘上方 |
+| 触屏 | [shim/touch.js](shim/touch.js)、[shim/cosmo.css](shim/cosmo.css) | 手机上点侧边栏外面或选中一项后，把侧边栏收起来；iOS 键盘弹出时让页面缩到键盘上方；上滑收起浏览器地址栏；标题栏的“专注模式”进入全屏（iPhone 不支持） |
 | 补丁 | [patches.mjs](patches.mjs) | 构建时对渲染层个别源文件做的替换，见“和桌面版的差别” |
 | 构建 | [build.mjs](build.mjs) | 用上游自己的 Vite 配置加上补丁构建渲染层，再把 `shim/` 的三个文件和添加到主屏幕用的 manifest 放进页面 |
 | 主站一侧 | `src/server/cosmo.ts`、`src/pages/api/auth/cosmo.ts`、`src/pages/api/internal/cosmo.ts` | 把 endministrator 的登录状态交给 Cosmo |
@@ -113,7 +113,7 @@ Cosmo 是 Hermes 助手的网页界面，只有网站的 endministrator 能打�
 
 ## 管理页
 
-Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供的那一套）挂在 `/admin/` 下，和 Cosmo 用同一个登录。它不经过构建：网关把 `/admin/` 下的请求去掉前缀后转给后端，并带上 `X-Forwarded-Prefix: /admin`，后端据此把页面里的资源和接口地址都写成带前缀的。
+Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供的那一套）挂在 `/admin/` 下，和 Cosmo 用同一个登录。它由 Hermes 后端提供，网关只做转发：把 `/admin/` 下的请求去掉前缀后转给后端，并带上 `X-Forwarded-Prefix: /admin`，后端据此把页面里的资源和接口地址都写成带前缀的。
 
 网关在中间做三件事：
 
@@ -123,7 +123,7 @@ Hermes 自带的管理页（`hermes dashboard`，后端在回环端口上提供�
 
 管理页挂在前缀下时（这里是 `/admin`），手机顶栏右边和桌面侧边栏顶部各有一个“返回聊天”，回到 Cosmo 的聊天页；聊天页标题栏的“打开管理页”则通向这里。
 
-管理页的页面由后端从它自己的构建产物提供，源码是 `tools/hermes/source/web/`。改了那里（比如手机顶栏让出状态栏、`theme-color` 跟随主题），要重新构建并发布 Hermes 后端才会生效，`npm run cosmo:build` 不管这一部分。
+管理页的页面由后端从它自己的构建产物提供，源码是 `tools/hermes/source/web/`。改了那里（比如手机顶栏让出状态栏、`theme-color` 跟随主题、“返回聊天”），要同步到服务器、重新构建并重启 Hermes 后端才会生效，`npm run cosmo:build` 不管这一部分。服务器上的源码副本不是 git 仓库，同步的步骤在 `tools/deploy/README.md` 的 8b 节（那个目录不进仓库）。2026 年 10 月 14 日已经同步过一次。
 
 主题和字体是管理页自带的功能，在侧边栏左下角切换，选择保存在 Hermes 的配置里。自定义主题是 Hermes 数据目录下 `dashboard-themes/*.yaml`。
 
