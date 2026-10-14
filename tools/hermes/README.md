@@ -32,7 +32,7 @@ node tools/hermes/windows-bridge/setup.mjs
 node tools/hermes/windows-bridge/bridge.mjs
 ```
 
-安装脚本生成本机凭据和配置，不覆盖已有凭据。默认授权根目录是网站项目。`verify.mjs` 检查已运行连接器的认证、文件边界与审批；`verify-development.mjs` 需要另行配置原有 VPS 路径映射，只用于该开发环境。
+安装脚本生成本机凭据和配置，不覆盖已有凭据。默认授权根目录是网站项目。`verify.mjs` 检查已运行连接器的认证、文件边界与命令执行；`verify-development.mjs` 需要另行配置原有 VPS 路径映射，只用于该开发环境。
 
 **实际在运行的连接器不在上面的目录里**，而是在 `.deployment/hermes/windows-bridge/`（那里有 `node_modules`、`connection-private.json` 和 `bridge.log`）。`tools/hermes/windows-bridge/` 只有源码，直接在那里运行 `bridge.mjs` 会因为缺依赖和配置而失败。启动方式：
 
@@ -40,6 +40,8 @@ node tools/hermes/windows-bridge/bridge.mjs
 Set-Location .deployment\hermes\windows-bridge
 Start-Process -FilePath node -ArgumentList 'bridge.mjs' -WorkingDirectory $PWD -WindowStyle Hidden -PassThru -RedirectStandardOutput "$PWD\bridge.log" -RedirectStandardError "$PWD\bridge-error.log"
 ```
+
+**审批已默认关闭**（`bridge.mjs` 的 `needsApproval` 恒返回 `false`，用户选择“全部默认允许”）。PowerShell 命令、浏览器操作和签名目录写入都直接执行，不再弹本机审批页面。仍然生效的硬限制：项目目录边界、`.deployment`/`.ssh` 等敏感目录、`.git` 内部写入、`setup.mjs` 中的命令黑名单、浏览器不能访问本机管理页面。要恢复审批，把 `needsApproval` 改回原来的判断并重启连接器。
 
 连接器没有开机自启动。它停了以后，Hermes 本身照常运行，只是 `mcp_windows_*` 工具（读写文件、运行命令、浏览器）缺失，会话会报告“没有挂载”。
 

@@ -27,14 +27,5 @@ try {
 } finally { await fs.unlink(fixtureLocal).catch(e => { if (e.code !== 'ENOENT') throw e; }); }
 assert.notEqual((await call('windows_start_process', { command: 'node --version', cwd: remote, timeout_ms: 2000 })).isError, true);
 assert.equal((await call('windows_start_process', { command: 'node --version', cwd: 'C:\\Windows', timeout_ms: 2000 })).isError, true);
-const protectedTarget = remote + '/android/signing/approval-probe.txt';
-const protectedResult = JSON.parse(text(await call('windows_write_file', { path: protectedTarget, content: 'must never execute', mode: 'rewrite' })));
-assert.equal(protectedResult.status, 'pending');
-assert.equal(await fs.access(path.join(local, 'android/signing/approval-probe.txt')).then(() => true, () => false), false);
-const deny = await fetch(`http://127.0.0.1:${cfg.approvalPort}/decision`, { method: 'POST',
-  headers: { 'X-Approval-Token': cfg.approvalToken, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ id: protectedResult.approval_id, allow: false }) });
-assert.equal(deny.status, 200);
-assert.equal((await call('approval_status', { id: protectedResult.approval_id })).isError, true);
 await client.close();
-console.log('原 VPS 路径读写、本机项目命令、目录越界拒绝、签名文件修改审批均验证通过。');
+console.log('原 VPS 路径读写、本机项目命令、目录越界拒绝均验证通过。签名目录写入已按设置默认允许，未在此脚本中实际写入。');

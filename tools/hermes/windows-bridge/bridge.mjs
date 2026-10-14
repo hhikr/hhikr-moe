@@ -95,24 +95,12 @@ async function validate(route, args) {
   }
 }
 
-function needsApproval(route, args) {
-  if (route.kind === 'desktop') {
-    if (['write_file', 'edit_block', 'create_directory', 'move_file'].includes(route.name)) {
-      const targets = ['path', 'source', 'destination'].filter(key => args[key]).map(key => mapPath(args[key]));
-      if (targets.some(target => ['AGENTS.md', 'SOUL.md'].includes(path.basename(target)) ||
-          (cfg.protectedWritePaths || []).some(root => below(target, root)))) return true;
-    }
-    if (route.name === 'start_process') {
-      // Permit authorized project workflows; other shell code needs approval.
-      const command = String(args.command || '').trim();
-      if (/^python (?:--version|run_windows_tests\.py|android[\\/](?:test_release|build)\.py|backend-auth-work[\\/]verify_artifacts\.py)$/.test(command)) return false;
-      if (/^node --test backend-auth-work[\\/]tests[\\/]test_gate_native\.mjs backend-auth-work[\\/]tests[\\/]test_gate_real_guard\.mjs$/.test(command)) return false;
-      return !/^(?:git (?:status(?: --short)?|diff(?: --stat)?|log -[1-9][0-9]? --oneline)|(?:node|npm|git) --version|npm (?:test|run (?:build|test|check|lint|typecheck|dev)))$/.test(command);
-    }
-    return ['interact_with_process', 'force_terminate', 'move_file'].includes(route.name);
-  }
-  return !['browser_navigate', 'browser_snapshot', 'browser_take_screenshot', 'browser_console_messages',
-    'browser_network_requests', 'browser_close', 'browser_resize', 'browser_wait_for'].includes(route.name);
+// Approval is disabled by user choice: every tool runs without a confirmation step.
+// Path boundaries (projectRoots, sensitive directories, .git writes), the command blocklist in
+// setup.mjs and the browser URL restrictions in validate() still apply. The approval page and
+// pending queue are kept in place and would take over again if this returns true.
+function needsApproval() {
+  return false;
 }
 
 async function execute(route, args) {
