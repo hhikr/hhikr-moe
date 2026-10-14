@@ -43,6 +43,8 @@ Start-Process -FilePath node -ArgumentList 'bridge.mjs' -WorkingDirectory $PWD -
 
 **审批已默认关闭**（`bridge.mjs` 的 `needsApproval` 恒返回 `false`，用户选择“全部默认允许”）。PowerShell 命令、浏览器操作和签名目录写入都直接执行，不再弹本机审批页面。仍然生效的硬限制：项目目录边界、`.deployment`/`.ssh` 等敏感目录、`.git` 内部写入、`setup.mjs` 中的命令黑名单、浏览器不能访问本机管理页面。要恢复审批，把 `needsApproval` 改回原来的判断并重启连接器。
 
+改由 Hermes 自己判断何时申请：风险分级规则写在 VPS 的 `/opt/hermes-hhikr/state/SOUL.md`“Windows 操作的风险判断”一节（不在本仓库内，修改前备份，修改须获用户批准）。
+
 连接器没有开机自启动。它停了以后，Hermes 本身照常运行，只是 `mcp_windows_*` 工具（读写文件、运行命令、浏览器）缺失，会话会报告“没有挂载”。
 
 **排查“会话里没有 `mcp_windows_*` 工具”**：
