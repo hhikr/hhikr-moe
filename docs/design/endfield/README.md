@@ -8,6 +8,7 @@
 - `design-plan.md`：设计方案。最初写于动手之前，2026 年 10 月 13 日已按原型改写为现在的决定，改动见其文末的"修订记录"。
 - `findings.md`：对游戏官网和界面的调研。文中按文件名引用的截图（`cn-*.png`、`intl-*.png`、`game-*.png`、`fzwiki-*.png`）就在本目录。
 - `contour-reference/`：站长给的三张等高线参考图。背景等高线要的就是这种不闭合、成束流动的线。
+- `skill/endfield-ui/`：把这套设计提炼成的通用 agent skill，与本站无关、可以单独拿走：调研结论、平台无关的 token（`assets/tokens.json`）、网页 CSS 套件和模板、已验证的 Flutter 套件、iOS / Android / 小程序 / React Native 等平台指南、App 界面范式、反例对照页和示例截图。安装：把整个 `endfield-ui` 目录复制到 `~/.claude/skills/`（或某个项目的 `.claude/skills/`），入口是其中的 `SKILL.md`。
 - `shots/`：各轮原型的预览截图，文件名里数字越大越新。被认可的最终版是 `home7-light.jpg`、`endmin6-light.jpg`、`endmin6-dark.jpg`、`post-light/dark/mobile.jpg`、`works-light.png`、`works-dark.png`、`works-mobile.jpg`；编号更小的 `home*`、`endmin*` 是已被否决的版本，可用来对照"不要什么"。这些最终版截图都早于背景等高线的改动，背景以代码为准。
 
 本目录里的 `*.png` 和 `contour-reference/` 是游戏及其官网的截图，**只作设计参考，不得用进网站**。
