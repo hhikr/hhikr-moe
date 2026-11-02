@@ -1,0 +1,203 @@
+---
+import Endmin from '@/layouts/Endmin.astro';
+import { formatBytes } from '@/server/system.ts';
+import { knowledgeStatus } from '@/server/knowledge.ts';
+
+export const prerender = false;
+
+const status = knowledgeStatus();
+const when = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+const day = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' });
+const at = (iso?: string) => (iso ? when.format(new Date(iso)) : '—');
+const short = (sha?: string) => (sha ? sha.slice(0, 7) : '—');
+const took = (from?: string, to?: string) => {
+  if (!from || !to) return '';
+  const seconds = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 1000));
+  return seconds < 60 ? `${seconds} 秒` : `${Math.round(seconds / 60)} 分钟`;
+};
+const upstreamRepo = 'https://github.com/Kengxxiao/ArknightsGameData';
+const OUTCOMES: Record<string, { label: string; tone: string }> = {
+  published: { label: '已发布', tone: 'published' },
+  dry_run: { label: '试跑', tone: 'draft' },
+  no_content: { label: '没有新内容', tone: 'draft' },
+  failed: { label: '失败', tone: 'alert' },
+  held: { label: '需要处理', tone: 'alert' },
+};
+const red = status.warnings.filter((w) => w.level === 'red');
+const behind = !!status.upstream && !!status.published?.commit && status.upstream !== status.published.commit;
+const lastLine = status.lastOutcome === 'idle' ? '没有新内容' : status.lastOutcome === 'waiting' ? status.lastSummary : status.lastSummary;
+const percent = status.progress ? Math.min(100, Math.round((status.progress.done / status.progress.total) * 100)) : null;
+---
+
+<Endmin title="知识库" en="Knowledge" lead="ArkLores 的明日方舟知识库：每小时检查一次上游，有新内容就自动更新、补向量并发布到 GitHub。">
+  <div class="em-filters">
+    {
+      status.running ? (
+        <span class="em-state published" data-running>{status.dryRun ? '正在试跑…' : '正在更新…'}</span>
+      ) : (
+        <span class:list={['em-state', !status.configured ? 'draft' : red.length ? 'alert' : 'published']} data-idle>{!status.configured ? '未连接' : red.length ? '需要处理' : '正常'}</span>
+      )
+    }
+    <a class="em-btn end" href="https://github.com/hhikr/ArkLores/releases/tag/gamedata-channel" target="_blank" rel="noreferrer">查看 Release</a>
+  </div>
+
+  {
+    red.length > 0 && (
+      <ul class="alerts">
+        {red.map((w) => <li>{w.message}</li>)}
+      </ul>
+    )
+  }
+
+  {
+    status.running && (
+      <section class="em-panel live">
+        <h2>{status.stage ?? '运行中'}</h2>
+        {percent !== null && (
+          <div class="bar" role="progressbar" aria-valuenow={percent} aria-valuemin="0" aria-valuemax="100">
+            <i style={`width:${percent}%`} />
+          </div>
+        )}
+        {status.progress && <p class="em-note">{formatBytes(status.progress.done)} / {formatBytes(status.progress.total)}</p>}
+        {status.detail && <p class="detail">{status.detail}</p>}
+      </section>
+    )
+  }
+
+  <div class="em-cols">
+    <section class="em-panel">
+      <h2>最近的更新</h2>
+      {
+        status.runs.length === 0 ? (
+          <p class="em-empty">还没有更新过。有新内容时这里会出现一行。</p>
+        ) : (
+          <ul class="em-rows">
+            {status.runs.map((run) => {
+              const outcome = OUTCOMES[run.outcome ?? ''] ?? { label: run.outcome ?? '—', tone: 'draft' };
+              const stories = [run.storyAdded && `新增 ${run.storyAdded} 篇`, run.storyChanged && `改动 ${run.storyChanged} 篇`, run.storyRemoved && `删除 ${run.storyRemoved} 篇`].filter(Boolean);
+              return (
+                <li>
+                  <div>
+                    <div class="t">
+                      {at(run.startedAt)}
+                      <span class={`em-state ${outcome.tone}`}>{outcome.label}</span>
+                    </div>
+                    <div class="em-meta">
+                      {run.commit && <span>{short(run.commit)}</span>}
+                      {run.finishedAt && <span>{took(run.startedAt, run.finishedAt)}</span>}
+                      {stories.length > 0 && <span>剧情{stories.join('，')}</span>}
+                      {!!run.embeddedChunks && <span>向量 {run.embeddedChunks} 块</span>}
+                    </div>
+                    {run.summary && <p class="em-quote">{run.summary}</p>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      }
+    </section>
+
+    <section class="em-panel">
+      <h2>状态</h2>
+      <dl class="em-facts">
+        <div>
+          <dt>上游最新</dt>
+          <dd class:list={{ warn: behind }}>{status.upstream ? <a href={`${upstreamRepo}/commit/${status.upstream}`} target="_blank" rel="noreferrer">{short(status.upstream)}</a> : '—'}</dd>
+        </div>
+        <div>
+          <dt>已发布的知识库</dt>
+          <dd>{short(status.published?.commit)}{status.published?.commitDate && ` · ${day.format(new Date(status.published.commitDate))}`}</dd>
+        </div>
+        <div>
+          <dt>美术包对应</dt>
+          <dd>{short(status.published?.packCommit)}</dd>
+        </div>
+        <div>
+          <dt>上次发布</dt>
+          <dd>{at(status.published?.publishedAt)}</dd>
+        </div>
+        <div>
+          <dt>上次检查</dt>
+          <dd>{at(status.lastCheckAt)}</dd>
+        </div>
+        {lastLine && !status.running && (
+          <div>
+            <dt>检查结果</dt>
+            <dd>{lastLine}</dd>
+          </div>
+        )}
+      </dl>
+      <p class="em-note">这页只显示状态，更新由服务器上的定时任务完成。构建用的数据用完即删，磁盘上只留工具和状态；被替换的上一版在备份仓库里。终末地知识库不在这里，它要在电脑上从游戏客户端解包。</p>
+    </section>
+  </div>
+</Endmin>
+
+<script>
+  // Follow a run closely; otherwise look again now and then.
+  const running = !!document.querySelector('[data-running]');
+  setTimeout(() => location.reload(), running ? 5000 : 60000);
+</script>
+
+<style>
+  .alerts {
+    list-style: none;
+    margin: 0 0 1.25rem;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .alerts li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--ink);
+    background: var(--panel);
+    overflow-wrap: anywhere;
+  }
+
+  .alerts li::before {
+    content: '需要处理';
+    flex: none;
+    padding: 0 0.4em;
+    background: var(--signal);
+    color: var(--on-signal);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .live {
+    margin-bottom: 1.25rem;
+  }
+
+  .bar {
+    height: 0.5rem;
+    margin: 0.5rem 0;
+    background: var(--chip);
+  }
+
+  .bar i {
+    display: block;
+    height: 100%;
+    background: var(--trace);
+  }
+
+  .detail {
+    margin: 0.5rem 0 0;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+  }
+
+  .em-facts a {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .em-facts a:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+</style>
