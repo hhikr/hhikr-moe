@@ -55,7 +55,7 @@ function highlight(line){return escape(line).replace(/\b(class|public|static|int
 function stepLink(id,target){const a=$(id);a.hidden=!target;if(target){a.href=lessonPath(target.id);a.title=target.title;}else a.removeAttribute('href');}
 function select(id,{history:mode='replace',scroll=false}={}){
  pause();const position=catalog.findIndex(q=>q.id===id);const q=catalog[position];if(!q)return;
- selected=id;
+ selected=id;save('hot100-last',id);
  $('bars')?.replaceChildren();$('cells').replaceChildren();
  lesson=lessons[id];index=0;
  $('verdict').hidden=true;$('jump-error').hidden=true;$('undo-draft').hidden=read(`hot100-preview-backup-${id}`,null)===null;

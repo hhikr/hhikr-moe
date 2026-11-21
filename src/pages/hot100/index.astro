@@ -1,4 +1,806 @@
 ---
-import LessonPage from '../../components/hot100/LessonPage.astro';
+import Base from '@/layouts/Base.astro';
+import { catalog, categories, categoryLabels, lessons } from '../../lib/hot100/curriculum.mjs';
+
+// The landing page: what this is, a demo that plays by itself, and every lesson by category.
+type Entry = (typeof catalog)[number];
+const labels = categoryLabels as Record<string, string>;
+const groups = categories.map((name: string, i: number) => {
+  const entries = catalog.filter((q: Entry) => q.category === name);
+  return { name, label: labels[name] ?? name, no: String(i + 1).padStart(2, '0'), entries, first: entries[0] };
+});
+const levels = { E: catalog.filter((q: Entry) => q.level === 'E').length, M: catalog.filter((q: Entry) => q.level === 'M').length, H: catalog.filter((q: Entry) => q.level === 'H').length };
+
+// Two Sum, traced at build time: the demo on this page plays these frames without loading the lessons.
+const twoSum = (lessons as Record<number, any>)[1];
+const frames = twoSum.trace(twoSum.raw).map((f: any) => ({ values: f.values, active: f.active, note: f.note, stored: f.stored, line: f.line, vars: f.vars }));
+const code = (twoSum.code as string).split('\n');
+// Show the lines the demo actually visits, so the snippet stays short.
+const shown = [...new Set<number>(frames.map((f: any) => f.line))].sort((a, b) => a - b);
+const snippet = code.map((text, i) => ({ line: i + 1, text })).filter((l) => l.line >= shown[0] && l.line <= shown.at(-1)!);
+const first = frames[0];
 ---
-<LessonPage id={1} />
+
+<Base title="Hot 100 · 一步步看懂力扣热题" description="力扣热题 100 的 Java 图解：每道题都有可以单步播放的算法动画、和动画同步高亮的参考代码，也能换成自己的输入。">
+  <div class="h100" data-pagefind-body>
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow mono">LEETCODE HOT 100 · JAVA</p>
+        <h1>Hot <em>100</em><span class="dot">.</span></h1>
+        <p class="lead">力扣热题 100，一道一道拆开看。每道题都有一段可以单步播放的动画，代码跟着高亮到正在执行的那一行；看懂之后，换一组自己的输入再跑一遍，或者自己写一遍。</p>
+        <ul class="facts mono" aria-label="概况">
+          <li>{catalog.length} 道题</li>
+          <li>{categories.length} 个分类</li>
+          <li>简单 {levels.E} · 中等 {levels.M} · 困难 {levels.H}</li>
+        </ul>
+        <div class="actions">
+          <a class="btn go" href="/hot100/1/">从第一题开始 →</a>
+          <a class="btn resume" id="resume" href="/hot100/1/" hidden>继续上次 <span class="no" id="resume-title"></span></a>
+        </div>
+        <p class="known mono" id="known" hidden></p>
+      </div>
+
+      <a class="demo" href="/hot100/1/" aria-label="示例：两数之和的算法动画，点击进入这道题">
+        <div class="demo-head">
+          <span class="mono">001 · 哈希</span>
+          <b>两数之和</b>
+          <span class="mono step" id="demo-step">1 / {frames.length}</span>
+        </div>
+        <div class="demo-cells" id="demo-cells">
+          {first.values.map((v: number, i: number) => (
+            <span class:list={['cell', { on: first.active.includes(i) }]}>
+              <b>{v}</b>
+              <i class="mono">{i}</i>
+            </span>
+          ))}
+        </div>
+        <div class="demo-state mono">
+          <span class="k">target = 9</span>
+          <span class="k">seen</span>
+          <span id="demo-seen" class="seen">∅</span>
+        </div>
+        <p class="demo-note" id="demo-note">{first.note}</p>
+        <ol class="demo-code mono" id="demo-code" aria-hidden="true">
+          {snippet.map((l) => (
+            <li data-line={l.line} class:list={{ on: l.line === first.line }}>
+              <span class="ln">{l.line}</span>
+              <span class="tx">{l.text.replace(/^ {4}/, '')}</span>
+            </li>
+          ))}
+        </ol>
+        <div class="demo-bar" aria-hidden="true">
+          {frames.map((_: unknown, i: number) => <i class:list={{ on: i === 0 }} />)}
+        </div>
+      </a>
+      <script type="application/json" id="demo-frames" set:html={JSON.stringify(frames)} />
+    </section>
+
+    <section class="how" aria-labelledby="how-h">
+      <h2 id="how-h" class="mono">每道题怎么学</h2>
+      <ol>
+        <li><span class="tag">01</span><b>看思路</b><span>一段话说清为什么这样做，再加一条每一步都成立的性质。</span></li>
+        <li><span class="tag">02</span><b>看它一步步跑</b><span>← → 单步，空格播放。数组、链表、树和代码同步变化。</span></li>
+        <li><span class="tag">03</span><b>换个输入，或自己写</b><span>输入照平常写法填，比如 <code>2 7 11 15</code>；也可以直接写 Java。</span></li>
+      </ol>
+    </section>
+
+    <section class="catalog" aria-labelledby="catalog-h">
+      <div class="catalog-head">
+        <h2 id="catalog-h">全部题目</h2>
+        <div class="tools">
+          <label class="find"><span class="mono">找题</span><input id="find" type="search" placeholder="题名、题号或分类" autocomplete="off" /></label>
+          <div class="chips" role="group" aria-label="按难度筛选">
+            <button class="chip" data-level="all" aria-pressed="true">全部</button>
+            <button class="chip" data-level="E" aria-pressed="false">简单</button>
+            <button class="chip" data-level="M" aria-pressed="false">中等</button>
+            <button class="chip" data-level="H" aria-pressed="false">困难</button>
+          </div>
+        </div>
+      </div>
+      <p class="empty" id="none" hidden>没有符合条件的题目。</p>
+      <div class="groups">
+        {groups.map((g) => (
+          <section class="group" data-group={g.name} aria-labelledby={`g-${g.no}`}>
+            <header>
+              <span class="no mono">{g.no}</span>
+              <h3 id={`g-${g.no}`}>{g.name}</h3>
+              <span class="label mono">{g.label}</span>
+              <span class="count mono" data-count>{g.entries.length} 题</span>
+            </header>
+            <div class="segs" aria-hidden="true">
+              {g.entries.map((q: Entry) => <i class={q.level} data-seg={q.id} title={`${q.title} · ${q.difficulty}`} />)}
+            </div>
+            <ol>
+              {g.entries.map((q: Entry) => (
+                <li data-id={q.id} data-level={q.level} data-text={`${q.id} ${q.title} ${g.name} ${g.label}`.toLowerCase()}>
+                  <a href={`/hot100/${q.id}/`}>
+                    <span class="qid mono">{String(q.id).padStart(3, '0')}</span>
+                    <span class="title">{q.title}</span>
+                    <span class:list={['level', q.level]}>{q.difficulty}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+      <p class="source mono">题单与分类顺序来自 <a href="https://leetcode.cn/studyplan/top-100-liked/" target="_blank" rel="noopener">力扣官方「热题 100」↗</a></p>
+    </section>
+  </div>
+</Base>
+
+<script>
+  // Links from before the landing page existed (/hot100/#42) still open that lesson.
+  const followHash = () => {
+    const id = Number(location.hash.slice(1));
+    if (id && document.querySelector(`li[data-id="${id}"]`)) location.replace(`/hot100/${id}/`);
+  };
+  followHash();
+  addEventListener('hashchange', followHash);
+
+  const read = <T,>(key: string, fallback: T): T => {
+    try {
+      return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  const $ = (id: string) => document.getElementById(id)!;
+
+  // ---------------------------------------------------------- where you are
+  const done = new Set<number>(read<number[]>('hot100-preview-done', []));
+  const last = read<number | null>('hot100-last', null);
+  const lastItem = last ? document.querySelector<HTMLElement>(`li[data-id="${last}"]`) : null;
+  if (lastItem) {
+    const resume = $('resume') as HTMLAnchorElement;
+    resume.href = `/hot100/${last}/`;
+    $('resume-title').textContent = lastItem.querySelector('.title')?.textContent ?? '';
+    resume.hidden = false;
+  }
+  if (done.size) {
+    $('known').textContent = `已经会了 ${done.size} / ${document.querySelectorAll('li[data-id]').length} 道`;
+    $('known').hidden = false;
+  }
+  for (const id of done) {
+    document.querySelector(`li[data-id="${id}"]`)?.classList.add('done');
+    document.querySelector(`[data-seg="${id}"]`)?.classList.add('done');
+  }
+  for (const group of document.querySelectorAll<HTMLElement>('.group')) {
+    const all = group.querySelectorAll('li[data-id]').length;
+    const mine = group.querySelectorAll('li.done').length;
+    if (mine) group.querySelector('[data-count]')!.textContent = `${mine} / ${all} 会了`;
+  }
+
+  // ---------------------------------------------------------- find a lesson
+  let level = 'all';
+  const filter = () => {
+    const query = ($('find') as HTMLInputElement).value.trim().toLowerCase();
+    let shown = 0;
+    for (const group of document.querySelectorAll<HTMLElement>('.group')) {
+      let inGroup = 0;
+      for (const li of group.querySelectorAll<HTMLElement>('li[data-id]')) {
+        const ok = (level === 'all' || li.dataset.level === level) && (!query || li.dataset.text!.includes(query));
+        li.hidden = !ok;
+        if (ok) inGroup++;
+      }
+      group.hidden = !inGroup;
+      shown += inGroup;
+    }
+    $('none').hidden = shown > 0;
+  };
+  $('find').addEventListener('input', filter);
+  for (const chip of document.querySelectorAll<HTMLButtonElement>('[data-level]')) {
+    if (chip.tagName !== 'BUTTON') continue;
+    chip.addEventListener('click', () => {
+      level = chip.dataset.level!;
+      for (const c of document.querySelectorAll<HTMLButtonElement>('button[data-level]')) c.setAttribute('aria-pressed', String(c === chip));
+      filter();
+    });
+  }
+
+  // ---------------------------------------------------------- the demo plays itself
+  type Frame = { values: number[]; active: number[]; note: string; stored: [number, number][]; line: number };
+  const frames: Frame[] = JSON.parse($('demo-frames').textContent || '[]');
+  const demo = document.querySelector<HTMLElement>('.demo')!;
+  const cells = [...$('demo-cells').children] as HTMLElement[];
+  const bar = [...demo.querySelectorAll<HTMLElement>('.demo-bar i')];
+  const lines = [...$('demo-code').children] as HTMLElement[];
+  let at = 0;
+  const show = (i: number) => {
+    const f = frames[i];
+    cells.forEach((c, k) => c.classList.toggle('on', f.active.includes(k)));
+    $('demo-seen').textContent = f.stored.length ? f.stored.map(([k, v]) => `${k}→${v}`).join('  ') : '∅';
+    $('demo-note').textContent = f.note;
+    $('demo-step').textContent = `${i + 1} / ${frames.length}`;
+    lines.forEach((l) => l.classList.toggle('on', Number(l.dataset.line) === f.line));
+    bar.forEach((b, k) => b.classList.toggle('on', k <= i));
+  };
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let paused = false;
+  demo.addEventListener('pointerenter', () => (paused = true));
+  demo.addEventListener('pointerleave', () => (paused = false));
+  demo.addEventListener('focusin', () => (paused = true));
+  demo.addEventListener('focusout', () => (paused = false));
+  if (frames.length && !still) {
+    setInterval(() => {
+      if (paused || document.hidden) return;
+      at = (at + 1) % (frames.length + 2); // hold on the answer for two beats
+      show(Math.min(at, frames.length - 1));
+    }, 1300);
+  } else if (frames.length) show(frames.length - 1);
+</script>
+
+<style>
+  .h100 {
+    max-width: var(--page);
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3rem) var(--pad) 4rem;
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    align-items: center;
+    padding-bottom: clamp(2rem, 4vw, 3rem);
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+  }
+
+  h1 {
+    margin: 0.4rem 0 1rem;
+    font-family: var(--font-ui);
+    font-size: clamp(3.5rem, 9vw, 6.5rem);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 0.92;
+  }
+
+  h1 em {
+    font-style: normal;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--ink);
+  }
+
+  h1 .dot {
+    color: var(--ink);
+  }
+
+  .lead {
+    max-width: 34rem;
+    margin: 0 0 1.25rem;
+    font-family: var(--font-text);
+    font-size: var(--t-body);
+    line-height: 1.85;
+  }
+
+  .hero .facts {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    list-style: none;
+    font-size: var(--t-mono);
+    color: var(--ink-2);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .actions .btn {
+    font-size: 1rem;
+    padding: 0.75rem 1.9rem 0.75rem 1.2rem;
+  }
+
+  /* .btn sets display, which would otherwise override [hidden] */
+  .actions .btn[hidden],
+  .known[hidden] {
+    display: none;
+  }
+
+  .hero > * {
+    min-width: 0;
+  }
+
+  .resume .no {
+    max-width: 12em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .known {
+    margin: 0.9rem 0 0;
+    font-size: var(--t-mono);
+    color: var(--ink-2);
+  }
+
+  /* ---------- the demo card ---------- */
+  .demo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1.1rem 1.2rem 1rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    box-shadow: 10px 10px 0 -1px var(--paper), 10px 10px 0 0 var(--rule);
+    color: var(--ink);
+    transition: border-color 0.15s, transform 0.2s var(--snap);
+  }
+
+  .demo:hover,
+  .demo:focus-visible {
+    border-color: var(--ink);
+    transform: translate(-2px, -2px);
+  }
+
+  .demo-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+
+  .demo-head span {
+    font-size: 0.72rem;
+    color: var(--ink-2);
+  }
+
+  .demo-head b {
+    font-family: var(--font-text);
+    font-weight: 400;
+    font-size: 1.2rem;
+  }
+
+  .demo-head .step {
+    margin-left: auto;
+  }
+
+  .demo-cells {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0 0.2rem;
+  }
+
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .cell b {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    font: 600 1.25rem var(--font-mono);
+    transition: transform 0.25s var(--snap), background-color 0.2s, border-color 0.2s;
+  }
+
+  .cell i {
+    font-style: normal;
+    font-size: 0.68rem;
+    color: var(--ink-2);
+  }
+
+  .cell.on b {
+    background: var(--signal);
+    color: var(--on-signal);
+    border-color: var(--ink);
+    transform: translateY(-5px);
+  }
+
+  .demo-state {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .demo-state .k {
+    padding: 0.05rem 0.45rem;
+    background: var(--chip);
+  }
+
+  .seen {
+    color: var(--ink);
+    white-space: pre;
+  }
+
+  .demo-note {
+    min-height: 3.4em;
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+
+  .demo-code {
+    margin: 0;
+    padding: 0.5rem 0;
+    list-style: none;
+    background: #17212d;
+    color: #c9d4e2;
+    font-size: 0.72rem;
+    line-height: 1.85;
+    overflow: hidden;
+  }
+
+  .demo-code li {
+    display: flex;
+    gap: 0.7rem;
+    padding: 0 0.8rem 0 0.5rem;
+    border-left: 3px solid transparent;
+    white-space: pre;
+  }
+
+  .demo-code .ln {
+    width: 1.4rem;
+    text-align: right;
+    color: #607082;
+  }
+
+  .demo-code li.on {
+    background: #2b78d633;
+    border-left-color: #92beff;
+  }
+
+  .demo-bar {
+    display: flex;
+    gap: 3px;
+  }
+
+  .demo-bar i {
+    flex: 1;
+    height: 4px;
+    background: var(--rule);
+    transition: background-color 0.2s;
+  }
+
+  .demo-bar i.on {
+    background: var(--ink);
+  }
+
+  /* ---------- how ---------- */
+  .how {
+    padding: clamp(1.75rem, 4vw, 2.5rem) 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .how h2,
+  .catalog-head h2 {
+    margin: 0 0 1rem;
+    font-family: var(--font-ui);
+    font-size: var(--t-h2);
+    font-weight: 800;
+  }
+
+  .how ol {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .how li {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .how b {
+    font-family: var(--font-ui);
+    font-size: 1.05rem;
+  }
+
+  .how li > span:last-child {
+    font-size: 0.92rem;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+
+  .how code {
+    font-size: 0.85em;
+    padding: 0 0.3em;
+    background: var(--chip);
+    color: var(--ink);
+  }
+
+  /* ---------- catalog ---------- */
+  .catalog {
+    padding-top: clamp(1.75rem, 4vw, 2.5rem);
+  }
+
+  .catalog-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .catalog-head h2 {
+    margin: 0;
+  }
+
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .find {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: var(--t-mono);
+    color: var(--ink-2);
+  }
+
+  .find input {
+    width: min(16rem, 60vw);
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    color: var(--ink);
+    font: inherit;
+    font-family: var(--font-ui);
+  }
+
+  .find input:focus-visible {
+    outline: 2px solid var(--trace);
+    outline-offset: -1px;
+    border-color: var(--ink);
+  }
+
+  .chips {
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .chips .chip {
+    cursor: pointer;
+    min-height: 2rem;
+  }
+
+  .groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: 1rem;
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+  }
+
+  .group[hidden] {
+    display: none;
+  }
+
+  .group header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'no name count' 'no label label';
+    column-gap: 0.75rem;
+    padding: 0.9rem 1rem 0.6rem;
+  }
+
+  .group .no {
+    grid-area: no;
+    align-self: start;
+    padding: 0.05rem 0.4rem;
+    background: var(--chip);
+    font-size: 0.72rem;
+  }
+
+  .group h3 {
+    grid-area: name;
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 1.05rem;
+    font-weight: 800;
+  }
+
+  .group .label {
+    grid-area: label;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-2);
+  }
+
+  .group .count {
+    grid-area: count;
+    font-size: 0.72rem;
+    color: var(--ink-2);
+  }
+
+  /* one segment per lesson: hollow = easy, outlined = medium, solid = hard; yellow once you know it */
+  .segs {
+    display: flex;
+    gap: 2px;
+    padding: 0 1rem 0.7rem;
+  }
+
+  .segs i {
+    flex: 1;
+    height: 5px;
+    background: var(--chip);
+  }
+
+  .segs i.M {
+    background: var(--ink-2);
+  }
+
+  .segs i.H {
+    background: var(--ink);
+  }
+
+  .segs i.done {
+    background: var(--signal);
+    outline: 1px solid var(--ink);
+    outline-offset: -1px;
+  }
+
+  .group ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--rule);
+  }
+
+  .group li[hidden] {
+    display: none;
+  }
+
+  .group li a {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.5rem 1rem;
+    color: var(--ink);
+    transition: background-color 0.12s;
+  }
+
+  .group li + li a {
+    border-top: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
+  }
+
+  .group li a:hover,
+  .group li a:focus-visible {
+    background: var(--paper);
+  }
+
+  .group li a::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--trace);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.18s var(--snap);
+  }
+
+  .group li a:hover::before,
+  .group li a:focus-visible::before {
+    transform: none;
+  }
+
+  .qid {
+    padding: 0 0.35rem;
+    background: var(--chip);
+    font-size: 0.7rem;
+    color: var(--ink-2);
+  }
+
+  .title {
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .level {
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0 0.35rem;
+    border: 1px solid var(--rule);
+    color: var(--ink-2);
+  }
+
+  .level.M {
+    border-color: var(--ink-2);
+    color: var(--ink);
+  }
+
+  .level.H {
+    background: var(--tag-bg);
+    color: var(--tag-fg);
+    border-color: transparent;
+  }
+
+  li.done .qid {
+    background: var(--signal);
+    color: var(--on-signal);
+  }
+
+  li.done .title::after {
+    content: ' ✓';
+    font-weight: 700;
+  }
+
+  .source {
+    margin: 2rem 0 0;
+    font-size: var(--t-mono);
+    color: var(--ink-2);
+  }
+
+  .source a {
+    color: var(--ink);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  @media (max-width: 900px) {
+    .hero {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .demo {
+      max-width: 34rem;
+    }
+    .how ol {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .cell b {
+      width: 2.6rem;
+      height: 2.6rem;
+      font-size: 1.05rem;
+    }
+    .demo {
+      box-shadow: none;
+    }
+    .actions .btn {
+      flex: 1;
+      justify-content: center;
+    }
+    .find,
+    .find input {
+      width: 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .demo,
+    .cell b,
+    .group li a::before {
+      transition: none;
+    }
+  }
+</style>
