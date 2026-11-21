@@ -1,0 +1,11 @@
+---
+import LessonPage from '../../components/hot100/LessonPage.astro';
+import { catalog } from '../../lib/hot100/curriculum.mjs';
+
+export function getStaticPaths() {
+  return catalog.map((q) => ({ params: { id: String(q.id) } }));
+}
+
+const id = Number(Astro.params.id);
+---
+<LessonPage id={id} />

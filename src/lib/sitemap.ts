@@ -1,12 +1,10 @@
 import { SITE } from '@/site.config';
 import { listProjects } from '@/server/projects.ts';
 import { categoryOf, categoryUrl, getPosts, groupBy, postUrl, seriesUrl, tagUrl } from './posts';
+import { catalog } from './hot100/curriculum.mjs';
 
-// Prerendered pages. The Hot 100 lessons are discovered from their source files.
-const lessons = Object.keys(import.meta.glob('../pages/hot100/*.astro'))
-  .map((file) => /\/(\d+)\.astro$/.exec(file)?.[1])
-  .filter((id): id is string => !!id)
-  .sort((a, b) => Number(a) - Number(b));
+// Prerendered pages. The Hot 100 lessons come from the curriculum catalog.
+const lessons = catalog.map((q: { id: number }) => q.id).sort((a: number, b: number) => a - b);
 
 const STATIC = ['/', '/about/', '/privacy/', '/posts/', '/works/', '/tags/', '/categories/', '/series/', '/hot100/', ...lessons.map((id) => `/hot100/${id}/`)];
 

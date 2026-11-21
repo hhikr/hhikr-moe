@@ -1,0 +1,20 @@
+---
+import Base from '../../layouts/Base.astro';
+import { catalog, lessons } from '../../lib/hot100/curriculum.mjs';
+import { lessonView } from '../../lib/hot100/lesson-view.mjs';
+
+interface Props {
+  id: number;
+}
+
+const { id } = Astro.props;
+const question = catalog.find((q) => q.id === id);
+const lesson = (lessons as Record<number, (typeof lessons)[keyof typeof lessons] | undefined>)[id];
+if (!question || !lesson) throw new Error(`Hot 100 lesson ${id} is missing from the curriculum.`);
+const view = lessonView(question, lesson);
+---
+<Base title={`${question.title} · Hot 100`} description={lesson.description}>
+<link slot="head" rel="stylesheet" href="/hot100-assets/style.css" />
+<div class="hot100" data-java-runtime="site" data-java-launch="node server.mjs" data-lesson={String(id)} data-pagefind-body set:html={view}></div>
+<script is:inline type="module" src="/hot100-assets/app.mjs"></script>
+</Base>
