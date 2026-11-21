@@ -19,6 +19,12 @@ const groups = [
 ['技巧','136|只出现一次的数字|E;169|多数元素|E;75|颜色分类|M;31|下一个排列|M;287|寻找重复数|M']
 ];
 export const categories = groups.map(([name]) => name);
+/** The wide Latin label shown above a lesson's title. */
+export const categoryLabels = {
+  '哈希':'HASHING','双指针':'TWO POINTERS','滑动窗口':'SLIDING WINDOW','子串':'SUBSTRING','普通数组':'ARRAYS','矩阵':'MATRIX',
+  '链表':'LINKED LIST','二叉树':'BINARY TREE','图论':'GRAPH','回溯':'BACKTRACKING','二分查找':'BINARY SEARCH','栈':'STACK',
+  '堆':'HEAP','贪心算法':'GREEDY','动态规划':'DYNAMIC PROGRAMMING','多维动态规划':'MULTI-DIMENSIONAL DP','技巧':'TRICKS'
+};
 export const catalog = groups.flatMap(([category, rows]) => rows.split(';').map(row => {
   const [id,title,level] = row.split('|');
   return {id:Number(id),title,category,level,difficulty:{E:'简单',M:'中等',H:'困难'}[level]};

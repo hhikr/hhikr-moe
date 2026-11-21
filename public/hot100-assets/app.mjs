@@ -1,4 +1,4 @@
-import {catalog,categories} from './catalog.mjs';
+import {catalog,categories,categoryLabels} from './catalog.mjs';
 import {lessons} from './lessons.mjs';
 import {diagram} from './diagrams.mjs';
 import {attachEditor} from './editor.mjs';
@@ -6,53 +6,141 @@ import {judgeOutput,referenceProgram} from './judge.mjs';
 import {captureMotion,animateMotion} from './motion.mjs';
 import {JavaClient} from './java-client.mjs';
 import {prepareDemo} from './demo-input.mjs';
+import {fieldsFor,expectedField,formatFields,formatValue,parseValue,toRaw,splitAssignments,exampleText} from './friendly-input.mjs';
 const $ = id => document.getElementById(id);
+const root=document.querySelector('.hot100');
 const codeEditor=attachEditor($('editor'));
-const javaClient=new JavaClient({sameOrigin:document.querySelector('.hot100').dataset.javaRuntime==='companion'});
+const javaClient=new JavaClient({sameOrigin:root.dataset.javaRuntime==='companion'});
 const escape = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const read = (key,fallback) => {try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
 const save = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
+const pad = n => String(n).padStart(2,'0');
+const lessonPath = id => `/hot100/${id}/`;
 let done=new Set(read('hot100-preview-done',[])),selected=1,filter='all',steps=[],index=0,timer=null,lesson=null,token='',suggestionIndex=0,suggestions=[];
 let suggestionRequest=0,suggestionTimer=null;
 let running=false,environmentAvailable=false;
-let demoSession=null;
+let demoSession=null,demoDirty=false,expectedSpec=null;
 
-const methodNames={'哈希':'HASH MAP','双指针':'TWO POINTERS','二分查找':'BINARY SEARCH','动态规划':'DYNAMIC PROGRAMMING'};
+// ---------------------------------------------------------------- catalog
+function matchesFilter(q){return filter==='all'||(filter==='done'?done.has(q.id):q.level===filter);}
 function renderCatalog(){
- $('only-demo').textContent=`可播放演示 · ${Object.keys(lessons).length}`;
  const query=$('search').value.trim().toLowerCase();
- let count=0;
  $('catalog').innerHTML=categories.map(category=>{
-   const entries=catalog.filter(q=>q.category===category&&`${q.id} ${q.title} ${category}`.toLowerCase().includes(query)&&(filter!=='demo'||lessons[q.id])&&(filter!=='done'||done.has(q.id)));
-   count+=entries.length;if(!entries.length)return '';
-   return `<details class="group" ${query||entries.some(q=>q.id===selected)||filter!=='all'?'open':''}><summary><b>${category}</b><span>${entries.length}</span></summary>${entries.map(q=>`<button data-id="${q.id}" class="${q.id===selected?'active':''}" ${q.id===selected?'aria-current="true"':''}><span class="qid">${String(q.id).padStart(3,'0')}</span><span class="qtitle">${q.title}</span>${done.has(q.id)?'<span class="done-dot" aria-label="已掌握">✓</span>':lessons[q.id]?'<span class="demo-dot" aria-label="可播放演示"></span>':''}</button>`).join('')}</details>`;
+   const entries=catalog.filter(q=>q.category===category&&`${q.id} ${q.title} ${category}`.toLowerCase().includes(query)&&matchesFilter(q));
+   if(!entries.length)return '';
+   const doneCount=entries.filter(q=>done.has(q.id)).length;
+   return `<details class="group" ${query||entries.some(q=>q.id===selected)||filter!=='all'?'open':''}><summary><b>${category}</b><span>${doneCount?`${doneCount}/`:''}${entries.length}</span></summary>${entries.map(q=>`<a href="${lessonPath(q.id)}" data-id="${q.id}" class="${q.id===selected?'active':''}" ${q.id===selected?'aria-current="page"':''}><span class="qid">${String(q.id).padStart(3,'0')}</span><span class="qtitle">${q.title}</span><span class="level ${q.level}" title="${q.difficulty}">${q.difficulty}</span>${done.has(q.id)?'<span class="done-dot" aria-label="我会了">✓</span>':''}</a>`).join('')}</details>`;
  }).join('')||'<p class="empty">没有符合条件的题目。</p>';
- $('progress-count').textContent=`${done.size} / 100`;$('progress').value=done.size;
- $('all').classList.toggle('selected',filter==='all');$('only-demo').classList.toggle('selected',filter==='demo');$('only-done').classList.toggle('selected',filter==='done');
+ $('progress-count').textContent=`${done.size} / ${catalog.length}`;$('progress').value=done.size;
+ for(const button of document.querySelectorAll('.filters [data-filter]')){const on=button.dataset.filter===filter;button.classList.toggle('selected',on);button.setAttribute('aria-pressed',String(on));}
 }
-function pause(){clearTimeout(timer);timer=null;$('play').textContent='播放演示';}
+const narrow=()=>matchMedia('(max-width: 760px)').matches;
+function setDrawer(open){
+ $('sidebar').classList.toggle('open',open);$('catalog-backdrop').hidden=!open;$('open-catalog').setAttribute('aria-expanded',String(open));
+ document.documentElement.classList.toggle('hot100-drawer-open',open);
+ if(open){
+  // Bring the current lesson into view inside the drawer only; scrollIntoView would move the page too.
+  const sidebar=$('sidebar'),active=$('catalog').querySelector('.active');
+  if(active)sidebar.scrollTop=active.getBoundingClientRect().top-sidebar.getBoundingClientRect().top+sidebar.scrollTop-sidebar.clientHeight/2;
+  // Focus the current lesson rather than the search box, so phones do not pop up the keyboard.
+  (active||$('close-catalog')).focus({preventScroll:true});
+ }
+ else if(document.activeElement&&$('sidebar').contains(document.activeElement))$('open-catalog').focus({preventScroll:true});
+}
+
+// ---------------------------------------------------------------- lesson
+function pause(){clearTimeout(timer);timer=null;$('play').textContent='播放';}
 function setTab(practice){$('learn-tab').setAttribute('aria-selected',String(!practice));$('practice-tab').setAttribute('aria-selected',String(practice));$('learn-view').hidden=practice;$('practice-view').hidden=!practice;if(practice){pause();codeEditor.render();}}
 function highlight(line){return escape(line).replace(/\b(class|public|static|int|void|for|if|else|return|throw|new|while|import)\b/g,'<span class="kw">$1</span>').replace(/\b(Solution|Main|Map|Integer|HashMap|IllegalArgumentException)\b/g,'<span class="type">$1</span>');}
-function select(id){
- pause();selected=id;const q=catalog.find(q=>q.id===id);if(!q)return;
+function stepLink(id,target){const a=$(id);a.hidden=!target;if(target){a.href=lessonPath(target.id);a.title=target.title;}else a.removeAttribute('href');}
+function select(id,{history:mode='replace',scroll=false}={}){
+ pause();const position=catalog.findIndex(q=>q.id===id);const q=catalog[position];if(!q)return;
+ selected=id;
  $('bars')?.replaceChildren();$('cells').replaceChildren();
  lesson=lessons[id];index=0;
  $('verdict').hidden=true;$('jump-error').hidden=true;$('undo-draft').hidden=read(`hot100-preview-backup-${id}`,null)===null;
- $('category').textContent=q.category;$('method').textContent=methodNames[q.category]||q.category;$('title').textContent=q.title;$('number').textContent=`#${q.id}`;$('position').textContent=`${String(catalog.indexOf(q)+1).padStart(2,'0')} / 100`;
+ $('category').textContent=q.category;$('method').textContent=categoryLabels[q.category]||q.category;$('title').textContent=q.title;$('number').textContent=`#${q.id}`;$('position').textContent=`${pad(position+1)} / ${catalog.length}`;
  $('difficulty').textContent=q.difficulty;$('difficulty').className=`badge ${q.level}`;
- $('complete').textContent=done.has(id)?'已掌握 ✓':'标记掌握';$('complete').classList.toggle('completed',done.has(id));
- $('pending').hidden=!!lesson;$('demo').hidden=!lesson;$('practice-tab').disabled=!lesson;$('description').textContent=lesson?.description||'目录已收录；完整课程内容将在正式实现中补齐。';
- $('input').textContent=lesson?.input||'待补齐';$('output').textContent=lesson?.output||'待补齐';$('time').textContent=lesson?`时间 ${lesson.time}`:'';$('space').textContent=lesson?`空间 ${lesson.space}`:'';
- $('official').href=`https://leetcode.cn/problemset/?search=${id}`;
- if(lesson){$('idea').textContent=lesson.idea;$('invariant').textContent=lesson.invariant;$('raw').value=read(`hot100-demo-input-${id}`,lesson.raw);$('expected-output').value=read(`hot100-demo-expected-${id}`,'');$('code').innerHTML=lesson.code.split('\n').map((line,i)=>`<span class="code-line" data-line="${i+1}"><span class="ln">${i+1}</span>${highlight(line)}</span>`).join('');$('editor').value=read(`hot100-preview-draft-${id}`,lesson.practice);$('result').textContent='尚未运行。';$('stdin').value=read(`hot100-preview-stdin-${id}`,'');$('input-error').textContent='';try{demoSession=prepareDemo(lesson,$('raw').value,$('expected-output').value);}catch{$('raw').value=lesson.raw;$('expected-output').value='';demoSession=prepareDemo(lesson,lesson.raw);}$('demo-status').textContent=demoSession.raw===lesson.raw?'当前使用题目示例':'已载入自定义输入';steps=demoSession.frames;renderFrame();}
- setTab(false);renderCatalog();history.replaceState(null,'',`/hot100/${id}/`);document.title=`${q.title} · Hot 100 · Hitchhiker`;document.querySelector('link[rel=canonical]')?.setAttribute('href',`https://hhikr.moe/hot100/${id}/`);
+ $('leetcode').href=`https://leetcode.cn/problemset/?search=${encodeURIComponent(q.title)}`;
+ updateCompletion();
+ const prev=catalog[position-1],next=catalog[position+1];
+ stepLink('prev-lesson',prev);stepLink('next-lesson',next);
+ $('next-card').hidden=!next;if(next){$('next-card').href=lessonPath(next.id);$('next-title').textContent=`${next.title} →`;}
+ $('description').textContent=lesson.description;$('input').textContent=exampleText(lesson);$('output').textContent=lesson.output;$('time').textContent=`时间 ${lesson.time}`;$('space').textContent=`空间 ${lesson.space}`;
+ $('idea').textContent=lesson.idea;$('invariant').textContent=lesson.invariant;
+ $('code').innerHTML=lesson.code.split('\n').map((line,i)=>`<span class="code-line" data-line="${i+1}"><span class="ln">${i+1}</span>${highlight(line)}</span>`).join('');
+ $('editor').value=read(`hot100-preview-draft-${id}`,lesson.practice);$('result').textContent='尚未运行。';$('stdin').value=read(`hot100-preview-stdin-${id}`,'');
+ loadDemoInput();
+ setTab(false);renderCatalog();
+ const path=lessonPath(id);
+ if(mode==='push'&&location.pathname!==path)history.pushState({id},'',path);else if(mode==='replace')history.replaceState({id},'',path);
+ document.title=`${q.title} · Hot 100 · Hitchhiker`;document.querySelector('link[rel=canonical]')?.setAttribute('href',`https://hhikr.moe${path}`);
  $('practice-example').textContent=`比对目标为本题原始示例。输入：${lesson.input}；预期输出：${lesson.output}`;
+ if(scroll)document.querySelector('.workspace').scrollIntoView({block:'start'});
 }
+function updateCompletion(){const on=done.has(selected);$('complete').textContent=on?'我会了 ✓':'我会了';$('complete').classList.toggle('completed',on);$('complete').setAttribute('aria-pressed',String(on));}
+function go(id,options={}){if(id===selected)return;select(id,{history:'push',scroll:true,...options});}
+
+// ---------------------------------------------------------------- demo input, the way a person writes it
+function fieldMarkup(field,text){
+ const id=`field-${field.key}`;
+ const control=field.multiline
+  ?`<textarea id="${id}" data-key="${field.key}" rows="${Math.min(8,Math.max(3,text.split('\n').length+1))}" spellcheck="false" aria-describedby="${id}-hint">${escape(text)}</textarea>`
+  :`<input id="${id}" data-key="${field.key}" value="${escape(text)}" spellcheck="false" autocomplete="off" aria-describedby="${id}-hint">`;
+ return `<div class="field${field.multiline?' multiline':''}"><label for="${id}"><b>${escape(field.label)}</b><span id="${id}-hint">${escape(field.hint)}</span></label>${control}</div>`;
+}
+function fieldTexts(container){return Object.fromEntries([...container.querySelectorAll('[data-key]')].map(el=>[el.dataset.key,el.value]));}
+function loadDemoInput(){
+ const fields=fieldsFor(lesson);expectedSpec=expectedField(lesson);
+ let raw=read(`hot100-demo-input-${selected}`,lesson.raw),texts;
+ try{texts=formatFields(lesson,JSON.parse(raw));toRaw(lesson,texts);}catch{raw=lesson.raw;texts=formatFields(lesson,JSON.parse(raw));}
+ let expectedText='';
+ const storedExpected=read(`hot100-demo-expected-${selected}`,'');
+ if(storedExpected){try{expectedText=formatValue(expectedSpec.kind,JSON.parse(storedExpected));}catch{expectedText='';}}
+ $('demo-fields').innerHTML=fields.map(f=>fieldMarkup(f,texts[f.key])).join('');
+ $('expected-field').innerHTML=fieldMarkup(expectedSpec,expectedText);
+ $('expected-box').open=!!expectedText;
+ $('input-error').textContent='';
+ try{demoSession=prepareDemo(lesson,raw,storedExpected||'');}catch{demoSession=prepareDemo(lesson,lesson.raw);}
+ demoDirty=false;
+ $('demo-status').textContent=demoSession.raw===lesson.raw?'用的是题目示例':'用的是你的输入';
+ steps=demoSession.frames;renderFrame();
+}
+function clearInvalid(){for(const el of document.querySelectorAll('#custom [aria-invalid]'))el.removeAttribute('aria-invalid');}
+function markInvalid(message){
+ // Messages name the parameter first ("nums：…" from the parser, "nums 必须…" from the lesson).
+ const fields=[...document.querySelectorAll('#custom [data-key]')];
+ const hit=fields.find(el=>message.startsWith(`${el.dataset.key}：`)||message.startsWith(`${el.dataset.key} `))||(message.startsWith('你认为结果是')?$('field-expected'):null)||(fields.length===1?fields[0]:null);
+ hit?.setAttribute('aria-invalid','true');return hit;
+}
+function applyDemo(start=true){
+ pause();clearInvalid();
+ try{
+  const raw=toRaw(lesson,fieldTexts($('demo-fields')));
+  const expectedText=$('field-expected').value.trim();
+  const expectedRaw=expectedText?JSON.stringify(parseValue(expectedSpec.kind,expectedText,expectedSpec.label)):'';
+  const generated=prepareDemo(lesson,raw,expectedRaw);
+  demoSession=generated;steps=generated.frames;index=0;demoDirty=false;
+  $('bars')?.replaceChildren();$('cells').replaceChildren();$('input-error').textContent='';
+  save(`hot100-demo-input-${selected}`,generated.raw);save(`hot100-demo-expected-${selected}`,generated.expectedRaw);
+  $('demo-status').textContent=generated.raw===lesson.raw?`用的是题目示例 · ${steps.length} 步`:`用的是你的输入 · ${steps.length} 步`;
+  renderFrame();if(start)play();return true;
+ }catch(e){
+  const message=String(e.message||e).replace(/^演示输入必须是合法的 JSON$/,'输入的格式不对');
+  $('input-error').textContent=`没法播放：${message}`;$('demo-status').textContent='请先改一下输入';
+  setCustom(true);markInvalid(message)?.focus();return false;
+ }
+}
+function ensureDemo(){return !demoDirty||applyDemo(false);}
+function setCustom(open){$('custom').hidden=!open;$('toggle-custom').setAttribute('aria-expanded',String(open));$('toggle-custom').textContent=open?'收起输入':'换个输入试试';}
+function onDemoEdit(){pause();demoDirty=true;$('demo-status').textContent='输入改了 · 按“用这组输入播放”';$('input-error').textContent='';$('demo-output').textContent='输入改了，重新播放后查看';$('demo-comparison').textContent='';clearInvalid();}
+
+// ---------------------------------------------------------------- playback
 function renderFrame(){
  const f=steps[index];if(!f)return;
  let bars=$('bars');if(!bars){bars=document.createElement('div');bars.id='bars';$('cells').before(bars);}const previous=captureMotion(bars,$('cells'));bars.innerHTML=diagram(selected,f);bars.hidden=!bars.innerHTML;bars.classList.toggle('structure',!!(f.visual?.nodes||f.visual?.heaps||f.visual?.network||f.visual?.searchPath));
  const structure=bars.querySelector('svg.structure-diagram');if(structure){const width=Number(structure.getAttribute('viewBox').split(' ')[2]);structure.style.minWidth=`${Math.min(1440,width)}px`;}
- $('timeline').max=String(steps.length-1);$('timeline').value=String(index);$('step-label').textContent=`${index+1} / ${steps.length}`;$('visual-title').textContent=lesson.valueLabel||(lesson.mode==='dp'?'状态 / f(i)':'数组 / nums');
+ $('timeline').max=String(steps.length-1);$('timeline').value=String(index);$('step-label').textContent=`第 ${index+1} / ${steps.length} 步`;$('visual-title').textContent=lesson.valueLabel||(lesson.mode==='dp'?'状态 / f(i)':'数组 / nums');
  const pointerNames=['read','write','mid','left','right','i','destination'];
  $('cells').classList.toggle('matrix',!!f.columns);$('cells').style.gridTemplateColumns=f.columns?`repeat(${f.columns}, minmax(28px, 48px))`:'';
  $('cells').innerHTML=f.values.map((v,i)=>`<div data-index="${i}" class="cell ${f.active.includes(i)?'active':''}"><div class="pointer-label">${f.columns?'':pointerNames.filter(p=>(selected===70&&p==='i'?f.vars[p]-1:f.vars[p])===i).map(p=>`<span data-pointer="${p}">${p}</span>`).join(' / ')}</div><strong>${escape(v)}</strong><span>${f.columns?`(${Math.floor(i/f.columns)},${i%f.columns})`:lesson.mode==='dp'?`f(${i+1})`:i}</span></div>`).join('');
@@ -65,21 +153,19 @@ function renderFrame(){
  if(f.columns&&f.active.length){const cell=$('cells').querySelector(`[data-index="${f.active.at(-1)}"]`);if(cell){const bounds=$('cells').getBoundingClientRect(),target=cell.getBoundingClientRect();if(target.right>bounds.right)$('cells').scrollLeft+=target.right-bounds.right+8;else if(target.left<bounds.left)$('cells').scrollLeft-=bounds.left-target.left+8;}}
  animateMotion(previous,bars,$('cells'),{duration:Math.min(680,Number($('speed').value)*.72),mode:lesson.mode});
  const finished=index===steps.length-1;
- $('demo-output').textContent=finished?JSON.stringify(demoSession.actual):'播放到最后查看';
- $('demo-comparison').textContent=finished?(demoSession.hasExpected?demoSession.matched?'与预期输出一致':`与预期输出不同。预期：${demoSession.expectedRaw}`:'可以填写预期输出，核对本次结果。'):'';
+ const shown=value=>{try{return formatValue(expectedSpec.kind,value);}catch{return JSON.stringify(value);}};
+ $('demo-output').textContent=finished?shown(demoSession.actual):'播放到最后查看';
+ $('demo-comparison').textContent=finished?(demoSession.hasExpected?demoSession.matched?'和你预期的一致':`和你预期的不一样。你写的是：${shown(JSON.parse(demoSession.expectedRaw))}`:''):'';
  $('demo-comparison').className=finished&&demoSession.hasExpected?(demoSession.matched?'matched':'mismatched'):'';
  $('prev').disabled=index===0;$('next').disabled=index===steps.length-1;
 }
 function tick(){if(index>=steps.length-1){pause();return;}index++;renderFrame();timer=setTimeout(tick,Number($('speed').value));}
-function play(){if(timer){pause();return;}if($('raw').value!==demoSession.raw||$('expected-output').value!==demoSession.expectedRaw){applyDemo(true);return;}if(index===steps.length-1){index=0;renderFrame();}$('play').textContent='暂停';timer=setTimeout(tick,Number($('speed').value));}
-function applyDemo(start=true){
- pause();
- try{const generated=prepareDemo(lesson,$('raw').value,$('expected-output').value);demoSession=generated;steps=generated.frames;index=0;$('bars')?.replaceChildren();$('cells').replaceChildren();$('input-error').textContent='';$('raw').removeAttribute('aria-invalid');$('expected-output').removeAttribute('aria-invalid');save(`hot100-demo-input-${selected}`,generated.raw);save(`hot100-demo-expected-${selected}`,generated.expectedRaw);$('demo-status').textContent=`已生成 ${steps.length} 步 · 使用当前输入`;renderFrame();if(start)play();return true;}
- catch(e){$('input-error').textContent=`无法生成演示：${e.message}`;$('demo-status').textContent='请修正输入或预期输出';(e.message.startsWith('预期输出')?$('expected-output'):$('raw')).setAttribute('aria-invalid','true');return false;}
-}
-function ensureDemo(){return $('raw').value===demoSession.raw&&$('expected-output').value===demoSession.expectedRaw||applyDemo(false);}
+function play(){if(timer){pause();return;}if(demoDirty){applyDemo(true);return;}if(index===steps.length-1){index=0;renderFrame();}$('play').textContent='暂停';timer=setTimeout(tick,Number($('speed').value));}
+function step(delta){pause();if(!ensureDemo())return;index=Math.min(steps.length-1,Math.max(0,index+delta));renderFrame();}
+
+// ---------------------------------------------------------------- practice (unchanged until the editor moves to Monaco)
 function updateRunButtons(){for(const id of ['run','check-sample'])$(id).disabled=running||!environmentAvailable;}
-function updateLaunch(){const command=document.querySelector('.hot100')?.dataset.javaLaunch||'node .hot100-preview/server.mjs';const value=Number($('java-port').value),port=Number.isInteger(value)&&value>=1024&&value<=65535?value:4337;$('java-launch').textContent=`${command} --port ${port} --site ${location.origin}`;}
+function updateLaunch(){const command=root.dataset.javaLaunch||'node .hot100-preview/server.mjs';const value=Number($('java-port').value),port=Number.isInteger(value)&&value>=1024&&value<=65535?value:4337;$('java-launch').textContent=`${command} --port ${port} --site ${location.origin}`;}
 async function environment(){
  token='';environmentAvailable=false;updateRunButtons();$('environment').textContent='正在连接本机 Java 服务…';
  try{if(!javaClient.sameOrigin){javaClient.setPort($('java-port').value);save('hot100-java-port',Number($('java-port').value));}const data=await javaClient.environment();token=javaClient.token;environmentAvailable=data.available;$('environment').textContent=data.available?data.version:'未检测到 JDK。安装 JDK 17 或更高版本，并将 java、javac 加入 PATH 后重启本机服务。';}
@@ -116,22 +202,48 @@ function drawSuggestions(){const box=$('suggestions');box.hidden=!suggestions.le
 function insertSuggestion(i){const editor=$('editor'),prefix=editor.value.slice(0,editor.selectionStart).match(/[A-Za-z][A-Za-z0-9]*$/)?.[0]||'';const end=editor.selectionStart,item=suggestions[i];editor.setRangeText(item[1],end-prefix.length,end,'end');if(item[3]>0)editor.setSelectionRange(editor.selectionStart-1,editor.selectionStart-1);suggestionRequest++;suggestions=[];drawSuggestions();saveDraft();editor.focus();}
 function saveDraft(){save(`hot100-preview-draft-${selected}`,$('editor').value);codeEditor.render();}
 function replaceDraft(code){save(`hot100-preview-backup-${selected}`,$('editor').value);$('editor').value=code;saveDraft();$('undo-draft').hidden=false;}
-$('catalog').addEventListener('click',e=>{const button=e.target.closest('[data-id]');if(button)select(Number(button.dataset.id));});
+
+// ---------------------------------------------------------------- wiring
+const lessonLink=event=>{
+ if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return null;
+ const link=event.target.closest('a[href^="/hot100/"]');const id=link&&Number(link.getAttribute('href').split('/')[2]);
+ return id&&lessons[id]?id:null;
+};
+root.addEventListener('click',e=>{const id=lessonLink(e);if(!id)return;e.preventDefault();const fromCatalog=!!e.target.closest('#catalog');go(id,{scroll:!fromCatalog||narrow()});});
+$('catalog').addEventListener('click',e=>{if(e.target.closest('[data-id]')&&narrow())setDrawer(false);});
+window.addEventListener('popstate',()=>{const id=Number(location.pathname.split('/')[2])||1;if(lessons[id]&&id!==selected)select(id,{history:'none'});});
 $('search').addEventListener('input',renderCatalog);
-for(const [id,value]of[['all','all'],['only-demo','demo'],['only-done','done']])$(id).onclick=()=>{filter=value;renderCatalog();};
-$('complete').onclick=()=>{if(done.has(selected))done.delete(selected);else done.add(selected);save('hot100-preview-done',[...done]);$('complete').textContent=done.has(selected)?'已掌握 ✓':'标记掌握';$('complete').classList.toggle('completed',done.has(selected));renderCatalog();};
-$('play').onclick=play;$('reset').onclick=()=>{pause();if(!ensureDemo())return;index=0;renderFrame();};$('prev').onclick=()=>{pause();if(!ensureDemo())return;index=Math.max(0,index-1);renderFrame();};$('next').onclick=()=>{pause();if(!ensureDemo())return;index=Math.min(steps.length-1,index+1);renderFrame();};$('timeline').oninput=()=>{pause();const desired=Number($('timeline').value);if(!ensureDemo())return;index=Math.min(steps.length-1,desired);renderFrame();};$('speed').onchange=()=>{if(timer){pause();play();}};
+for(const button of document.querySelectorAll('.filters [data-filter]'))button.onclick=()=>{filter=button.dataset.filter;renderCatalog();};
+$('open-catalog').onclick=()=>setDrawer(true);$('close-catalog').onclick=()=>setDrawer(false);$('catalog-backdrop').onclick=()=>setDrawer(false);
+$('complete').onclick=()=>{if(done.has(selected))done.delete(selected);else done.add(selected);save('hot100-preview-done',[...done]);updateCompletion();renderCatalog();};
+$('play').onclick=play;$('reset').onclick=()=>{pause();if(!ensureDemo())return;index=0;renderFrame();};$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);
+$('timeline').oninput=()=>{pause();const desired=Number($('timeline').value);if(!ensureDemo())return;index=Math.min(steps.length-1,desired);renderFrame();};$('speed').onchange=()=>{if(timer){pause();play();}};
 document.addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&$('sidebar').classList.contains('open')){setDrawer(false);return;}
  if(event.defaultPrevented||event.isComposing||event.ctrlKey||event.metaKey||event.altKey||$('learn-view').hidden)return;
- if(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],dialog[open]'))return;
- if(document.querySelector('dialog[open]'))return;
- const key=event.key.toLowerCase();if(key!=='a'&&key!=='d')return;
- event.preventDefault();$(key==='a'?'prev':'next').click();
+ const target=event.target instanceof Element?event.target:null;
+ if(target?.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],dialog[open]'))return;
+ if(document.querySelector('dialog[open]')||$('sidebar').classList.contains('open'))return;
+ const key=event.key.toLowerCase();
+ if(key==='a'||key==='arrowleft'){event.preventDefault();step(-1);}
+ else if(key==='d'||key==='arrowright'){event.preventDefault();step(1);}
+ // Space already presses whatever button or link has focus.
+ else if(key===' '&&!target?.closest('button,a,summary')){event.preventDefault();play();}
 });
+$('toggle-custom').onclick=()=>{const open=$('custom').hidden;setCustom(open);if(open)$('demo-fields').querySelector('[data-key]')?.focus();};
 $('apply').onclick=()=>applyDemo(true);
-$('example-input').onclick=()=>{$('raw').value=lesson.raw;$('expected-output').value=lesson.output;applyDemo(false);};
-for(const id of ['raw','expected-output'])$(id).oninput=()=>{pause();$('demo-status').textContent='已修改 · 点击生成并播放';$('input-error').textContent='';$('demo-output').textContent='输入已修改，等待重新生成';$('demo-comparison').textContent='';$(id).removeAttribute('aria-invalid');};
-$('learn-tab').onclick=()=>setTab(false);$('practice-tab').onclick=()=>setTab(true);$('go-practice').onclick=()=>setTab(true);
+$('example-input').onclick=()=>{const texts=formatFields(lesson,JSON.parse(lesson.raw));for(const el of $('demo-fields').querySelectorAll('[data-key]'))el.value=texts[el.dataset.key];$('field-expected').value=formatValue(expectedSpec.kind,lesson.expected);applyDemo(false);};
+$('custom').addEventListener('input',e=>{if(e.target.closest('[data-key]'))onDemoEdit();});
+$('custom').addEventListener('keydown',e=>{if(e.key!=='Enter'||e.isComposing||!e.target.closest('[data-key]'))return;if(e.target.tagName==='INPUT'||e.ctrlKey||e.metaKey){e.preventDefault();applyDemo(true);}});
+$('demo-fields').addEventListener('paste',e=>{
+ // A whole LeetCode example line ("nums = [2,7,11,15], target = 9") fills every field it names.
+ const text=e.clipboardData?.getData('text')||'';const keys=fieldsFor(lesson).map(f=>f.key);const parts=splitAssignments(text,keys);
+ if(!parts)return;e.preventDefault();
+ const kinds=Object.fromEntries(fieldsFor(lesson).map(f=>[f.key,f.kind]));
+ for(const [key,value] of Object.entries(parts)){const el=$(`field-${key}`);if(!el)continue;try{el.value=formatValue(kinds[key],parseValue(kinds[key],value));}catch{el.value=value;}}
+ onDemoEdit();$('demo-status').textContent=`已从示例填入 ${Object.keys(parts).join('、')} · 按“用这组输入播放”`;
+});
+$('learn-tab').onclick=()=>setTab(false);$('practice-tab').onclick=()=>setTab(true);$('go-practice').onclick=()=>{setTab(true);$('practice-tab').scrollIntoView({block:'start'});};
 
 $('detect').onclick=environment;$('run').onclick=()=>run(false);$('check-sample').onclick=()=>run(true);$('restore').onclick=()=>replaceDraft(lesson.practice);
 $('reference').onclick=()=>replaceDraft(referenceProgram(lesson));
@@ -142,7 +254,7 @@ $('editor').oninput=()=>{saveDraft();suggestionRequest++;clearTimeout(suggestion
 $('editor').onkeydown=e=>{if(e.ctrlKey&&e.code==='Space'){e.preventDefault();clearTimeout(suggestionTimer);suggest(true);return;}if(e.key==='Escape'){suggestionRequest++;clearTimeout(suggestionTimer);suggestions=[];drawSuggestions();return;}if(suggestions.length){if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();suggestionIndex=(suggestionIndex+(e.key==='ArrowDown'?1:-1)+suggestions.length)%suggestions.length;drawSuggestions();return;}if(e.key==='Tab'){e.preventDefault();insertSuggestion(suggestionIndex);return;}}if(e.key==='Tab'){e.preventDefault();const editor=$('editor');editor.setRangeText('    ',editor.selectionStart,editor.selectionEnd,'end');saveDraft();}};
 $('suggestions').onmousedown=e=>{const button=e.target.closest('[data-suggestion]');if(button){e.preventDefault();insertSuggestion(Number(button.dataset.suggestion));}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
-const routeId=Number(location.hash.slice(1))||Number(document.querySelector('.hot100').dataset.lesson);select(catalog.some(q=>q.id===routeId)?routeId:1);
+const routeId=Number(location.hash.slice(1))||Number(root.dataset.lesson);select(catalog.some(q=>q.id===routeId)?routeId:1,{history:location.pathname===lessonPath(routeId)?'none':'replace'});
 $('java-port-field').hidden=javaClient.sameOrigin;$('connection-help').hidden=javaClient.sameOrigin;
 $('java-port').value=read('hot100-java-port',4337);updateLaunch();
 $('detect').textContent=javaClient.sameOrigin?'重新检测':'连接本机 Java';updateRunButtons();
