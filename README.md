@@ -12,7 +12,7 @@
 | 助手后端、Telegram 和定时卡片 | [代码地图](docs/PROJECT_MAP.md) | `tools/hermes/source/` |
 | 任务、规则、设备状态接口 | [任务/Android 入口](tools/cosmo-runtime/README.md) | `tools/cosmo-runtime/state/plugins/cosmo-tasks/` |
 | Android | [任务/Android 入口](tools/cosmo-runtime/README.md) | `tools/cosmo-runtime/workspace/phone-control/android/` |
-| Windows 连接器、Java 执行端 | [代码地图](docs/PROJECT_MAP.md) | `tools/hermes/windows-bridge/`、`tools/hot100-java/` |
+| Windows 连接器、Hot 100 判题服务 | [代码地图](docs/PROJECT_MAP.md) | `tools/hermes/windows-bridge/`、`tools/hot100-judge/` |
 | 找配置、数据、签名或登录状态 | [配置与数据](docs/CONFIGURATION.md) | 仓库外，按下文机器分工定位 |
 | 发布、回滚、清理 VPS | [VPS 运维](docs/VPS_RUNBOOK.md) | 对照实际服务与目录后执行 |
 
@@ -24,7 +24,7 @@ src/ + public/ + scripts/ + tests/          网站
  tools/cosmo/                              网页适配与现有 gate
  tools/cosmo-runtime/                      Android、任务插件、运动/作息脚本
  tools/hermes/windows-bridge/              Windows MCP 连接器
- tools/hot100-java/                        算法区本机 Java 执行端
+ tools/hot100-judge/                       算法区在线判题与 Java 智能提示服务
  docs/                                    项目导航、配置、运行和验收说明
 ```
 
