@@ -78,3 +78,15 @@ sh install-hot100.sh --prune      # 另行批准后：只保留最新的三个�
   - `RestrictSUIDSGID`（`DynamicUser` 默认带上它）会让 bubblewrap 报 “Can't open source /usr: Function not implemented”。
   - `ProtectHostname` 和其他挂载选项同时使用时，会让 bubblewrap 报 “Can't mount proc”。
 - 当天 VPS 的 UDP 53 出站不通，DNS 解析失败，TCP 正常。如果上线时还是这样，`setup-hot100.sh` 下载 JDT LS 会失败。可以先修好 DNS，也可以按 SHA-256 手动放好 `/opt/hot100/jdtls-1.63.0`。
+
+## 上线记录（2026-11-22）
+
+- 判题服务发布 `20261122T110113Z`。因为 VPS 的 DNS 不通，JDT LS 先用 `curl --resolve` 下载并核对 SHA-256 放好，再运行 `setup-hot100.sh`；swap 已扩到 2G。
+- Caddy 改动前备份为 `/etc/caddy/Caddyfile.before-hot100`，和改动后只差 `handle /api/hot100/*` 这一块。
+- 网站发布 `main-6eb881b6-hot100`：复制上一版 `main-0fd51227-prose`，只换 `dist` 和 package 文件，`node_modules` 仍链接到共享目录。上一版保留，可以切回。
+- 发布后重建搜索索引失败：`scripts/rebuild-search.mjs` 需要 `src/server/posts.ts` 等文件，网站发布包里本来就没有，上一版也一样。所以仍在用 2026-11-14 的搜索索引。
+- 线上验收：
+  - 起始代码报出带行号的异常；参考解法提交 10/10 通过。
+  - JDT 补全和实时报错正常，浏览器控制台没有错误。
+  - 沙箱里不能联网，也看不到宿主文件。
+  - 其他服务都在运行；判题服务约 610 MB。
