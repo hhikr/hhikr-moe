@@ -23,7 +23,7 @@ const view = lessonView(question, lesson, {
 ---
 <Base title={`${question.title} · Hot 100`} description={lesson.description}>
 <link slot="head" rel="stylesheet" href="/hot100-assets/style.css" />
-<div class="hot100" data-java-runtime="site" data-java-launch="node server.mjs" data-lesson={String(id)} data-pagefind-body set:html={view}></div>
+<div class="hot100" data-judge="/api/hot100"data-lesson={String(id)} data-pagefind-body set:html={view}></div>
 <script is:inline type="module" src="/hot100-assets/app.mjs"></script>
 </Base>
 

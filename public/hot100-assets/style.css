@@ -219,3 +219,45 @@ html.hot100-drawer-open{overflow:hidden}
 .hot100.has-monaco .monaco-host{display:block}
 .hot100.has-monaco .editor-wrap,.hot100.has-monaco #editor-status{display:none}
 @media(max-width:760px){.hot100 .monaco-host{height:340px}}
+/* Practice: run cases and judge results */
+.hot100 .judge{border:1px solid var(--rule);border-top:0;background:var(--panel);margin-bottom:4px}
+.hot100 .judge-tabs{display:flex;gap:0;border-bottom:1px solid var(--rule)}
+.hot100 .judge-tabs [role=tab]{font:700 12px/1 var(--font-ui);letter-spacing:.04em;padding:12px 16px;border:0;border-bottom:2px solid transparent;background:none;color:var(--ink-2);cursor:pointer}
+.hot100 .judge-tabs [aria-selected=true]{color:var(--ink);border-bottom-color:var(--signal)}
+.hot100 #cases-view,.hot100 #result-view{padding:14px 16px;min-height:150px}
+.hot100 .case-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.hot100 .case-chip{display:inline-flex;border:1px solid var(--rule);background:var(--paper)}
+.hot100 .case-chip button,.hot100 .case-add{font:600 12px/1 var(--font-ui);padding:7px 10px;border:0;background:none;color:var(--ink-2);cursor:pointer}
+.hot100 .case-chip button+button{padding:7px 8px;border-left:1px solid var(--rule)}
+.hot100 .case-chip.selected{border-color:var(--ink)}.hot100 .case-chip.selected button{color:var(--ink)}
+.hot100 .case-chip.passed button:first-child{color:var(--green)}.hot100 .case-chip.wrong button:first-child,.hot100 .case-chip.error button:first-child,.hot100 .case-chip.timeout button:first-child{color:#b84432}
+.hot100 .case-add{border:1px dashed var(--rule)}.hot100 .case-add:hover,.hot100 .case-chip button:hover{color:var(--ink)}
+.hot100 .case-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px 16px}
+.hot100 .case-fields .field label{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:11px;color:var(--ink-2)}
+.hot100 .case-fields .field label b{font:700 12px var(--font-mono);color:var(--ink)}
+.hot100 .case-fields [aria-invalid=true]{border-color:#b84432}
+.hot100 .input-error{color:#b84432;font-size:12px;margin:10px 0 0}.hot100 .input-error:empty{display:none}
+.hot100 .judge .run-toolbar{padding:10px 16px;border-top:1px solid var(--rule);gap:10px}
+.hot100 .judge .run-toolbar span{margin-right:auto;max-width:none}
+.hot100 .judge .run-toolbar .btn[disabled]{opacity:.55;cursor:progress}
+.hot100 .judge-empty{color:var(--ink-2);font-size:13px;margin:0}
+.hot100 .judge-headline{font:800 18px/1.3 var(--font-ui);margin:0 0 12px}
+.hot100 .judge-headline.passed{color:var(--green)}.hot100 .judge-headline.wrong,.hot100 .judge-headline.error,.hot100 .judge-headline.timeout{color:#b84432}
+.hot100 .case-detail{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;margin:0;font-size:12px}
+.hot100 .case-detail dt{color:var(--ink-2);font-weight:700;padding-top:6px}
+.hot100 .case-detail dd{margin:0}
+.hot100 .case-detail pre,.hot100 .diagnostics pre{margin:0;padding:6px 10px;background:var(--paper);border:1px solid var(--rule);font:12px/1.7 var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto}
+.hot100 .diagnostics{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.hot100 .diagnostics li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}
+.hot100 .diagnostics button{font:700 12px var(--font-mono);padding:6px 8px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer;white-space:nowrap}
+.hot100 .diagnostics button:hover{border-color:var(--ink)}
+.hot100 .case-strip{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 14px}
+.hot100 .case-strip span{width:18px;height:8px;background:var(--rule)}
+.hot100 .case-strip .passed{background:var(--green)}.hot100 .case-strip .wrong,.hot100 .case-strip .error,.hot100 .case-strip .timeout{background:#b84432}
+.hot100 #result-view p{font-size:13px}.hot100 #mark-done{margin-left:10px}
+.hot100 .judge-next{color:var(--ink-2)}
+@media(max-width:760px){.hot100 .case-detail{grid-template-columns:1fr}.hot100 .case-detail dt{padding-top:0}.hot100 .diagnostics li{grid-template-columns:1fr}}
+.hot100 .judge .run-toolbar .btn{border:0;border-radius:0;background:var(--fill);padding:.5rem 1.4rem .5rem 1rem;font-size:13px}
+.hot100 .judge .run-toolbar .btn.go{color:var(--panel)}
+/* the site's layout class .margin (global.css) would pad Monaco's gutter of the same name */
+.hot100 .monaco-editor .margin{padding:0}

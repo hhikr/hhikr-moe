@@ -27,6 +27,19 @@ export function judgeOutput(id,stdout,expected,sample={}){
  else passed=serialize(normalize(id,actual))===serialize(normalize(id,expected));
  return passed?{kind:'passed',message:'本题示例通过。示例通过不代表所有输入都正确。'}:{kind:'wrong',message:`结果不符合本题示例。预期：${serialize(expected)}；实际：${serialize(actual)}`};
 }
+/** What the reader starts from online: the class to implement, without a Main. */
+export function starterCode(lesson){return `${lesson.practice.split(/\n(?:public )?class Main\b/)[0].trimEnd()}\n`;}
+/** The lesson's solution as an online answer. */
+export function referenceSolution(lesson){return `import java.util.*;\n\n${lesson.code.trim()}\n`;}
+/** Call the online judge (tools/hot100-judge/server.mjs). Errors carry a message for the reader. */
+export async function callJudge(base,action,payload,{signal}={}){
+ let response;
+ try{response=await fetch(`${base}/${action}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal});}
+ catch(e){if(e.name==='AbortError')throw e;throw new Error('连不上判题服务，请检查网络后再试。');}
+ let data;try{data=await response.json();}catch{data={};}
+ if(!response.ok)throw new Error(data.error||(response.status===502||response.status===504?'判题服务暂时不可用，请稍后再试。':`判题服务出错（${response.status}）。`));
+ return data;
+}
 export function referenceProgram(lesson){
  const body=lesson.javaScenario?`${lesson.javaScenario}\n        System.out.println(LessonIO.format(result));`:`${lesson.javaSetup||''}\n        ${lesson.javaResult?`${lesson.call};\n        `:''}System.out.println(LessonIO.format(${lesson.javaResult||lesson.javaTransform?.replace('__RESULT__',lesson.call)||lesson.call}));`;
  return `import java.util.*;\n\n${lesson.code}\n\npublic class Main {\n    public static void main(String[] args) {\n        ${body}\n    }\n}`;

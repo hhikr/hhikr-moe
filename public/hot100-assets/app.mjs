@@ -2,23 +2,19 @@ import {catalog,categories,categoryLabels} from './catalog.mjs';
 import {lessons} from './lessons.mjs';
 import {diagram} from './diagrams.mjs';
 import {attachEditor} from './editor.mjs';
-import {judgeOutput,referenceProgram} from './judge.mjs';
+import {starterCode,referenceSolution,callJudge} from './judge.mjs';
 import {captureMotion,animateMotion} from './motion.mjs';
-import {JavaClient} from './java-client.mjs';
 import {prepareDemo} from './demo-input.mjs';
 import {fieldsFor,expectedField,formatFields,formatValue,parseValue,toRaw,splitAssignments,exampleText} from './friendly-input.mjs';
 const $ = id => document.getElementById(id);
 const root=document.querySelector('.hot100');
 const codeEditor=attachEditor($('editor'));
-const javaClient=new JavaClient({sameOrigin:root.dataset.javaRuntime==='companion'});
 const escape = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const read = (key,fallback) => {try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
 const save = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
 const pad = n => String(n).padStart(2,'0');
 const lessonPath = id => `/hot100/${id}/`;
-let done=new Set(read('hot100-preview-done',[])),selected=1,filter='all',steps=[],index=0,timer=null,lesson=null,token='',suggestionIndex=0,suggestions=[];
-let suggestionRequest=0,suggestionTimer=null;
-let running=false,environmentAvailable=false;
+let done=new Set(read('hot100-preview-done',[])),selected=1,filter='all',steps=[],index=0,timer=null,lesson=null;
 let demoSession=null,demoDirty=false,expectedSpec=null;
 // Monaco replaces the textarea once it has loaded; the textarea stays as the fallback and always holds the code.
 let monacoEditor=null,editorLoading=null;
@@ -30,16 +26,12 @@ function ensureMonaco(){
  if(monacoEditor||editorLoading||typeof window.hot100LoadEditor!=='function')return editorLoading;
  $('editor-hint').textContent='正在加载编辑器…';
  editorLoading=window.hot100LoadEditor().then(mod=>{
-  monacoEditor=mod.createEditor($('monaco'),{value:$('editor').value,uri:'inmemory://hot100/Main.java',
+  monacoEditor=mod.createEditor($('monaco'),{value:$('editor').value,uri:'inmemory://hot100/Solution.java',
    onChange:value=>{$('editor').value=value;saveDraft();},onRun:()=>run(false),onSubmit:()=>run(true)});
-  root.classList.add('has-monaco');$('editor-hint').textContent='Ctrl + Space 提示 · Ctrl + Enter 运行 · Ctrl + Z 撤销';
+  root.classList.add('has-monaco');$('editor-hint').textContent='Ctrl + Space 提示 · Ctrl + Enter 运行 · Ctrl + \' 提交';
   return monacoEditor;
- }).catch(error=>{console.warn('Monaco 加载失败，改用简易编辑器',error);editorLoading=null;$('editor-hint').textContent='Ctrl + Space 提示 · Tab 插入';});
+ }).catch(error=>{console.warn('Monaco 加载失败，改用简易编辑器',error);editorLoading=null;$('editor-hint').textContent='Tab 缩进';});
  return editorLoading;
-}
-function showCompileErrors(text){
- const markers=[...String(text).matchAll(/Main\.java:(\d+): (?:error|错误): ([^\n]+)/g)].map(m=>({line:Number(m[1]),message:m[2]}));
- monacoEditor?.setMarkers('javac',markers);return markers;
 }
 
 // ---------------------------------------------------------------- catalog
@@ -79,7 +71,7 @@ function select(id,{history:mode='replace',scroll=false}={}){
  selected=id;save('hot100-last',id);
  $('bars')?.replaceChildren();$('cells').replaceChildren();
  lesson=lessons[id];index=0;
- $('verdict').hidden=true;$('jump-error').hidden=true;$('undo-draft').hidden=read(`hot100-preview-backup-${id}`,null)===null;
+ $('undo-draft').hidden=read(`hot100-preview-backup-${id}`,null)===null;
  $('category').textContent=q.category;$('method').textContent=categoryLabels[q.category]||q.category;$('title').textContent=q.title;$('number').textContent=`#${q.id}`;$('position').textContent=`${pad(position+1)} / ${catalog.length}`;
  $('difficulty').textContent=q.difficulty;$('difficulty').className=`badge ${q.level}`;
  $('leetcode').href=`https://leetcode.cn/problemset/?search=${encodeURIComponent(q.title)}`;
@@ -90,21 +82,20 @@ function select(id,{history:mode='replace',scroll=false}={}){
  $('description').textContent=lesson.description;$('input').textContent=exampleText(lesson);$('output').textContent=lesson.output;$('time').textContent=`时间 ${lesson.time}`;$('space').textContent=`空间 ${lesson.space}`;
  $('idea').textContent=lesson.idea;$('invariant').textContent=lesson.invariant;
  $('code').innerHTML=lesson.code.split('\n').map((line,i)=>`<span class="code-line" data-line="${i+1}"><span class="ln">${i+1}</span>${highlight(line)}</span>`).join('');
- setCode(read(`hot100-preview-draft-${id}`,lesson.practice),{undoable:false});monacoEditor?.setMarkers('javac',[]);$('result').textContent='尚未运行。';$('stdin').value=read(`hot100-preview-stdin-${id}`,'');
- loadDemoInput();
+ setCode(draftFor(id,lesson),{undoable:false});monacoEditor?.setMarkers('javac',[]);
+ loadDemoInput();loadRunCases();setJudgeTab(false);$('judge-result').innerHTML='<p class="judge-empty">还没有运行。写好代码后点“运行”。</p>';if(!running)$('judge-status').textContent='在服务器上编译运行 · Java 25';
  setTab(false);renderCatalog();
  const path=lessonPath(id);
  if(mode==='push'&&location.pathname!==path)history.pushState({id},'',path);else if(mode==='replace')history.replaceState({id},'',path);
  document.title=`${q.title} · Hot 100 · Hitchhiker`;document.querySelector('link[rel=canonical]')?.setAttribute('href',`https://hhikr.moe${path}`);
- $('practice-example').textContent=`比对目标为本题原始示例。输入：${lesson.input}；预期输出：${lesson.output}`;
  if(scroll)document.querySelector('.workspace').scrollIntoView({block:'start'});
 }
 function updateCompletion(){const on=done.has(selected);$('complete').textContent=on?'我会了 ✓':'我会了';$('complete').classList.toggle('completed',on);$('complete').setAttribute('aria-pressed',String(on));}
 function go(id,options={}){if(id===selected)return;select(id,{history:'push',scroll:true,...options});}
 
 // ---------------------------------------------------------------- demo input, the way a person writes it
-function fieldMarkup(field,text){
- const id=`field-${field.key}`;
+function fieldMarkup(field,text,prefix='field'){
+ const id=`${prefix}-${field.key}`;
  const control=field.multiline
   ?`<textarea id="${id}" data-key="${field.key}" rows="${Math.min(8,Math.max(3,text.split('\n').length+1))}" spellcheck="false" aria-describedby="${id}-hint">${escape(text)}</textarea>`
   :`<input id="${id}" data-key="${field.key}" value="${escape(text)}" spellcheck="false" autocomplete="off" aria-describedby="${id}-hint">`;
@@ -184,46 +175,92 @@ function tick(){if(index>=steps.length-1){pause();return;}index++;renderFrame();
 function play(){if(timer){pause();return;}if(demoDirty){applyDemo(true);return;}if(index===steps.length-1){index=0;renderFrame();}$('play').textContent='暂停';timer=setTimeout(tick,Number($('speed').value));}
 function step(delta){pause();if(!ensureDemo())return;index=Math.min(steps.length-1,Math.max(0,index+delta));renderFrame();}
 
-// ---------------------------------------------------------------- practice (unchanged until the editor moves to Monaco)
-function updateRunButtons(){for(const id of ['run','check-sample'])$(id).disabled=running||!environmentAvailable;}
-function updateLaunch(){const command=root.dataset.javaLaunch||'node .hot100-preview/server.mjs';const value=Number($('java-port').value),port=Number.isInteger(value)&&value>=1024&&value<=65535?value:4337;$('java-launch').textContent=`${command} --port ${port} --site ${location.origin}`;}
-async function environment(){
- token='';environmentAvailable=false;updateRunButtons();$('environment').textContent='正在连接本机 Java 服务…';
- try{if(!javaClient.sameOrigin){javaClient.setPort($('java-port').value);save('hot100-java-port',Number($('java-port').value));}const data=await javaClient.environment();token=javaClient.token;environmentAvailable=data.available;$('environment').textContent=data.available?data.version:'未检测到 JDK。安装 JDK 17 或更高版本，并将 java、javac 加入 PATH 后重启本机服务。';}
- catch(e){javaClient.disconnect();$('environment').textContent=e.name==='AbortError'?'连接本机 Java 服务超时，请检查服务是否已启动。':/fetch/i.test(e.message)?'无法连接本机 Java 服务。请启动服务，并允许当前网站来源。':e.message;}
- finally{document.querySelector('.status-dot').classList.toggle('ready',environmentAvailable);$('disconnect').hidden=javaClient.sameOrigin||!javaClient.token;updateRunButtons();}
+// ---------------------------------------------------------------- practice: write Solution, run on the judge
+const judgeBase=root.dataset.judge||'/api/hot100';
+const statusText={passed:'通过',wrong:'答案错误',error:'运行出错',timeout:'超时',skipped:'未运行'};
+let running=false,runCases=[],caseIndex=0;
+const shown=value=>{try{return formatValue(expectedSpec.kind,value);}catch{return JSON.stringify(value);}};
+function inputLines(input){
+ try{const texts=formatFields(lesson,input);return fieldsFor(lesson).map(f=>`${f.label} = ${texts[f.key]}`).join('\n');}
+ catch{return JSON.stringify(input);}
 }
-async function run(check=false){
- if(running||!environmentAvailable)return;
- const id=selected,currentLesson=lesson,code=$('editor').value,stdin=$('stdin').value;
- running=true;updateRunButtons();$('verdict').hidden=true;$('jump-error').hidden=true;$('result').textContent='正在编译并运行…';
- try{
-  const data=await javaClient.run(code,stdin);
-  if(selected!==id)return;
-  $('result').textContent=data.error||`${data.stdout||'(无标准输出)'}${data.stderr?`\n标准错误：\n${data.stderr}`:''}\n退出码：${data.exitCode}`;
-  const errorLine=data.error?.match(/Main\.java:(\d+):/);$('jump-error').hidden=!errorLine;showCompileErrors(data.error||'');
-  if(errorLine)$('jump-error').onclick=()=>monacoEditor?monacoEditor.jump(Number(errorLine[1])):codeEditor.jump(Number(errorLine[1]));
-  if(check){const verdict=data.error||data.exitCode!==0?{kind:'error',message:'程序未正常完成，请先修正编译错误或运行异常。'}:judgeOutput(id,data.stdout,currentLesson.expected,currentLesson.sample||JSON.parse(currentLesson.raw));$('verdict').hidden=false;$('verdict').className=`verdict ${verdict.kind}`;$('verdict').textContent=verdict.message;}
- }catch(e){if(selected===id)$('result').textContent=`无法运行：${e.message}`;}finally{running=false;updateRunButtons();}
+function loadRunCases(){
+ const sample=formatFields(lesson,lesson.sample);
+ const stored=read(`hot100-run-cases-${selected}`,null);
+ runCases=Array.isArray(stored)&&stored.length&&stored.length<=3?stored.map(t=>({...sample,...t})):[sample];
+ caseIndex=0;renderCases();
 }
-const snippets=[
- ['sout','System.out.println();','标准输出'],['fori','for (int i = 0; i < n; i++) {\n    \n}','下标循环'],['foreach','for (int value : nums) {\n    \n}','遍历数组'],['map','Map<Integer, Integer> map = new HashMap<>();','哈希表'],['set','Set<Integer> set = new HashSet<>();','集合'],['list','List<Integer> list = new ArrayList<>();','动态数组'],['queue','Deque<Integer> queue = new ArrayDeque<>();','双端队列'],['scanner','Scanner sc = new Scanner(System.in);','读取标准输入'],['sort','Arrays.sort(nums);','数组排序'],['binarySearch','Arrays.binarySearch(nums, target)','二分查找'],['getOrDefault','getOrDefault(key, 0)','哈希表默认值'],['containsKey','containsKey(key)','键是否存在'],['put','put(key, value)','写入键值'],['get','get(key)','读取值'],['add','add(value)','添加元素'],['offer','offer(value)','入队'],['poll','poll()','出队'],['size','size()','元素数量'],['length','length','数组长度'],['length()','length()','字符串长度'],['charAt','charAt(index)','字符读取'],['substring','substring(start, end)','截取子串'],['int','int ','整型'],['return','return ','返回'],['while','while (condition) {\n    \n}','循环'],['if','if (condition) {\n    \n}','条件分支']
-];
-async function suggest(force=false){
- const editor=$('editor'),code=editor.value,cursor=editor.selectionStart,before=code.slice(0,cursor),prefix=before.match(/[A-Za-z][A-Za-z0-9]*$/)?.[0]||'',request=++suggestionRequest;
- suggestions=snippets.filter(([key])=>force||prefix.length>=2&&key.toLowerCase().startsWith(prefix.toLowerCase())).slice(0,10);suggestionIndex=0;drawSuggestions();
- if(token&&/\.[A-Za-z0-9_$]*$/.test(before)){
-  try{
-   const {items}=await javaClient.complete(code,cursor);
-   if(request!==suggestionRequest||editor.value!==code||editor.selectionStart!==cursor)return;
-   if(items.length){suggestions=items.map(item=>[item.label,item.insertText,item.detail,item.parameterCount]);suggestionIndex=0;drawSuggestions();}
-  }catch{}
+function saveRunCases(){save(`hot100-run-cases-${selected}`,runCases);}
+function renderCases(){
+ $('case-chips').innerHTML=runCases.map((_,i)=>`<span class="case-chip${i===caseIndex?' selected':''}"><button data-case="${i}" aria-pressed="${i===caseIndex}">用例 ${i+1}</button>${runCases.length>1?`<button data-remove="${i}" aria-label="删除用例 ${i+1}" title="删除">×</button>`:''}</span>`).join('')+(runCases.length<3?'<button id="add-case" class="case-add">+ 添加用例</button>':'')+(JSON.stringify(runCases[caseIndex])!==JSON.stringify(formatFields(lesson,lesson.sample))?'<button id="sample-case" class="case-add">填入题目示例</button>':'');
+ $('case-fields').innerHTML=fieldsFor(lesson).map(f=>fieldMarkup(f,runCases[caseIndex][f.key]??'','case')).join('');
+ $('case-error').textContent='';
+}
+function setJudgeTab(result){$('cases-tab').setAttribute('aria-selected',String(!result));$('result-tab').setAttribute('aria-selected',String(result));$('cases-view').hidden=result;$('result-view').hidden=!result;}
+function setRunning(on,text){running=on;$('run').disabled=on;$('submit').disabled=on;$('judge-status').textContent=text;}
+function runInputs(){
+ const inputs=[];
+ for(const [i,texts] of runCases.entries()){
+  try{inputs.push(JSON.parse(toRaw(lesson,texts)));}
+  catch(e){
+   caseIndex=i;renderCases();setJudgeTab(false);
+   const message=String(e.message||e);$('case-error').textContent=`用例 ${i+1} 有问题：${message}`;
+   const field=[...$('case-fields').querySelectorAll('[data-key]')].find(el=>message.startsWith(`${el.dataset.key}：`)||message.startsWith(`${el.dataset.key} `));
+   field?.setAttribute('aria-invalid','true');field?.focus();
+   return null;
+  }
  }
+ return inputs;
 }
-function drawSuggestions(){const box=$('suggestions');box.hidden=!suggestions.length;box.innerHTML=suggestions.map(([key,,label],i)=>`<button role="option" aria-selected="${i===suggestionIndex}" data-suggestion="${i}" class="${i===suggestionIndex?'selected':''}">${escape(key)} <span> · ${escape(label)}</span></button>`).join('');}
-function insertSuggestion(i){const editor=$('editor'),prefix=editor.value.slice(0,editor.selectionStart).match(/[A-Za-z][A-Za-z0-9]*$/)?.[0]||'';const end=editor.selectionStart,item=suggestions[i];editor.setRangeText(item[1],end-prefix.length,end,'end');if(item[3]>0)editor.setSelectionRange(editor.selectionStart-1,editor.selectionStart-1);suggestionRequest++;suggestions=[];drawSuggestions();saveDraft();editor.focus();}
+async function run(submit=false){
+ if(running)return;
+ const id=selected,inputs=submit?undefined:runInputs();
+ if(!submit&&!inputs)return;
+ const code=monacoEditor?monacoEditor.getValue():$('editor').value;
+ setRunning(true,submit?'正在提交，用隐藏用例检验…':'正在编译运行…');monacoEditor?.setMarkers('javac',[]);
+ try{
+  const data=await callJudge(judgeBase,submit?'submit':'run',{id,code,inputs});
+  if(selected!==id)return;
+  renderResult(data,0);setJudgeTab(true);
+  setRunning(false,data.kind==='compile'?'编译没有通过':data.passed===data.total?(submit?`全部 ${data.total} 组通过 · 最慢 ${data.slowest} ms`:'运行完成'):`${data.passed} / ${data.total} 组通过`);
+ }catch(e){
+  if(selected!==id)return;
+  setRunning(false,e.message);
+  $('judge-result').innerHTML=`<p class="judge-headline error">没有运行</p><p>${escape(e.message)}</p>`;setJudgeTab(true);
+ }finally{if(selected===id&&running)setRunning(false,'');}
+}
+function caseDetail(c){
+ const rows=[['输入',inputLines(c.input)]];
+ if(c.actual!==undefined)rows.push(['输出',shown(c.actual)]);
+ if(c.expected!==undefined&&c.status!=='skipped')rows.push(['预期',shown(c.expected)]);
+ if(c.message)rows.push([c.status==='timeout'?'说明':'异常',c.message]);
+ if(c.printed)rows.push(['打印内容',c.printed]);
+ return `<dl class="case-detail">${rows.map(([k,v])=>`<dt>${k}</dt><dd><pre>${escape(v)}</pre></dd>`).join('')}${c.ms!==undefined?`<dt>耗时</dt><dd>${c.ms} ms</dd>`:''}</dl>`;
+}
+function renderResult(data,selectedCase){
+ const box=$('judge-result');
+ if(data.kind==='compile'){
+  const list=data.diagnostics||[];
+  monacoEditor?.setMarkers('javac',list.map(d=>({line:d.line,column:d.column,message:d.message})));
+  box.innerHTML=`<p class="judge-headline error">编译出错</p><ul class="diagnostics">${list.map((d,i)=>`<li><button data-jump="${i}">第 ${d.line} 行</button><pre>${escape(d.message)}</pre></li>`).join('')}</ul>`;
+  box.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>{const d=list[Number(b.dataset.jump)];monacoEditor?monacoEditor.jump(d.line,d.column):codeEditor.jump(d.line);});
+  return;
+ }
+ if(data.kind==='submit'){
+  const all=data.passed===data.total;
+  box.innerHTML=`<p class="judge-headline ${all?'passed':'wrong'}">${all?`通过 · ${data.total} / ${data.total}`:`${statusText[data.failed?.status]||'未通过'} · 通过 ${data.passed} / ${data.total}`}</p><div class="case-strip" aria-label="每组用例的结果">${data.statuses.map((s,i)=>`<span class="${s}" title="第 ${i+1} 组：${statusText[s]}"></span>`).join('')}</div>${all?`<p>所有隐藏用例都通过了。最慢一组 ${data.slowest} ms。${done.has(selected)?'':'<button id="mark-done" class="btn go">标记为“我会了”</button>'}</p>`:`<p>第 ${data.failed.index+1} 组没有通过${data.failed.index===0?'（就是题目示例）':''}：</p>${caseDetail(data.failed)}`}`;
+  $('mark-done')?.addEventListener('click',()=>{done.add(selected);save('hot100-preview-done',[...done]);updateCompletion();renderCatalog();$('mark-done').remove();});
+  return;
+ }
+ const cases=data.cases||[];const current=cases[selectedCase]||cases[0];
+ const all=cases.length&&cases.every(c=>c.status==='passed');
+ box.innerHTML=`<p class="judge-headline ${all?'passed':current?.status==='passed'?'wrong':current?.status||'error'}">${all?'通过':cases.filter(c=>c.status==='passed').length?`通过 ${cases.filter(c=>c.status==='passed').length} / ${cases.length}`:statusText[cases[0]?.status]||'未通过'}</p>${cases.length>1?`<div class="case-chips">${cases.map((c,i)=>`<span class="case-chip ${c.status}${i===selectedCase?' selected':''}"><button data-show="${i}" aria-pressed="${i===selectedCase}">${c.status==='passed'?'✓':'✗'} 用例 ${i+1}</button></span>`).join('')}</div>`:''}${current?caseDetail(current):''}${all?'<p class="judge-next">试过了？点“提交”用隐藏用例检验。</p>':''}`;
+ box.querySelectorAll('[data-show]').forEach(b=>b.onclick=()=>renderResult(data,Number(b.dataset.show)));
+}
 function saveDraft(){save(`hot100-preview-draft-${selected}`,$('editor').value);codeEditor.render();}
-function replaceDraft(code){save(`hot100-preview-backup-${selected}`,$('editor').value);setCode(code);saveDraft();$('undo-draft').hidden=false;}
+function replaceDraft(code){save(`hot100-preview-backup-${selected}`,monacoEditor?monacoEditor.getValue():$('editor').value);setCode(code);saveDraft();$('undo-draft').hidden=false;}
+/** The saved draft, or the starter; drafts of the old local-JDK page that were never edited become the starter. */
+function draftFor(id,l){const draft=read(`hot100-preview-draft-${id}`,null);return draft===null||draft===l.practice?starterCode(l):draft;}
 
 // ---------------------------------------------------------------- wiring
 const lessonLink=event=>{
@@ -257,27 +294,39 @@ $('apply').onclick=()=>applyDemo(true);
 $('example-input').onclick=()=>{const texts=formatFields(lesson,JSON.parse(lesson.raw));for(const el of $('demo-fields').querySelectorAll('[data-key]'))el.value=texts[el.dataset.key];$('field-expected').value=formatValue(expectedSpec.kind,lesson.expected);applyDemo(false);};
 $('custom').addEventListener('input',e=>{if(e.target.closest('[data-key]'))onDemoEdit();});
 $('custom').addEventListener('keydown',e=>{if(e.key!=='Enter'||e.isComposing||!e.target.closest('[data-key]'))return;if(e.target.tagName==='INPUT'||e.ctrlKey||e.metaKey){e.preventDefault();applyDemo(true);}});
-$('demo-fields').addEventListener('paste',e=>{
- // A whole LeetCode example line ("nums = [2,7,11,15], target = 9") fills every field it names.
+// A whole LeetCode example line ("nums = [2,7,11,15], target = 9") fills every field it names.
+function pasteAssignments(e,prefix){
  const text=e.clipboardData?.getData('text')||'';const keys=fieldsFor(lesson).map(f=>f.key);const parts=splitAssignments(text,keys);
- if(!parts)return;e.preventDefault();
+ if(!parts)return null;e.preventDefault();
  const kinds=Object.fromEntries(fieldsFor(lesson).map(f=>[f.key,f.kind]));
- for(const [key,value] of Object.entries(parts)){const el=$(`field-${key}`);if(!el)continue;try{el.value=formatValue(kinds[key],parseValue(kinds[key],value));}catch{el.value=value;}}
- onDemoEdit();$('demo-status').textContent=`已从示例填入 ${Object.keys(parts).join('、')} · 按“用这组输入播放”`;
-});
+ for(const [key,value] of Object.entries(parts)){const el=$(`${prefix}-${key}`);if(!el)continue;try{el.value=formatValue(kinds[key],parseValue(kinds[key],value));}catch{el.value=value;}}
+ return Object.keys(parts);
+}
+$('demo-fields').addEventListener('paste',e=>{const keys=pasteAssignments(e,'field');if(keys){onDemoEdit();$('demo-status').textContent=`已从示例填入 ${keys.join('、')} · 按“用这组输入播放”`;}});
 $('learn-tab').onclick=()=>setTab(false);$('practice-tab').onclick=()=>setTab(true);$('go-practice').onclick=()=>{setTab(true);$('practice-tab').scrollIntoView({block:'start'});};
 
-$('detect').onclick=environment;$('run').onclick=()=>run(false);$('check-sample').onclick=()=>run(true);$('restore').onclick=()=>replaceDraft(lesson.practice);
-$('reference').onclick=()=>replaceDraft(referenceProgram(lesson));
+// Practice: run cases, run and submit.
+function onCaseEdit(){runCases[caseIndex]=fieldTexts($('case-fields'));saveRunCases();$('case-error').textContent='';for(const el of $('case-fields').querySelectorAll('[aria-invalid]'))el.removeAttribute('aria-invalid');}
+$('case-fields').addEventListener('input',onCaseEdit);
+$('case-fields').addEventListener('paste',e=>{if(pasteAssignments(e,'case'))onCaseEdit();});
+$('case-fields').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&(e.target.tagName==='INPUT'||e.ctrlKey||e.metaKey)){e.preventDefault();run(false);}});
+$('case-chips').addEventListener('click',e=>{
+ const pick=e.target.closest('[data-case]'),remove=e.target.closest('[data-remove]');
+ if(pick){caseIndex=Number(pick.dataset.case);renderCases();}
+ else if(remove){runCases.splice(Number(remove.dataset.remove),1);caseIndex=Math.min(caseIndex,runCases.length-1);saveRunCases();renderCases();}
+ else if(e.target.closest('#add-case')){runCases.push({...runCases[caseIndex]});caseIndex=runCases.length-1;saveRunCases();renderCases();$('case-fields').querySelector('[data-key]')?.focus();}
+ else if(e.target.closest('#sample-case')){runCases[caseIndex]=formatFields(lesson,lesson.sample);saveRunCases();renderCases();}
+});
+$('cases-tab').onclick=()=>setJudgeTab(false);$('result-tab').onclick=()=>setJudgeTab(true);
+$('run').onclick=()=>run(false);$('submit').onclick=()=>run(true);
+$('restore').onclick=()=>replaceDraft(starterCode(lesson));
+$('reference').onclick=()=>replaceDraft(referenceSolution(lesson));
 $('undo-draft').onclick=()=>{const backup=read(`hot100-preview-backup-${selected}`,null);if(backup!==null)replaceDraft(backup);};
-$('disconnect').onclick=()=>{javaClient.disconnect();token='';environmentAvailable=false;$('disconnect').hidden=true;$('environment').textContent='已断开本机 Java 服务。课程、动画和草稿仍可使用。';document.querySelector('.status-dot').classList.remove('ready');suggestionRequest++;suggestions=[];drawSuggestions();updateRunButtons();};
-$('java-port').oninput=()=>{javaClient.disconnect();token='';environmentAvailable=false;$('disconnect').hidden=true;$('environment').textContent='服务端口已修改，请重新连接。';document.querySelector('.status-dot').classList.remove('ready');updateRunButtons();updateLaunch();};
-$('editor').oninput=()=>{saveDraft();suggestionRequest++;clearTimeout(suggestionTimer);suggestionTimer=setTimeout(()=>suggest(),250);};$('stdin').oninput=()=>save(`hot100-preview-stdin-${selected}`,$('stdin').value);
-$('editor').onkeydown=e=>{if(e.ctrlKey&&e.code==='Space'){e.preventDefault();clearTimeout(suggestionTimer);suggest(true);return;}if(e.key==='Escape'){suggestionRequest++;clearTimeout(suggestionTimer);suggestions=[];drawSuggestions();return;}if(suggestions.length){if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();suggestionIndex=(suggestionIndex+(e.key==='ArrowDown'?1:-1)+suggestions.length)%suggestions.length;drawSuggestions();return;}if(e.key==='Tab'){e.preventDefault();insertSuggestion(suggestionIndex);return;}}if(e.key==='Tab'){e.preventDefault();const editor=$('editor');editor.setRangeText('    ',editor.selectionStart,editor.selectionEnd,'end');saveDraft();}};
-$('suggestions').onmousedown=e=>{const button=e.target.closest('[data-suggestion]');if(button){e.preventDefault();insertSuggestion(Number(button.dataset.suggestion));}};
+$('editor').oninput=saveDraft;
+$('editor').onkeydown=e=>{
+ if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();run(false);return;}
+ if((e.ctrlKey||e.metaKey)&&e.key==="'"){e.preventDefault();run(true);return;}
+ if(e.key==='Tab'&&!e.shiftKey){e.preventDefault();const editor=$('editor');editor.setRangeText('    ',editor.selectionStart,editor.selectionEnd,'end');saveDraft();}
+};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
 const routeId=Number(location.hash.slice(1))||Number(root.dataset.lesson);select(catalog.some(q=>q.id===routeId)?routeId:1,{history:location.pathname===lessonPath(routeId)?'none':'replace'});
-$('java-port-field').hidden=javaClient.sameOrigin;$('connection-help').hidden=javaClient.sameOrigin;
-$('java-port').value=read('hot100-java-port',4337);updateLaunch();
-$('detect').textContent=javaClient.sameOrigin?'重新检测':'连接本机 Java';updateRunButtons();
-if(javaClient.sameOrigin)environment();else $('environment').textContent='连接本机练习服务后，可使用 Java 类型提示和编译运行。';

@@ -22,16 +22,15 @@ npm run import:posts # 把 src/content/posts 导入本机数据库（.data/）�
 
 自定义输入按人的写法填写，不用写 JSON：数组写 `2 7 11 15` 或 `2, 7, 11, 15`，矩阵每行一行，树按层序写并用 `null` 表示空位，设计题每行一条操作（如 `put 1 1`）。也可以整行粘贴力扣示例 `nums = [2,7,11,15], target = 9`。解析规则在 `public/hot100-assets/friendly-input.mjs`。
 
-编译运行和类型提示通过本机 Java 服务提供。练习页可下载服务包，连接说明见 [本机 Java 服务](../tools/hot100-java/README.md)，方法式练习与标准输入说明见 [Java 练习输入输出](../tools/hot100-java/practice-guide.md)。Java 程序只在用户自己的电脑上执行，服务器不提供代码执行接口。
+练习页只让读者写 `Solution`（设计题写对应的类），编译运行在服务器上的判题服务 `tools/hot100-judge/` 里完成：“运行”用题目示例或读者自己填的最多 3 组输入，“提交”用每题约 10 组隐藏用例。隐藏用例由 `cases.mjs` 按固定种子随机生成，课程自带的演示 trace 负责校验输入并给出预期答案，答案不唯一的输入会被过滤掉。判题机常驻一个 javac（`java/Hot100Compiler.java`），每次运行在 bubblewrap 沙箱里启动一个 JVM（无网络、只读文件系统、nobody 用户），同一时间只运行一份代码，并按 IP 限流。
 
 ```bash
-npm run test:hot100   # 课程、算法、动画与结果比对验证
-npm run java:package # 从 tools/hot100-java 生成下载包
-npm run java:serve   # 启动允许 https://hhikr.moe 连接的本机服务
+npm run test:hot100      # 课程、算法、动画、判题程序生成与判题接口验证（不需要 JDK）
+npm run judge            # 本机启动判题服务（127.0.0.1:4310，需要 JDK 25；npm run dev 会把 /api/hot100 代理过去）
+npm run test:hot100:java # 用真实 JDK 编译运行：全部参考解法通过全部隐藏用例
 ```
 
-服务需要 Node.js 和包含 `javac` 的 JDK。项目内调试其他网站来源时，执行 `node tools/hot100-java/server.mjs --site http://localhost:4321`，并在网页填写相同端口。
-
+判题服务的环境变量和部署方式见 `tools/hot100-judge/server.mjs` 文件头。
 ## 写文章
 
 文章保存在服务器的数据库里，不在这个仓库中。用站长的 Google 账号在 `/login/` 登录后进入管理面板 `/endmin/`，在「文章」里写新文章或编辑已有的文章：左边写 Markdown，右边实时预览，粘贴或拖入图片会自动上传。修改会自动保存，点「发布」或「更新」之后读者才能看到。

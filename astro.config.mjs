@@ -18,7 +18,12 @@ export default defineConfig({
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   // Small scripts would otherwise be written into the page itself, where the
   // content security policy (src/lib/csp.ts) refuses to run them.
-  vite: { build: { assetsInlineLimit: 0 } },
+  // In development the Hot 100 judge (tools/hot100-judge/server.mjs) answers /api/hot100;
+  // in production Caddy routes that path to it.
+  vite: {
+    build: { assetsInlineLimit: 0 },
+    server: { proxy: { '/api/hot100': 'http://127.0.0.1:4310' } },
+  },
   markdown: {
     processor: unified({ smartypants: false, remarkPlugins, rehypePlugins }),
     shikiConfig,
