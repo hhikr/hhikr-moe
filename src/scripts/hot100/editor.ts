@@ -239,9 +239,9 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
     padding: { top: 14, bottom: 14 },
     fixedOverflowWidgets: true,
     bracketPairColorization: { enabled: true },
-    // No bracket-pair guide: the coloured box it draws around the enclosing
-    // { } block puzzled readers. Plain indentation guides are enough.
-    guides: { bracketPairs: false, bracketPairsHorizontal: false, indentation: true },
+    // Vertical, level-coloured bracket guides like VS Code; the horizontal
+    // segments made the enclosing block look like a stray box.
+    guides: { bracketPairs: true, bracketPairsHorizontal: false, highlightActiveBracketPair: true, indentation: true },
     renderLineHighlight: 'all',
     smoothScrolling: true,
     tabSize: 4,
