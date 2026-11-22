@@ -276,7 +276,11 @@ $('catalog').addEventListener('click',e=>{if(e.target.closest('[data-id]')&&narr
 window.addEventListener('popstate',()=>{const id=Number(location.pathname.split('/')[2])||1;if(lessons[id]&&id!==selected)select(id,{history:'none'});});
 $('search').addEventListener('input',renderCatalog);
 for(const button of document.querySelectorAll('.filters [data-filter]'))button.onclick=()=>{filter=button.dataset.filter;renderCatalog();};
-$('open-catalog').onclick=()=>setDrawer(true);$('close-catalog').onclick=()=>setDrawer(false);$('catalog-backdrop').onclick=()=>setDrawer(false);
+// Wider screens fold the side panels instead of using the drawer; the choice is remembered.
+const setCollapsed=(on)=>{document.documentElement.classList.toggle('hot100-collapsed',on);$('open-catalog').setAttribute('aria-expanded',String(!on));save('hot100-collapsed',on);};
+if(read('hot100-collapsed',false))setCollapsed(true);
+$('collapse-catalog').onclick=()=>{setCollapsed(true);$('open-catalog').focus({preventScroll:true});};
+$('open-catalog').onclick=()=>{if(narrow())setDrawer(true);else{setCollapsed(false);$('collapse-catalog').focus({preventScroll:true});}};$('close-catalog').onclick=()=>setDrawer(false);$('catalog-backdrop').onclick=()=>setDrawer(false);
 $('complete').onclick=()=>{if(done.has(selected))done.delete(selected);else done.add(selected);save('hot100-preview-done',[...done]);updateCompletion();renderCatalog();};
 $('play').onclick=play;$('reset').onclick=()=>{pause();if(!ensureDemo())return;index=0;renderFrame();};$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);
 $('timeline').oninput=()=>{pause();const desired=Number($('timeline').value);if(!ensureDemo())return;index=Math.min(steps.length-1,desired);renderFrame();};$('speed').onchange=()=>{if(timer){pause();play();}};
