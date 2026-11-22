@@ -63,7 +63,7 @@ const valueFor = (input, p) => (p.name in input ? input[p.name] : input[KEY_ALIA
 // Lessons that need more than "call the method with these literals".
 const SPECIAL = {
   // A cycle is built by linking the tail back to node `pos`.
-  141: (l, input) => ({ setup: '', statement: '', expr: `new Solution().hasCycle(LessonIO.cycle(${literal('ListNode', input.head)},${int(input.pos)}))` }),
+  141: (_, input) => ({ setup: '', statement: '', expr: `new Solution().hasCycle(LessonIO.cycle(${literal('ListNode', input.head)},${int(input.pos)}))` }),
   142: (l, input) => ({ setup: '', statement: '', expr: transform(l, `new Solution().detectCycle(LessonIO.cycle(${literal('ListNode', input.head)},${int(input.pos)}))`) }),
   // Two lists that share their tail after skipA / skipB nodes.
   160: (l, input) => {

@@ -27,8 +27,11 @@ function ensureMonaco(){
  $('editor-hint').textContent='正在加载编辑器…';
  editorLoading=window.hot100LoadEditor().then(mod=>{
   monacoEditor=mod.createEditor($('monaco'),{value:$('editor').value,uri:'inmemory://hot100/Solution.java',
-   onChange:value=>{$('editor').value=value;saveDraft();},onRun:()=>run(false),onSubmit:()=>run(true)});
-  root.classList.add('has-monaco');$('editor-hint').textContent='Ctrl + Space 提示 · Ctrl + Enter 运行 · Ctrl + \' 提交';
+   onChange:value=>{$('editor').value=value;saveDraft();monacoEditor?.setMarkers('javac',[]);},onRun:()=>run(false),onSubmit:()=>run(true)});
+  const hint='Ctrl + Space 提示 · Ctrl + Enter 运行 · Ctrl + \' 提交 · Shift + Alt + F 格式化';
+  root.classList.add('has-monaco');$('editor-hint').textContent=hint;
+  // IntelliSense from the judge's Java language server, when the server offers it.
+  mod.attachLanguageServer?.(monacoEditor,judgeBase,status=>{$('editor-hint').textContent=status||hint;});
   return monacoEditor;
  }).catch(error=>{console.warn('Monaco 加载失败，改用简易编辑器',error);editorLoading=null;$('editor-hint').textContent='Tab 缩进';});
  return editorLoading;

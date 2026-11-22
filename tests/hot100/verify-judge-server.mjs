@@ -100,6 +100,30 @@ try{
  r=await post('/api/hot100/submit',{id:1,code:'WRONG'});
  assert.equal(r.body.failed.index,2);assert.equal(r.body.statuses[2],'wrong');assert.ok(r.body.failed.input&&r.body.failed.expected);
  assert.equal((await post('/api/hot100/submit',{id:1,code:'x'})).status,429);
+ // IntelliSense is off on this server.
+ r=await post('/api/hot100/lsp/complete',{session:'a'.repeat(24),code:'x',position:{line:0,character:0}});
+ assert.equal(r.status,503);assert.equal(r.body.disabled,true);
 }finally{server.close();}
 
-console.log(`通过：100 道题共 ${total} 组隐藏用例（样例在前、可重现、无重复），判题程序生成、行号保持、输出解析、编译错误定位、判定、限流、排队与 HTTP 接口。`);
+// IntelliSense routes, with a fake language service.
+const calls=[];
+const language={state:'ready',async complete(args){calls.push(args);return {incomplete:false,items:[{label:'put'}]};},async format(){return {text:'formatted'};},async resolve(){throw Object.assign(new Error('智能提示正在启动，请稍后。'),{status:503});}};
+const lspServer=http.createServer(createJudge({runner,language,origins:new Set([origin]),trustProxy:true,limits:{body:64*1024,code:32000,inputs:3,queue:8,runPerMinute:3,submitPerMinute:2,lspPerMinute:4,formatPerMinute:1}}));
+await new Promise(r=>lspServer.listen(0,'127.0.0.1',r));
+const lspUrl=`http://127.0.0.1:${lspServer.address().port}`;
+const lsp=(action,data,headers={})=>fetch(`${lspUrl}/api/hot100/lsp/${action}`,{method:'POST',headers:{'content-type':'application/json',origin,'x-forwarded-for':'9.9.9.9',...headers},body:JSON.stringify(data)}).then(async r=>({status:r.status,body:await r.json()}));
+try{
+ const session='0123456789abcdef01234567';
+ let r=await lsp('complete',{session,code:'class A{}',position:{line:0,character:3}});
+ assert.equal(r.status,200);assert.equal(r.body.result.items[0].label,'put');assert.equal(calls[0].client,'9.9.9.9');assert.equal(calls[0].session,session);
+ assert.equal((await lsp('complete',{session:'../../etc',code:'x',position:{line:0,character:0}})).status,400,'会话 id 必须是 24 位十六进制');
+ assert.equal((await lsp('complete',{session,code:'x',position:{line:-1,character:0}})).status,400);
+ assert.equal((await lsp('unknown',{session,code:'x'})).status,404);
+ assert.equal((await lsp('complete',{session,code:'x',position:{line:0,character:0}},{origin:'https://evil.example'})).status,403);
+ assert.equal((await lsp('resolve',{item:{label:'x'}})).status,503);
+ assert.equal((await lsp('complete',{session,code:'x',position:{line:0,character:0}})).status,429,'补全每分钟上限');
+ assert.equal((await lsp('format',{code:'x'})).body.result.text,'formatted');
+ assert.equal((await lsp('format',{code:'x'})).status,429,'格式化单独限流');
+}finally{lspServer.close();}
+
+console.log(`通过：100 道题共 ${total} 组隐藏用例（样例在前、可重现、无重复），判题程序生成、行号保持、输出解析、编译错误定位、判定、限流、排队与 HTTP 接口；智能提示接口的会话校验、来源检查、限流与关闭状态。`);

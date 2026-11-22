@@ -90,6 +90,137 @@ export interface EditorOptions {
 
 const SEVERITY = { error: monaco.MarkerSeverity.Error, warning: monaco.MarkerSeverity.Warning, info: monaco.MarkerSeverity.Info };
 
+// ------------------------------------------------------------------ language server (JDT LS via the judge)
+
+type Pos = { line: number; character: number };
+type Range = { start: Pos; end: Pos };
+const K = monaco.languages.CompletionItemKind;
+// LSP CompletionItemKind (1-based) → Monaco's.
+const KINDS = [K.Text, K.Text, K.Method, K.Function, K.Constructor, K.Field, K.Variable, K.Class, K.Interface, K.Module, K.Property, K.Unit, K.Value, K.Enum, K.Keyword, K.Snippet, K.Color, K.File, K.Reference, K.Folder, K.EnumMember, K.Constant, K.Struct, K.Event, K.Operator, K.TypeParameter];
+const toRange = (r: Range) => new monaco.Range(r.start.line + 1, r.start.character + 1, r.end.line + 1, r.end.character + 1);
+const toPos = (p: monaco.Position): Pos => ({ line: p.lineNumber - 1, character: p.column - 1 });
+
+/**
+ * IntelliSense from the judge's JDT LS: completion, hover, signature help, formatting and live
+ * diagnostics. Quietly does nothing when the service is off or unreachable.
+ */
+export function attachLanguageServer(handle: EditorHandle, base: string, onStatus?: (text: string) => void) {
+  let session = '';
+  try { session = sessionStorage.getItem('hot100-lsp') || ''; } catch { /* private mode */ }
+  if (!/^[a-f0-9]{24}$/.test(session)) {
+    session = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    try { sessionStorage.setItem('hot100-lsp', session); } catch { /* fine */ }
+  }
+  let off = false;
+  async function call<T>(action: string, payload: Record<string, unknown>, signal?: AbortSignal): Promise<T | null> {
+    if (off) return null;
+    try {
+      const response = await fetch(`${base}/lsp/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session, ...payload }), signal });
+      const data = await response.json().catch(() => ({}));
+      if (data.disabled) { off = true; onStatus?.(''); return null; }
+      if (response.status === 503) onStatus?.('智能提示正在启动…');
+      if (!response.ok) return null;
+      return data.result as T;
+    } catch { return null; }
+  }
+  const mine = (model: monaco.editor.ITextModel) => model === handle.model;
+
+  const disposables = [
+    monaco.languages.registerCompletionItemProvider('java', {
+      triggerCharacters: ['.', '@'],
+      async provideCompletionItems(model, position, context, token) {
+        if (!mine(model)) return { suggestions: [] };
+        const controller = new AbortController();
+        token.onCancellationRequested(() => controller.abort());
+        const result = await call<{ incomplete: boolean; items: any[] }>('complete', { code: model.getValue(), position: toPos(position), context: { triggerKind: context.triggerKind + 1, triggerCharacter: context.triggerCharacter } }, controller.signal);
+        if (!result) return { suggestions: [] };
+        const word = model.getWordUntilPosition(position);
+        const fallback = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
+        return {
+          incomplete: result.incomplete,
+          suggestions: result.items.map((item) => ({
+            label: item.labelDetails ? { label: item.label, detail: item.labelDetails.detail, description: item.labelDetails.description } : item.label,
+            kind: KINDS[item.kind] ?? K.Text,
+            detail: item.detail,
+            documentation: item.documentation ? { value: item.documentation } : undefined,
+            sortText: item.sortText, filterText: item.filterText, preselect: item.preselect,
+            insertText: item.insertText,
+            insertTextRules: item.snippet ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
+            range: item.range ? toRange(item.range) : fallback,
+            additionalTextEdits: item.additionalTextEdits?.map((e: { range: Range; text: string }) => ({ range: toRange(e.range), text: e.text })),
+            commitCharacters: item.commitCharacters,
+            tags: item.deprecated ? [monaco.languages.CompletionItemTag.Deprecated] : undefined,
+            lsp: item,
+          })),
+        };
+      },
+      async resolveCompletionItem(item: any) {
+        if (!item.lsp?.data) return item;
+        const more = await call<{ detail?: string; documentation?: string; additionalTextEdits?: { range: Range; text: string }[] }>('resolve', { item: item.lsp });
+        if (!more) return item;
+        return {
+          ...item,
+          detail: more.detail || item.detail,
+          documentation: more.documentation ? { value: more.documentation } : item.documentation,
+          additionalTextEdits: more.additionalTextEdits?.map((e) => ({ range: toRange(e.range), text: e.text })) ?? item.additionalTextEdits,
+        };
+      },
+    }),
+    monaco.languages.registerHoverProvider('java', {
+      async provideHover(model, position) {
+        if (!mine(model)) return null;
+        const result = await call<{ contents: string[]; range?: Range }>('hover', { code: model.getValue(), position: toPos(position) });
+        return result && { contents: result.contents.map((value) => ({ value })), range: result.range ? toRange(result.range) : undefined };
+      },
+    }),
+    monaco.languages.registerSignatureHelpProvider('java', {
+      signatureHelpTriggerCharacters: ['(', ','],
+      signatureHelpRetriggerCharacters: [')'],
+      async provideSignatureHelp(model, position, _token, context) {
+        if (!mine(model)) return null;
+        const result = await call<{ activeSignature: number; activeParameter: number; signatures: { label: string; documentation?: string; parameters: { label: string | [number, number]; documentation?: string }[] }[] }>('signature', { code: model.getValue(), position: toPos(position), context: { triggerKind: context.triggerKind, isRetrigger: context.isRetrigger, triggerCharacter: context.triggerCharacter } });
+        if (!result) return null;
+        return {
+          value: {
+            activeSignature: result.activeSignature, activeParameter: result.activeParameter,
+            signatures: result.signatures.map((s) => ({ label: s.label, documentation: s.documentation ? { value: s.documentation } : undefined, parameters: s.parameters.map((p) => ({ label: p.label, documentation: p.documentation ? { value: p.documentation } : undefined })) })),
+          },
+          dispose() {},
+        };
+      },
+    }),
+    monaco.languages.registerDocumentFormattingEditProvider('java', {
+      async provideDocumentFormattingEdits(model) {
+        if (!mine(model)) return [];
+        const result = await call<{ text: string }>('format', { code: model.getValue() });
+        return result && result.text !== model.getValue() ? [{ range: model.getFullModelRange(), text: result.text }] : [];
+      },
+    }),
+  ];
+
+  // Live diagnostics: after the reader pauses typing, ask for the problems in the current text.
+  let timer: ReturnType<typeof setTimeout> | undefined, request = 0;
+  const check = async () => {
+    const mineRequest = ++request, code = handle.model.getValue();
+    const result = await call<{ range: Range; severity: number; message: string }[]>('diagnostics', { code });
+    if (!result || mineRequest !== request || code !== handle.model.getValue()) return;
+    onStatus?.('');
+    monaco.editor.setModelMarkers(handle.model, 'jdt', result.map((d) => ({
+      ...{ startLineNumber: d.range.start.line + 1, startColumn: d.range.start.character + 1, endLineNumber: d.range.end.line + 1, endColumn: d.range.end.character + 1 },
+      message: d.message,
+      severity: d.severity === 1 ? monaco.MarkerSeverity.Error : d.severity === 2 ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info,
+      source: 'Java',
+    })));
+  };
+  const schedule = () => { clearTimeout(timer); timer = setTimeout(check, 700); };
+  const changes = handle.model.onDidChangeContent(schedule);
+  schedule();
+  return {
+    refresh: schedule,
+    dispose() { clearTimeout(timer); changes.dispose(); disposables.forEach((d) => d.dispose()); monaco.editor.setModelMarkers(handle.model, 'jdt', []); },
+  };
+}
+
 export function createEditor(host: HTMLElement, options: EditorOptions): EditorHandle {
   const uri = monaco.Uri.parse(options.uri ?? 'inmemory://hot100/Solution.java');
   monaco.editor.getModel(uri)?.dispose();

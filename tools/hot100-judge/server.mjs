@@ -4,18 +4,24 @@
 //   GET  /api/hot100/health
 //   POST /api/hot100/run     {id, code, inputs?}   sample, or up to 3 inputs of the reader's own
 //   POST /api/hot100/submit  {id, code}            every hidden case
+//   POST /api/hot100/lsp/{diagnostics|complete|resolve|hover|signature|format}
+//                            {session, code, position?, context?, item?}   IntelliSense (lsp.mjs)
 //
 // Environment: HOT100_PORT (4310), HOT100_HOST (127.0.0.1), HOT100_ORIGINS (comma list allowed to
-// POST; default the local dev origins), HOT100_SANDBOX (bwrap | none), HOT100_WORK (scratch folder),
-// HOT100_TRUST_PROXY=1 to take the client address from X-Forwarded-For (set behind Caddy).
+// POST; default the local dev origins), HOT100_SANDBOX (bwrap | none), HOT100_SANDBOX_JAVA (java
+// inside the sandbox, /usr/bin/java), HOT100_WORK (scratch folder), HOT100_TRUST_PROXY=1 to take
+// the client address from X-Forwarded-For (set behind Caddy), HOT100_JDTLS (an extracted JDT LS
+// release; IntelliSense is off without it), HOT100_JDTLS_JAVA (Java 21+ for JDT LS), JAVA_HOME.
 
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { lessons } from '../../public/hot100-assets/lessons.mjs';
 import { allCases, check } from './cases.mjs';
 import { Compiler, javaBinary, runProgram, workFolder } from './java.mjs';
+import { LanguageService, SESSION_ID } from './lsp.mjs';
+import { join } from 'node:path';
 
-export const LIMITS = { body: 64 * 1024, code: 32000, inputs: 3, queue: 8, runPerMinute: 20, submitPerMinute: 6 };
+export const LIMITS = { body: 64 * 1024, code: 32000, inputs: 3, queue: 8, runPerMinute: 20, submitPerMinute: 6, lspPerMinute: 400, formatPerMinute: 30 };
 
 /** Sliding one-minute window per client and action. */
 export class RateLimit {
@@ -71,7 +77,10 @@ export function customCase(lesson, input) {
   return { input, expected: frames.at(-1).answer };
 }
 
-export function createJudge({ runner, origins, trustProxy = false, limits = LIMITS, now } = {}) {
+const LSP_ACTIONS = new Set(['diagnostics', 'complete', 'resolve', 'hover', 'signature', 'format']);
+const isPosition = (p) => p && Number.isInteger(p.line) && Number.isInteger(p.character) && p.line >= 0 && p.character >= 0 && p.line < 5000 && p.character < 5000;
+
+export function createJudge({ runner, language, origins, trustProxy = false, limits = LIMITS, now } = {}) {
   const rate = new RateLimit(now), queue = new Queue(limits.queue);
   const cases = allCases();
 
@@ -91,13 +100,15 @@ export function createJudge({ runner, origins, trustProxy = false, limits = LIMI
 
   async function handle(req, res) {
     const path = new URL(req.url, 'http://x').pathname.replace(/\/+$/, '');
-    if (req.method === 'GET' && path === '/api/hot100/health') return json(res, 200, { ok: true, lessons: cases.size, waiting: queue.waiting });
-    const action = { '/api/hot100/run': 'run', '/api/hot100/submit': 'submit' }[path];
+    if (req.method === 'GET' && path === '/api/hot100/health') return json(res, 200, { ok: true, lessons: cases.size, waiting: queue.waiting, language: language ? language.state : 'off' });
+    const lsp = path.match(/^\/api\/hot100\/lsp\/(\w+)$/)?.[1];
+    const action = lsp && LSP_ACTIONS.has(lsp) ? 'lsp' : { '/api/hot100/run': 'run', '/api/hot100/submit': 'submit' }[path];
     if (!action) return json(res, 404, { error: '没有这个接口。' });
     if (req.method !== 'POST') return json(res, 405, { error: '只接受 POST。' }, { Allow: 'POST' });
     if (!origins.has(String(req.headers.origin || ''))) return json(res, 403, { error: '请从 hhikr.moe 的题目页面提交。' });
     if (!/^application\/json\b/.test(String(req.headers['content-type'] || ''))) return json(res, 415, { error: '请求格式无效。' });
     const data = await body(req);
+    if (action === 'lsp') return languageRequest(req, res, lsp, data);
     const lesson = lessons[Number(data.id)];
     if (!lesson) return json(res, 400, { error: '没有这道题。' });
     if (typeof data.code !== 'string' || !data.code.trim()) return json(res, 400, { error: '请先写代码。' });
@@ -125,6 +136,26 @@ export function createJudge({ runner, origins, trustProxy = false, limits = LIMI
     return json(res, 200, { ...summary, statuses: results.map((r) => r.status), failed: first < 0 ? undefined : { index: first, ...results[first] }, slowest: Math.max(0, ...results.map((r) => r.ms || 0)) });
   }
 
+  async function languageRequest(req, res, kind, data) {
+    if (!language) return json(res, 503, { error: '智能提示没有开启。', disabled: true });
+    const who = client(req);
+    const wait = rate.allow(`${who}:${kind === 'format' ? 'format' : 'lsp'}`, kind === 'format' ? limits.formatPerMinute : limits.lspPerMinute);
+    if (wait) return json(res, 429, { error: `操作太频繁，请 ${wait} 秒后再试。` }, { 'Retry-After': String(wait) });
+    if (kind !== 'resolve') {
+      if (typeof data.code !== 'string' || data.code.length > limits.code) return json(res, 400, { error: '代码无效或超过 32000 个字符。' });
+      if (kind !== 'format' && !SESSION_ID.test(String(data.session || ''))) return json(res, 400, { error: '会话无效。' });
+      if (['complete', 'hover', 'signature'].includes(kind) && !isPosition(data.position)) return json(res, 400, { error: '光标位置无效。' });
+    }
+    const args = { session: data.session, client: who, code: data.code, position: data.position, context: data.context && typeof data.context === 'object' ? data.context : undefined, item: data.item };
+    try {
+      return json(res, 200, { result: await language[kind](args) });
+    } catch (e) {
+      if (e.status) return json(res, e.status, { error: e.message });
+      if (e.message === 'timeout') return json(res, 504, { error: '智能提示响应超时。' });
+      throw e;
+    }
+  }
+
   return (req, res) => handle(req, res).catch((e) => {
     if (!res.headersSent) json(res, e.status || 500, { error: e.status ? e.message : '判题服务出错，请稍后再试。' });
     if (!e.status) console.error(e);
@@ -137,15 +168,21 @@ async function main() {
   await compiler.start();
   const sandbox = env.HOT100_SANDBOX || 'none', sandboxJava = env.HOT100_SANDBOX_JAVA || '/usr/bin/java';
   const origins = new Set((env.HOT100_ORIGINS || 'http://localhost:4321,http://127.0.0.1:4321').split(',').map((s) => s.trim()).filter(Boolean));
+  // IntelliSense is optional: on when HOT100_JDTLS points at an extracted JDT LS release.
+  let language;
+  if (env.HOT100_JDTLS) {
+    language = new LanguageService({ jdtls: env.HOT100_JDTLS, work: join(work, 'jdtls'), java: env.HOT100_JDTLS_JAVA || java });
+    language.start().then(() => console.log('JDT LS ready'), (e) => console.error('JDT LS failed:', e.message));
+  }
   const handler = createJudge({
-    origins, trustProxy: env.HOT100_TRUST_PROXY === '1',
+    origins, trustProxy: env.HOT100_TRUST_PROXY === '1', language,
     runner: (job) => runProgram({ compiler, sandbox, java: sandbox === 'bwrap' ? sandboxJava : java, ...job }),
   });
   const port = Number(env.HOT100_PORT || 4310), host = env.HOT100_HOST || '127.0.0.1';
   const server = http.createServer(handler);
   server.requestTimeout = 30000;
   server.listen(port, host, () => console.log(`hot100 judge on http://${host}:${port} (sandbox: ${sandbox}, work: ${work})`));
-  const stop = () => { compiler.close(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000).unref(); };
+  const stop = () => { compiler.close(); language?.stop(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000).unref(); };
   process.on('SIGINT', stop); process.on('SIGTERM', stop);
 }
 

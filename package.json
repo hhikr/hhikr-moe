@@ -21,7 +21,7 @@
     "build": "astro check && astro build && pagefind --site dist/client",
     "preview": "astro preview",
     "astro": "astro",
-    "test:hot100": "node tests/hot100/verify.mjs && node tests/hot100/verify-algorithms.mjs && node tests/hot100/verify-structures.mjs && node tests/hot100/verify-demo-input.mjs && node tests/hot100/verify-friendly-input.mjs && node tests/hot100/verify-judge.mjs && node tests/hot100/verify-judge-codegen.mjs && node tests/hot100/verify-judge-server.mjs && node tests/hot100/verify-theme-transition.mjs && node tests/hot100/verify-reveal-motion.mjs",
+    "test:hot100": "node tests/hot100/verify.mjs && node tests/hot100/verify-algorithms.mjs && node tests/hot100/verify-structures.mjs && node tests/hot100/verify-demo-input.mjs && node tests/hot100/verify-friendly-input.mjs && node tests/hot100/verify-judge.mjs && node tests/hot100/verify-judge-codegen.mjs && node tests/hot100/verify-judge-server.mjs && node tests/hot100/verify-judge-lsp.mjs && node tests/hot100/verify-theme-transition.mjs && node tests/hot100/verify-reveal-motion.mjs",
     "judge": "node tools/hot100-judge/server.mjs",
     "test:hot100:java": "node tests/hot100/verify-java.mjs && node tests/hot100/verify-java-boundaries.mjs && node tests/hot100/verify-judge-java.mjs"
   },

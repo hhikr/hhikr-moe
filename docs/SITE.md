@@ -24,10 +24,13 @@ npm run import:posts # 把 src/content/posts 导入本机数据库（.data/）�
 
 练习页只让读者写 `Solution`（设计题写对应的类），编译运行在服务器上的判题服务 `tools/hot100-judge/` 里完成：“运行”用题目示例或读者自己填的最多 3 组输入，“提交”用每题约 10 组隐藏用例。隐藏用例由 `cases.mjs` 按固定种子随机生成，课程自带的演示 trace 负责校验输入并给出预期答案，答案不唯一的输入会被过滤掉。判题机常驻一个 javac（`java/Hot100Compiler.java`），每次运行在 bubblewrap 沙箱里启动一个 JVM（无网络、只读文件系统、nobody 用户），同一时间只运行一份代码，并按 IP 限流。
 
+编辑器的智能提示（补全、悬停说明、参数提示、实时错误、Shift + Alt + F 格式化）来自同一服务里的 Eclipse JDT Language Server（lsp.mjs）。启动时预建 24 个项目槽位，每个读者占一个，15 分钟不活动就释放；读者的代码会按判题时的样子分析（同样默认导入 java.util 等，ListNode、TreeNode 可直接用）。设置 HOT100_JDTLS 指向解压好的 JDT LS 才会开启，否则编辑器只有本地的语法高亮和代码片段。在 VPS 上实测：常驻内存约 590 MB，补全中位约 60 ms，诊断约 0.6 s。
+
 ```bash
 npm run test:hot100      # 课程、算法、动画、判题程序生成与判题接口验证（不需要 JDK）
 npm run judge            # 本机启动判题服务（127.0.0.1:4310，需要 JDK 25；npm run dev 会把 /api/hot100 代理过去）
 npm run test:hot100:java # 用真实 JDK 编译运行：全部参考解法通过全部隐藏用例
+HOT100_JDTLS=/path/to/jdtls node tests/hot100/verify-judge-lsp.mjs # 用真实 JDT LS 验证智能提示
 ```
 
 判题服务的环境变量和部署方式见 `tools/hot100-judge/server.mjs` 文件头。
