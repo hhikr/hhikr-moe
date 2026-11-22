@@ -17,7 +17,7 @@
 | `tools/cosmo-runtime/state/scripts/` | 运动、作息和编码测试脚本 |
 | `tools/cosmo-runtime/workspace/phone-control/` | 原策略计算、Android、验证脚本与相关测试 |
 | `tools/hermes/windows-bridge/` | Windows MCP 连接器源码；现有连接和权限代码保留 |
-| `tools/hot100-java/` | 网页算法练习的本机 Java 执行端 |
+| `tools/hot100-judge/`、`tools/hot100-java/LessonIO.java` | 网页算法练习的在线判题与智能提示服务 |
 
 主站沿用现有授权接口，把浏览器送回 Cosmo gate；gate 提供聊天网页、转发 Hermes 接口与 `/admin/` 管理页。Android 沿用系统浏览器、PKCE、固定 App Link 和已有任务接口；任务 API 与 Telegram 读取同一组外部逐日记录。没有迁入或应用历史 future-auth 补丁。
 

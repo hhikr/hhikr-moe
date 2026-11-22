@@ -45,7 +45,7 @@
 ## 执行端
 
 - `tools/hermes/windows-bridge/`：Windows MCP 文件/命令/浏览器连接器。运行副本和凭据另放本机 `.deployment/hermes/windows-bridge/`；修改源码不等于修改正在运行的副本。
-- `tools/hot100-java/`：用户电脑上的 Java 编译执行服务，网站不提供公共代码执行接口。
+- `tools/hot100-judge/`：Hot 100 在线判题与 Java 智能提示服务（沙箱编译运行、隐藏用例、JDT LS），部署见其 `deploy/`；`tools/hot100-java/LessonIO.java` 是判题时的输入输出辅助类。
 
 ## 完整调用链
 

@@ -11,6 +11,7 @@
 | `hermes-hhikr.service` | `/opt/hermes-hhikr/source/.hermes/bin/hermes dashboard`，回环 9119 | `HERMES_HOME=/opt/hermes-hhikr/state`；`/opt/hermes-hhikr/windows-connection.env` |
 | `hermes-hhikr-gateway.service` | 同一 Hermes 启动器，`gateway run`；Telegram 与调度 | 同一 home 的运行配置、cron 与会话；`/opt/hermes-hhikr/windows-connection.env` |
 | `caddy.service` | HTTPS/反向代理 | `/etc/caddy/` |
+| `hot100-judge.service`（待上线） | Node `tools/hot100-judge/server.mjs`，`/srv/hot100/current`，回环 4310；Caddy 转发 `/api/hot100/*` | `/etc/hot100/env`；`/var/lib/hot100`；`/opt/hot100/jdtls`。上线与回滚见 [tools/hot100-judge/deploy](../tools/hot100-judge/deploy/README.md) |
 
 两个 Hermes 服务的工作目录为 `/opt/hermes-hhikr/workspace`。实际 ExecStart、环境文件和 current 目标以 `systemctl show`、`readlink -f` 核对，不从 Git 推断。
 

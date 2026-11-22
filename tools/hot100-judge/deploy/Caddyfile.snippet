@@ -1,0 +1,11 @@
+    # Hot 100 judge (tools/hot100-judge): runs readers' Java and serves IntelliSense.
+    # Put this inside the hhikr.moe block, before `handle @static`. The judge checks the Origin,
+    # rate-limits per client (it reads the client address from X-Forwarded-For, which Caddy sets)
+    # and runs one program at a time; Caddy only caps the request size.
+    handle /api/hot100/* {
+        request_body {
+            max_size 64KB
+        }
+        header Cache-Control "no-store"
+        reverse_proxy 127.0.0.1:4310
+    }

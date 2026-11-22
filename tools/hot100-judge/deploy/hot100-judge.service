@@ -1,0 +1,49 @@
+[Unit]
+Description=hhikr.moe Hot 100 judge (Java compile and run sandbox, JDT LS IntelliSense)
+After=network.target
+
+[Service]
+User=hot100
+Group=hot100
+WorkingDirectory=/srv/hot100/current
+EnvironmentFile=/etc/hot100/env
+ExecStart=/usr/local/bin/node tools/hot100-judge/server.mjs
+Restart=on-failure
+RestartSec=3
+
+# Scratch space for compiled programs and the language server's workspace.
+StateDirectory=hot100
+StateDirectoryMode=0700
+UMask=0077
+
+# Readers' programs run inside bubblewrap (see java.mjs); this keeps the whole service small too.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectClock=true
+ProtectKernelModules=true
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=
+# bubblewrap sets up the sandbox's loopback over netlink.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+# Not set on purpose: ProtectKernelTunables, ProtectKernelLogs, ProtectProc and ProtectHostname
+# (with the options above, it puts read-only copies over /proc/sys/kernel/hostname) cover parts of
+# /proc, after which the kernel refuses bubblewrap a fresh /proc; RestrictNamespaces would forbid
+# the namespaces bubblewrap creates; RestrictSUIDSGID's seccomp filter makes bubblewrap's bind
+# mounts fail with "Function not implemented" (tested on the VPS, bubblewrap 0.12, kernel 6.12),
+# and DynamicUser implies it. The service has no capabilities, so it cannot create set-id files anyway.
+InaccessiblePaths=-/srv/hhikr -/etc/hhikr-web -/etc/cosmo-gate -/srv/cosmo -/opt/hermes-hhikr -/etc/caddy -/var/lib/caddy -/root
+
+# Budget, measured on the VPS: JDT LS about 600 MB, the warm javac about 200 MB, one program
+# JVM up to about 300 MB, Node about 80 MB.
+MemoryHigh=1150M
+MemoryMax=1300M
+MemorySwapMax=512M
+TasksMax=256
+CPUQuota=150%
+
+[Install]
+WantedBy=multi-user.target
