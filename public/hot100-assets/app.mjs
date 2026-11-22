@@ -20,6 +20,27 @@ let done=new Set(read('hot100-preview-done',[])),selected=1,filter='all',steps=[
 let suggestionRequest=0,suggestionTimer=null;
 let running=false,environmentAvailable=false;
 let demoSession=null,demoDirty=false,expectedSpec=null;
+// Monaco replaces the textarea once it has loaded; the textarea stays as the fallback and always holds the code.
+let monacoEditor=null,editorLoading=null;
+function setCode(code,{undoable=true}={}){
+ $('editor').value=code;codeEditor.render();
+ if(monacoEditor){if(undoable)monacoEditor.setValue(code);else monacoEditor.model.setValue(code);}
+}
+function ensureMonaco(){
+ if(monacoEditor||editorLoading||typeof window.hot100LoadEditor!=='function')return editorLoading;
+ $('editor-hint').textContent='正在加载编辑器…';
+ editorLoading=window.hot100LoadEditor().then(mod=>{
+  monacoEditor=mod.createEditor($('monaco'),{value:$('editor').value,uri:'inmemory://hot100/Main.java',
+   onChange:value=>{$('editor').value=value;saveDraft();},onRun:()=>run(false),onSubmit:()=>run(true)});
+  root.classList.add('has-monaco');$('editor-hint').textContent='Ctrl + Space 提示 · Ctrl + Enter 运行 · Ctrl + Z 撤销';
+  return monacoEditor;
+ }).catch(error=>{console.warn('Monaco 加载失败，改用简易编辑器',error);editorLoading=null;$('editor-hint').textContent='Ctrl + Space 提示 · Tab 插入';});
+ return editorLoading;
+}
+function showCompileErrors(text){
+ const markers=[...String(text).matchAll(/Main\.java:(\d+): (?:error|错误): ([^\n]+)/g)].map(m=>({line:Number(m[1]),message:m[2]}));
+ monacoEditor?.setMarkers('javac',markers);return markers;
+}
 
 // ---------------------------------------------------------------- catalog
 function matchesFilter(q){return filter==='all'||(filter==='done'?done.has(q.id):q.level===filter);}
@@ -50,7 +71,7 @@ function setDrawer(open){
 
 // ---------------------------------------------------------------- lesson
 function pause(){clearTimeout(timer);timer=null;$('play').textContent='播放';}
-function setTab(practice){$('learn-tab').setAttribute('aria-selected',String(!practice));$('practice-tab').setAttribute('aria-selected',String(practice));$('learn-view').hidden=practice;$('practice-view').hidden=!practice;if(practice){pause();codeEditor.render();}}
+function setTab(practice){$('learn-tab').setAttribute('aria-selected',String(!practice));$('practice-tab').setAttribute('aria-selected',String(practice));$('learn-view').hidden=practice;$('practice-view').hidden=!practice;if(practice){pause();codeEditor.render();ensureMonaco();monacoEditor?.layout();}}
 function highlight(line){return escape(line).replace(/\b(class|public|static|int|void|for|if|else|return|throw|new|while|import)\b/g,'<span class="kw">$1</span>').replace(/\b(Solution|Main|Map|Integer|HashMap|IllegalArgumentException)\b/g,'<span class="type">$1</span>');}
 function stepLink(id,target){const a=$(id);a.hidden=!target;if(target){a.href=lessonPath(target.id);a.title=target.title;}else a.removeAttribute('href');}
 function select(id,{history:mode='replace',scroll=false}={}){
@@ -69,7 +90,7 @@ function select(id,{history:mode='replace',scroll=false}={}){
  $('description').textContent=lesson.description;$('input').textContent=exampleText(lesson);$('output').textContent=lesson.output;$('time').textContent=`时间 ${lesson.time}`;$('space').textContent=`空间 ${lesson.space}`;
  $('idea').textContent=lesson.idea;$('invariant').textContent=lesson.invariant;
  $('code').innerHTML=lesson.code.split('\n').map((line,i)=>`<span class="code-line" data-line="${i+1}"><span class="ln">${i+1}</span>${highlight(line)}</span>`).join('');
- $('editor').value=read(`hot100-preview-draft-${id}`,lesson.practice);$('result').textContent='尚未运行。';$('stdin').value=read(`hot100-preview-stdin-${id}`,'');
+ setCode(read(`hot100-preview-draft-${id}`,lesson.practice),{undoable:false});monacoEditor?.setMarkers('javac',[]);$('result').textContent='尚未运行。';$('stdin').value=read(`hot100-preview-stdin-${id}`,'');
  loadDemoInput();
  setTab(false);renderCatalog();
  const path=lessonPath(id);
@@ -180,7 +201,8 @@ async function run(check=false){
   const data=await javaClient.run(code,stdin);
   if(selected!==id)return;
   $('result').textContent=data.error||`${data.stdout||'(无标准输出)'}${data.stderr?`\n标准错误：\n${data.stderr}`:''}\n退出码：${data.exitCode}`;
-  const errorLine=data.error?.match(/Main\.java:(\d+):/);$('jump-error').hidden=!errorLine;if(errorLine)$('jump-error').onclick=()=>codeEditor.jump(Number(errorLine[1]));
+  const errorLine=data.error?.match(/Main\.java:(\d+):/);$('jump-error').hidden=!errorLine;showCompileErrors(data.error||'');
+  if(errorLine)$('jump-error').onclick=()=>monacoEditor?monacoEditor.jump(Number(errorLine[1])):codeEditor.jump(Number(errorLine[1]));
   if(check){const verdict=data.error||data.exitCode!==0?{kind:'error',message:'程序未正常完成，请先修正编译错误或运行异常。'}:judgeOutput(id,data.stdout,currentLesson.expected,currentLesson.sample||JSON.parse(currentLesson.raw));$('verdict').hidden=false;$('verdict').className=`verdict ${verdict.kind}`;$('verdict').textContent=verdict.message;}
  }catch(e){if(selected===id)$('result').textContent=`无法运行：${e.message}`;}finally{running=false;updateRunButtons();}
 }
@@ -201,7 +223,7 @@ async function suggest(force=false){
 function drawSuggestions(){const box=$('suggestions');box.hidden=!suggestions.length;box.innerHTML=suggestions.map(([key,,label],i)=>`<button role="option" aria-selected="${i===suggestionIndex}" data-suggestion="${i}" class="${i===suggestionIndex?'selected':''}">${escape(key)} <span> · ${escape(label)}</span></button>`).join('');}
 function insertSuggestion(i){const editor=$('editor'),prefix=editor.value.slice(0,editor.selectionStart).match(/[A-Za-z][A-Za-z0-9]*$/)?.[0]||'';const end=editor.selectionStart,item=suggestions[i];editor.setRangeText(item[1],end-prefix.length,end,'end');if(item[3]>0)editor.setSelectionRange(editor.selectionStart-1,editor.selectionStart-1);suggestionRequest++;suggestions=[];drawSuggestions();saveDraft();editor.focus();}
 function saveDraft(){save(`hot100-preview-draft-${selected}`,$('editor').value);codeEditor.render();}
-function replaceDraft(code){save(`hot100-preview-backup-${selected}`,$('editor').value);$('editor').value=code;saveDraft();$('undo-draft').hidden=false;}
+function replaceDraft(code){save(`hot100-preview-backup-${selected}`,$('editor').value);setCode(code);saveDraft();$('undo-draft').hidden=false;}
 
 // ---------------------------------------------------------------- wiring
 const lessonLink=event=>{

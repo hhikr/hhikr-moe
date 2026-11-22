@@ -214,3 +214,8 @@
 html.hot100-drawer-open{overflow:hidden}
 @media(prefers-reduced-motion:reduce){.hot100 .sidebar{transition:none!important}}.hot100 #input{white-space:pre-wrap}
 .hot100 .home-link{color:inherit;text-decoration:none}.hot100 .crumb-root{color:var(--ink-2);border-bottom:1px solid var(--rule)}.hot100 .crumb-root:hover{color:var(--ink);border-color:var(--ink)}
+/* Monaco takes over from the textarea once it has loaded */
+.hot100 .monaco-host{display:none;height:clamp(320px,55vh,560px);border:1px solid var(--rule);border-top:0}
+.hot100.has-monaco .monaco-host{display:block}
+.hot100.has-monaco .editor-wrap,.hot100.has-monaco #editor-status{display:none}
+@media(max-width:760px){.hot100 .monaco-host{height:340px}}

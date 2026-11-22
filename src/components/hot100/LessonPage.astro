@@ -26,3 +26,11 @@ const view = lessonView(question, lesson, {
 <div class="hot100" data-java-runtime="site" data-java-launch="node server.mjs" data-lesson={String(id)} data-pagefind-body set:html={view}></div>
 <script is:inline type="module" src="/hot100-assets/app.mjs"></script>
 </Base>
+
+<script>
+  // The practice editor (Monaco) is a few megabytes, so it loads only when the reader opens
+  // the practice tab. app.mjs is a plain module outside the bundle; this is its way in.
+  let loading: Promise<typeof import('../../scripts/hot100/editor')> | undefined;
+  (window as unknown as { hot100LoadEditor: () => typeof loading }).hot100LoadEditor = () =>
+    (loading ??= import('../../scripts/hot100/editor'));
+</script>
