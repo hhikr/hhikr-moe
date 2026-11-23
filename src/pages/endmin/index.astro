@@ -3,8 +3,6 @@ import Endmin from '@/layouts/Endmin.astro';
 import { fmtDate } from '@/lib/posts';
 import { backupStatus } from '@/server/backup.ts';
 import { commentCounts, listAllComments } from '@/server/comments.ts';
-import { cosmoOrigin } from '@/server/cosmo.ts';
-import { cronCalendars, hermesInternal, hermesStatus } from '@/server/hermes.ts';
 import { listAllPosts } from '@/server/posts.ts';
 import { listProjects } from '@/server/projects.ts';
 import { statsReport } from '@/server/stats.ts';
@@ -81,30 +79,6 @@ const hand = [at(FACE - 22, nowTurn), at(FACE + 27, nowTurn)];
 const handName = Math.abs(((nowTurn * 4 + 0.5) % 1) - 0.5) > 0.12 ? at(FACE + 36, nowTurn) : null;
 const up = span(vps.uptimeSeconds);
 const dialLabel = `处理器 ${percent(now?.cpu)}，内存 ${percent(memoryShare)}，磁盘 ${percent(diskUsed)}，系统已运行 ${up.join(' ')}`;
-
-// ── Hermes ───────────────────────────────────────────────────────────────
-const cosmo = cosmoOrigin();
-const watched = !!hermesInternal();
-const hermes = hermesStatus();
-const WEEKS = 26;
-const calendars = watched ? cronCalendars(WEEKS) : [];
-const CELL = 11;
-const STEP = 14;
-const GRID_LEFT = 18;
-const GRID_TOP = 14;
-const level = (runs: number, busiest: number) => (runs === 0 ? 0 : Math.max(1, Math.ceil((runs / busiest) * 3)));
-const monthMarks = (weeks: (typeof calendars)[number]['weeks']) =>
-  weeks.flatMap((week, w) => {
-    const month = week[0]?.day.slice(5, 7);
-    const before = w > 0 ? weeks[w - 1][0]?.day.slice(5, 7) : undefined;
-    return month && month !== before && w < weeks.length - 1 ? [{ w, text: `${Number(month)}月` }] : [];
-  })
-    // The period rarely starts on the first of a month: a label a week or two before the next one would run into it.
-    .filter((mark, n, marks) => !marks[n + 1] || marks[n + 1].w - mark.w >= 3);
-const dayTitle = (d: { day: string; runs: number; failed: number }) =>
-  `${Number(d.day.slice(5, 7))}月${Number(d.day.slice(8))}日：${d.runs === 0 ? '没有运行' : `运行 ${d.runs} 次${d.failed ? `，其中 ${d.failed} 次失败` : ''}`}`;
-const liveJobs = calendars.filter((job) => !job.removed).length;
-const showHermes = !!cosmo || watched;
 
 // ── The wheel ────────────────────────────────────────────────────────────
 // The eight sections of the management area as eight blocks of a ring around
@@ -281,43 +255,14 @@ const wheel = [
         </div>
       </section>
 
-      {/* Three panels a side, always: where Hermes is not set up, the works and media stand in its place. */}
-      {
-        !showHermes && (
-          <section class="sat r2">
-            <h2>作品与媒体 <a href="/endmin/works/">作品</a></h2>
-            <div class="figs">
-              <a href="/endmin/works/"><b data-fx-load>{works.length}</b><span class="cjk">作品</span></a>
-              <a href="/endmin/works/"><b data-fx-load>{works.reduce((total, w) => total + w.downloads, 0).toLocaleString('zh-CN')}</b><span class="cjk">下载</span></a>
-              <a href="/endmin/media/"><b data-fx-load>{sys.mediaFiles}</b><span class="cjk">媒体文件</span></a>
-            </div>
-          </section>
-        )
-      }
-      {
-        showHermes && (
-          <section class="sat r2">
-            <h2>
-              Hermes
-              {watched && (
-                <span class:list={['state', { off: hermes.checkedAt !== null && !hermes.online, idle: hermes.checkedAt === null }]}>
-                  {hermes.checkedAt === null ? '还没有问过' : hermes.online ? `在线${hermes.version ? ` · v${hermes.version}` : ''}` : '没有应答'}
-                </span>
-              )}
-            </h2>
-            <div class="figs">
-              {watched && <a href={cosmo ? `${cosmo}/` : '#cron'}><b data-fx-load>{hermes.online ? (hermes.activeSessions ?? 0) : '—'}</b><span class="cjk">会话</span></a>}
-              {watched && <a href="#cron"><b data-fx-load>{liveJobs}</b><span class="cjk">定时任务</span></a>}
-              {cosmo && (
-                <p class="doors">
-                  <a class="em-btn go" href={`${cosmo}/`} target="_blank" rel="noopener">对话</a>
-                  <a class="em-btn" href={`${cosmo}/admin/`} target="_blank" rel="noopener">管理页</a>
-                </p>
-              )}
-            </div>
-          </section>
-        )
-      }
+      <section class="sat r2">
+        <h2>作品与媒体 <a href="/endmin/works/">作品</a></h2>
+        <div class="figs">
+          <a href="/endmin/works/"><b data-fx-load>{works.length}</b><span class="cjk">作品</span></a>
+          <a href="/endmin/works/"><b data-fx-load>{works.reduce((total, w) => total + w.downloads, 0).toLocaleString('zh-CN')}</b><span class="cjk">下载</span></a>
+          <a href="/endmin/media/"><b data-fx-load>{sys.mediaFiles}</b><span class="cjk">媒体文件</span></a>
+        </div>
+      </section>
 
       <section class="sat l3">
         <h2>网站 <a href="/endmin/backup/">备份</a></h2>
@@ -367,54 +312,6 @@ const wheel = [
       </section>
     </div>
   </div>
-
-  {
-    watched && (
-      <section class="em-panel wide" id="cron">
-        <h2 class="em-mid"><span>定时任务</span></h2>
-        {cosmo && <p class="mid-link"><a href={`${cosmo}/admin/cron`} target="_blank" rel="noopener">在 Hermes 里管理</a></p>}
-        {calendars.length === 0 ? (
-          <p class="em-empty mid-empty">Hermes 里还没有定时任务。建一个之后，它每运行一次，这里就点亮一格。</p>
-        ) : (
-          <>
-            <ul class="habits">
-              {calendars.map((job) => (
-                <li>
-                  <div class="habit-head">
-                    <span class="t">{job.name}</span>
-                    {job.removed ? <span class="em-state draft">已删除</span> : !job.enabled && <span class="em-state draft">已暂停</span>}
-                    <span class="em-meta">
-                      {job.schedule && <span>{job.schedule}</span>}
-                      <span>{job.activeDays} 天 · {job.runs} 次</span>
-                      {job.failed > 0 && <span class="bad">失败 {job.failed} 次</span>}
-                      {job.lastRunAt && <span>上次 {when.format(new Date(job.lastRunAt * 1000))}</span>}
-                    </span>
-                  </div>
-                  <svg class="heat" viewBox={`0 0 ${GRID_LEFT + WEEKS * STEP} ${GRID_TOP + 7 * STEP}`} role="img" aria-label={`${job.name}：最近 ${WEEKS} 周每天的运行次数`}>
-                    {monthMarks(job.weeks).map((m) => <text class="axis" x={GRID_LEFT + m.w * STEP} y="9">{m.text}</text>)}
-                    {['一', '三', '五'].map((name, n) => <text class="axis" x="0" y={GRID_TOP + n * 2 * STEP + 9}>{name}</text>)}
-                    {job.weeks.map((week, w) =>
-                      week.map(
-                        (d, n) =>
-                          d && (
-                            <rect class:list={[`l${level(d.runs, job.busiest)}`, { bad: d.failed > 0 }]} x={GRID_LEFT + w * STEP} y={GRID_TOP + n * STEP} width={CELL} height={CELL}>
-                              <title>{dayTitle(d)}</title>
-                            </rect>
-                          ),
-                      ),
-                    )}
-                  </svg>
-                </li>
-              ))}
-            </ul>
-            <p class="heat-key">
-              <i class="l0"></i>没有运行 <i class="l1"></i><i class="l2"></i><i class="l3"></i>运行，越深次数越多 <i class="l3 bad"></i>当天有失败
-            </p>
-          </>
-        )}
-      </section>
-    )
-  }
 
   <div class="em-cols">
     <section class="em-panel">
@@ -1094,15 +991,6 @@ const wheel = [
     fill: var(--trace);
   }
 
-  .doors {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-end;
-    gap: 0.35rem;
-    margin: 0;
-  }
-
   /* Wide enough for the panels to stand either side of the wheel. */
   @container board (min-width: 62rem) {
     .orbit {
@@ -1204,124 +1092,6 @@ const wheel = [
     .seg-en {
       display: none;
     }
-  }
-
-  /* ---------- the scheduled jobs ---------- */
-  .em-panel.wide {
-    margin-top: 1.5rem;
-  }
-
-  .em-panel h2.em-mid {
-    margin: 0 0 0.6rem;
-    font-size: 1rem;
-  }
-
-  .mid-link {
-    margin: 0 0 0.6rem;
-    font-size: 0.75rem;
-  }
-
-  .mid-link a {
-    color: var(--ink-2);
-  }
-
-  .mid-link a:hover {
-    color: var(--ink);
-    text-decoration: underline;
-  }
-
-  .mid-empty {
-    border-top: 0;
-  }
-
-  .habits {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
-    gap: 1.5rem 2.5rem;
-    margin: 0;
-    padding: 0.6rem 0 0;
-    list-style: none;
-  }
-
-  .habit-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.2rem 0.6rem;
-  }
-
-  .habit-head .t {
-    font-weight: 700;
-  }
-
-  .habit-head .em-state {
-    margin-left: 0;
-  }
-
-  .habit-head .em-meta {
-    flex-basis: 100%;
-  }
-
-  .heat {
-    display: block;
-    width: 100%;
-    max-width: 27rem;
-    height: auto;
-    margin-top: 0.5rem;
-  }
-
-  .heat .axis {
-    font-size: 10px;
-  }
-
-  .heat rect,
-  .heat-key i {
-    fill: var(--trace);
-    background: var(--trace);
-  }
-
-  .heat .l0,
-  .heat-key .l0 {
-    fill: var(--chip);
-    background: var(--chip);
-  }
-
-  .heat .l1,
-  .heat-key .l1 {
-    opacity: 0.35;
-  }
-
-  .heat .l2,
-  .heat-key .l2 {
-    opacity: 0.65;
-  }
-
-  .heat .bad,
-  .heat-key .bad {
-    fill: var(--tri-a);
-    background: var(--tri-a);
-    opacity: 1;
-  }
-
-  .heat-key {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.3rem;
-    margin: 0.8rem 0 0;
-    color: var(--ink-2);
-    font-size: 0.75rem;
-  }
-
-  .heat-key i {
-    display: inline-block;
-    width: 0.7rem;
-    height: 0.7rem;
-    margin-left: 0.7rem;
-  }
-
-  .heat-key i + i {
-    margin-left: 0;
   }
 
   .em-cols {

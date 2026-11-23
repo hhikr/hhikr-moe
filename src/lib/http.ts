@@ -64,12 +64,8 @@ export function signIn(context: Pick<APIContext, 'cookies'>, user: User): void {
   context.cookies.set(sessionCookieName(), session.token, sessionCookieOptions(session.expires));
 }
 
-/**
- * Where a user lands after signing in: the endministrator goes to the
- * dashboard, unless they signed in on the way to Cosmo.
- */
-export const landingFor = (user: User, returnTo: string) =>
-  user.role === 'endmin' && !returnTo.startsWith('/api/auth/cosmo?') ? '/endmin/' : returnTo;
+/** Where a user lands after signing in: the endministrator goes to the dashboard. */
+export const landingFor = (user: User, returnTo: string) => (user.role === 'endmin' ? '/endmin/' : returnTo);
 
 /** Holds the state of a Google sign-in while the visitor is at Google. */
 export const PENDING_COOKIE = 'g_pending';

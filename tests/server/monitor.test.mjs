@@ -1,8 +1,6 @@
-// The two watches behind the management overview: readings of the machine,
-// and the calendar of Hermes's scheduled jobs.
+// The watch behind the management overview: readings of the machine.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
@@ -11,7 +9,6 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhikr-monitor-'));
 process.env.DATA_DIR = dir;
 
 const { closeDb, db } = await import('../../src/server/db.ts');
-const { cronCalendars, hermesInternal, hermesStatus, runFrom, saveCronSnapshot, syncHermes } = await import('../../src/server/hermes.ts');
 const { memoryFrom, recordVpsSample, trafficFrom, vpsReport } = await import('../../src/server/vps.ts');
 
 after(() => {
@@ -67,87 +64,7 @@ test('readings are stored, averaged into intervals, and dropped after a week', (
   assert.equal(db().prepare('SELECT COUNT(*) AS n FROM vps_samples WHERE at < ?').get(at - 8 * 86400).n, 0);
 });
 
-test('a run is failed when Hermes says so in any of the places it says it', () => {
-  assert.deepEqual(runFrom({ started_at: 1791700000.4, ended_at: 1791700060 }), { startedAt: 1791700000, endedAt: 1791700060, failed: false });
-  assert.equal(runFrom({ started_at: 1791700000, ended_at: null }).endedAt, null);
-  assert.equal(runFrom({ started_at: 1791700000, status: 'failed' }).failed, true);
-  assert.equal(runFrom({ started_at: 1791700000, end_reason: 'agent_error' }).failed, true);
-  assert.equal(runFrom({ started_at: 1791700000, title: 'Failed: script exited 1' }).failed, true);
-  assert.equal(runFrom({ started_at: 1791700000, title: 'Daily error report' }).failed, false);
-  assert.equal(runFrom({ started_at: 'soon' }), undefined);
-});
-
-test('the calendar counts runs by Beijing day, in whole weeks ending with this one', () => {
-  // Wednesday 14 October 2026, 10:00 in Beijing.
-  const now = Date.UTC(2026, 9, 14, 2, 0, 0);
-  const beijing = (day, hour) => Date.UTC(2026, 9, day, hour - 8, 0, 0) / 1000;
-  saveCronSnapshot(
-    [
-      { id: 'a', name: 'Morning brief', schedule: 'every day at 08:00', enabled: true },
-      { id: 'b', name: 'Idle', schedule: '', enabled: false },
-    ],
-    new Map([['a', [
-      { startedAt: beijing(14, 8), endedAt: beijing(14, 8) + 30, failed: false },
-      { startedAt: beijing(13, 8), endedAt: null, failed: true },
-      { startedAt: beijing(13, 23), endedAt: null, failed: false },
-      { startedAt: beijing(13, 0), endedAt: null, failed: false },
-    ]]]),
-  );
-
-  const [b, a] = cronCalendars(4, now); // by name
-  assert.equal(a.name, 'Morning brief');
-  assert.equal(a.weeks.length, 4);
-  assert.deepEqual(a.weeks[3].map((d) => d?.day ?? null), ['2026-10-12', '2026-10-13', '2026-10-14', null, null, null, null]);
-  assert.equal(a.weeks[0][0].day, '2026-09-21');
-  assert.deepEqual(a.weeks[3][1], { day: '2026-10-13', runs: 3, failed: 1 });
-  assert.deepEqual(a.weeks[3][2], { day: '2026-10-14', runs: 1, failed: 0 });
-  assert.deepEqual([a.runs, a.failed, a.activeDays, a.busiest, a.lastRunAt], [4, 1, 2, 3, beijing(14, 8)]);
-  assert.deepEqual([b.name, b.enabled, b.runs], ['Idle', false, 0]);
-
-  // Seeing the same run again changes nothing; a job Hermes no longer has stays while it has runs to show.
-  saveCronSnapshot([{ id: 'b', name: 'Idle', schedule: '', enabled: true }], new Map());
-  const after = cronCalendars(4, now);
-  assert.deepEqual(after.map((c) => [c.id, c.removed, c.runs]), [['b', false, 0], ['a', true, 4]]);
-  saveCronSnapshot([], new Map());
-  assert.deepEqual(cronCalendars(4, now).map((c) => c.id), ['a'], 'a removed job with nothing to show is left out');
-});
-
-test('Hermes is asked on the loopback interface only, with the token from its own page', async () => {
-  process.env.HERMES_INTERNAL = 'https://hermes.example';
-  assert.equal(hermesInternal(), undefined);
-  process.env.HERMES_INTERNAL = 'http://203.0.113.9:9119';
-  assert.equal(hermesInternal(), undefined);
-
-  let token = 'first-token';
-  const seen = [];
-  const hermes = http.createServer((req, res) => {
-    seen.push(req.url);
-    if (req.url === '/') return res.end(`<script>window.__HERMES_SESSION_TOKEN__="${token}";</script>`);
-    if (req.headers['x-hermes-session-token'] !== token) return res.writeHead(401).end('{}');
-    res.setHeader('Content-Type', 'application/json');
-    if (req.url === '/api/status') return res.end(JSON.stringify({ version: '0.21.7', active_sessions: 2 }));
-    if (req.url === '/api/cron/jobs') return res.end(JSON.stringify([{ id: 'j1', name: 'Digest', schedule_display: 'every 6h', enabled: true, state: 'scheduled' }]));
-    if (req.url === '/api/cron/jobs/j1/runs?limit=100') return res.end(JSON.stringify({ runs: [{ id: 'cron_j1_1', started_at: 1791700000, ended_at: 1791700100 }, { id: 'x', started_at: null }] }));
-    res.writeHead(404).end('{}');
-  });
-  await new Promise((resolve) => hermes.listen(0, '127.0.0.1', resolve));
-  process.env.HERMES_INTERNAL = `http://127.0.0.1:${hermes.address().port}`;
-
-  await syncHermes(1000);
-  assert.deepEqual(hermesStatus(), { checkedAt: 1000, online: true, version: '0.21.7', activeSessions: 2 });
-  assert.deepEqual(db().prepare("SELECT job_id, started_at, ended_at, failed FROM hermes_cron_runs WHERE job_id = 'j1'").all().map((r) => ({ ...r })), [
-    { job_id: 'j1', started_at: 1791700000, ended_at: 1791700100, failed: 0 },
-  ]);
-
-  // Hermes restarted: the old token is refused, the new one is read and the request repeated.
-  token = 'second-token';
-  seen.length = 0;
-  await syncHermes(2000);
-  assert.equal(hermesStatus().online, true);
-  assert.deepEqual(seen.slice(0, 3), ['/api/status', '/', '/api/status']);
-
-  await new Promise((resolve) => hermes.close(resolve));
-  await syncHermes(3000);
-  assert.deepEqual(hermesStatus(), { checkedAt: 3000, online: false, version: '0.21.7', activeSessions: 2 });
-  delete process.env.HERMES_INTERNAL;
+test('the retired assistant leaves no tables behind', () => {
+  const names = db().prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND (name LIKE 'cosmo_%' OR name LIKE 'hermes_%')").all();
+  assert.deepEqual(names, []);
 });

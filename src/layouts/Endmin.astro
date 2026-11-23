@@ -6,7 +6,6 @@ import Base from './Base.astro';
 import Icon from '@/components/Icon.astro';
 import { backupStatus } from '@/server/backup.ts';
 import { commentCounts } from '@/server/comments.ts';
-import { cosmoOrigin } from '@/server/cosmo.ts';
 import { knowledgeStatus } from '@/server/knowledge.ts';
 
 interface Props {
@@ -37,14 +36,6 @@ const sections = [
   { href: '/endmin/backup/', label: '备份', en: 'Backup', badge: backupProblems },
   { href: '/endmin/knowledge/', label: '知识库', en: 'Knowledge', badge: knowledgeProblems },
 ];
-// Hermes has its own two front ends on the Cosmo subdomain; both take the same sign-in.
-const cosmo = cosmoOrigin();
-const hermes = cosmo
-  ? [
-      { href: `${cosmo}/`, label: '对话', en: 'Cosmo' },
-      { href: `${cosmo}/admin/`, label: '管理页', en: 'Dashboard' },
-    ]
-  : [];
 const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.startsWith(href));
 ---
 
@@ -72,7 +63,6 @@ const isCurrent = (href: string) => (href === '/endmin/' ? path === href : path.
       </nav>
 
       <div class="em-util">
-        {hermes.map((s) => <a href={s.href} target="_blank" rel="noopener">Hermes {s.label}</a>)}
         <a href="/">查看网站</a>
         <button type="button" data-view-as>游客视角</button>
         <button type="button" data-logout>退出</button>

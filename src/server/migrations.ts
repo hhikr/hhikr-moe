@@ -309,4 +309,15 @@ export const MIGRATIONS: { id: string; sql: string }[] = [
       ) WITHOUT ROWID;
     `,
   },
+  {
+    id: '009_retire_assistant',
+    sql: `
+      -- Hermes and Cosmo are gone: nothing hands sign-ins to Cosmo or copies
+      -- Hermes's scheduled jobs any more.
+      DROP TABLE IF EXISTS cosmo_grants;
+      DROP TABLE IF EXISTS cosmo_codes;
+      DROP TABLE IF EXISTS hermes_cron_runs;
+      DROP TABLE IF EXISTS hermes_cron_jobs;
+    `,
+  },
 ];
